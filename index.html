@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790922538';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790922538"></script>
-<script src="./share.js?v=1790922538"></script>
-<script src="./sky.js?v=1790922538"></script>
+<script>window.INK_V = '1790922799';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790922799"></script>
+<script src="./share.js?v=1790922799"></script>
+<script src="./sky.js?v=1790922799"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790922538">
+<link rel="stylesheet" href="./fonts.css?v=1790922799">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -253,6 +253,10 @@ body.setting #fuse { visibility: hidden; }
 #oneStep .act { color: var(--dim); font-family: 'W95FA', ui-monospace, monospace; font-size: 14px; }
 #one:not(.open) #oneActs { display: none; }
 #run .row.more { color: var(--dim); padding-top: 6px; padding-bottom: 6px; cursor: pointer; font-size: 14px; }
+/* THE KEYBOARD: while it is up, the app fits the part of the screen that can be seen, and Orv rises with it */
+body.kb #app { top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 100%); padding-bottom: 6px; }
+#wheel { bottom: var(--kb, 0px); }
+body.kb #say { max-height: calc(var(--vvh, 100vh) * .3); }
 .krixPop { position: fixed; z-index: 30; pointer-events: none; font-family: 'Dogica', ui-monospace, monospace; font-size: 14px; color: var(--gold); }
 </style>
 </head>
@@ -264,7 +268,7 @@ body.setting #fuse { visibility: hidden; }
     <div id="div" role="separator" aria-label="drag: far left shows your words, far right is action mode"></div>
     <div id="right"><div id="talk" aria-label="the whole talk"><div id="chatLog"></div></div><div id="say"></div><div id="mode"></div></div>
   </div>
-  <div id="bottom"><textarea id="line" rows="1" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></textarea><button id="tapeBtn" type="button" hidden aria-label="give Squatch a voice note">tape</button><input id="tape" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.caf,.ogg" hidden></div>
+  <div id="bottom"><textarea id="line" rows="1" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></textarea><button id="tapeBtn" type="button" hidden aria-label="give Squatch a voice note">tape</button><input id="tape" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.caf,.ogg" hidden></div>
 </div>
 <canvas id="fuse" aria-hidden="true"></canvas>
 <div id="wheel" aria-label="Orv and Squatch on the wheel. Tap for story or focus, double-tap to turn the wheel, hold to talk."><canvas id="orv"></canvas><canvas id="squatch"></canvas></div>
@@ -1058,6 +1062,13 @@ async function speak(raw, how) {
   if (fz && /^(off|out|stop|done)$/i.test(fz[1])) { delete ST.box; save(); sit(false); FUSE = null; render(); return say('(Orv blows the match out.)', true); }
   if (fz && theOne()) { const n = +fz[1] || NUMW[fz[1].toLowerCase()]; if (n > 0) { const o = theOne(); ST.box = { id: o.id, from: nowIso(), mins: Math.min(180, n) }; save();
     log({ who: 'k', what: 'fuse', id: o.id, mins: ST.box.mins }); FUSE = null; sit(true); render(); return say('(Orv strikes a match.) ' + ST.box.mins + ' minutes on ' + o.word + '. I will sit with you.', true); } }
+  /* THE BELL (the research: a cue outside the head, at the point of performance): "bell" hands the lit thing, or the next timed
+     one, to his own Shortcut "Inkling Bell", which puts it in Reminders to ring on the lock screen. Phone to phone only. */
+  if (/^bell\b/i.test(words)) { const t = byId(SEL) || theOne(), nt = timedOf(t || {}) ? t : open().filter(timedOf).sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0] || t;
+    if (!nt) return say('(Orv has nothing to ring a bell for.)', true);
+    log({ who: 'k', what: 'bell', id: nt.id });
+    location.href = 'shortcuts://run-shortcut?name=' + encodeURIComponent('Inkling Bell') + '&input=text&text=' + encodeURIComponent(nt.word + '|' + (nt.at || '') + '|' + (nt.text || '').slice(0, 120));
+    return say('(Orv rings his little bell.) ' + nt.word + (nt.at ? ', ' + fmtAt(nt.at) : '') + ' goes to your Reminders, if the Inkling Bell shortcut is there.', true); }
   if (/^(still|move)$/i.test(words)) { store('inkling.still', /still/i.test(words)); render(); return say(/still/i.test(words) ? '(Orv holds very still.) The fuse, the clock, the crown\'s colours and the turns hold still until you say move.' : '(Orv stretches.) Moving again.', true); }
   const naming = load('inkling.naming', null);
   if (naming) { try { localStorage.removeItem('inkling.naming'); } catch (e) {}
@@ -1117,7 +1128,14 @@ async function thanks() {
 /* a half-typed line is kept on the phone, so a reload or iOS closing the app never loses it (the iOS engineer, 2026-10-02) */
 let DRAFT_T = 0; const keepDraft = () => { clearTimeout(DRAFT_T); DRAFT_T = setTimeout(() => store('inkling.draft', { text: $('line').value, at: nowIso() }), 300); };
 addEventListener('pagehide', () => { try { localStorage.setItem('inkling.draft', JSON.stringify({ text: $('line').value, at: nowIso() })); } catch (e) {} });
-function growLine() { const l = $('line'); l.style.height = 'auto'; l.style.height = Math.min(l.scrollHeight + 2, innerHeight * 0.4) + 'px'; }
+function growLine() { const l = $('line'); l.style.height = 'auto'; l.style.height = Math.min(l.scrollHeight + 2, (window.visualViewport ? visualViewport.height : innerHeight) * 0.4) + 'px'; }
+/* THE KEYBOARD (an iOS engineer read the app, 2026-10-02): iOS never shrinks the page for its keyboard, so the whole app slid up and
+   buried Orv behind it. While the keyboard is up the app is fitted to what can be seen, and Orv rises with it, so holding him to
+   talk works mid-sentence; when it goes, everything returns. On a screen with no keyboard nothing changes. */
+(function keyboard() { const vv = window.visualViewport; if (!vv) return; const R = document.documentElement.style;
+  const fit = () => { const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop), up = kb > 80;
+    document.body.classList.toggle('kb', up); R.setProperty('--vvh', vv.height + 'px'); R.setProperty('--vvt', vv.offsetTop + 'px'); R.setProperty('--kb', (up ? kb : 0) + 'px'); growLine(); };
+  vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); fit(); })();
 function setLine(v) { $('line').value = v; growLine(); keepDraft(); }
 $('line').addEventListener('input', () => { growLine(); keepDraft(); });
 $('line').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); speak($('line').value); } });
