@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790916173';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790916173"></script>
-<script src="./share.js?v=1790916173"></script>
-<script src="./sky.js?v=1790916173"></script>
+<script>window.INK_V = '1790916398';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790916398"></script>
+<script src="./share.js?v=1790916398"></script>
+<script src="./sky.js?v=1790916398"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790916173">
+<link rel="stylesheet" href="./fonts.css?v=1790916398">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -73,8 +73,10 @@ html, body { margin: 0; height: 100%; background: var(--ground); color: var(--in
 #star canvas { display: block; }
 #right { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: calc(var(--orvh) - 36px); }
 #talk { flex: 1 1 auto; overflow-y: auto; display: none; padding: 0 2px 8px 6px; }
-#app.open #talk { display: block; position: fixed; z-index: 5; left: 8px; width: 75vw; top: calc(env(safe-area-inset-top) + 120px);
-  bottom: calc(env(safe-area-inset-bottom) + 64px); background: var(--ground); padding: 0 10px 8px 6px; }
+/* his lines, when the crown sits at the left: they fill the lower right as it opens up (no box laid over the page — his word: "this weird
+   masking thing on the mode where I pull it all the way left") */
+#app.open #talk { display: block; }
+#app.open #right { padding-left: 64px; }   /* clear of the half crown that stands at the left edge */
 #app.action #right { display: none; }
 #mode { display: none; }
 .row { position: relative; min-height: 42px; padding: 6px 0 6px 6px; user-select: none; -webkit-user-select: none; touch-action: pan-y; }

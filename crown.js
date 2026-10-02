@@ -14,19 +14,21 @@
       like just movement within the established parameters" — so the gems keep their places in the crown's own shape (lit
       from the heart outward) and only their colours move: every beat each takes one of the crown code's four colours, the
       very look of the crown when it sends. No more bursts.
+     "any along the lines should be color ones I own, not grey" — THE ARMS carry no grey: the crown holds 76 gems, and every
+      gem he owns beyond them stands along the cross from the heart outward, in the same four switching colours.
    · THE PATTERN is his, cell for cell (crown.json): its cells are the only places a gem may land; its heart is "heart".
    · Every tunable number is in KNOBS. Read only: it never writes anything.
    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 (function (root) {
   'use strict';
   const KNOBS = {
-    stepMs: 30,          // a travelling gem takes a step this often: the click
-    lagPerPx: 0.35,      // ticks of wait per crown pixel from the heart before a gem follows a move ("slightly more delay")
-    scatter: 3,          // each gem waits up to this many more clicks of its own ("and scatter")
+    stepMs: 24,          // a travelling gem takes a step this often: the click (his word: "pixels follow a little faster"; was 30)
+    lagPerPx: 0.2,       // ticks of wait per crown pixel from the heart before a gem follows a move (was 0.35)
+    scatter: 2,          // each gem waits up to this many more clicks of its own (was 3)
     fling: 0.45,         // and is thrown up to this much farther than the push, the far ones most
-    stride: 3,           // a gem this many crown pixels away travels in 2-pixel clicks, twice this in 3 …
+    stride: 2,           // a gem this many crown pixels away travels in 2-pixel clicks, twice this in 3 … (was 3)
     secondMs: 1000,      // the gems take new places, and the number its next digit, this often
-    beatMs: 200,         // the colours switch this often, as the sending crown's beats do
+    beatMs: 1000,        // the colours switch once a second (his word: "still change every second, just in the right shape"; the sending crown keeps its own quick beat)
     four: ['#FF0000', '#70B300', '#00A0FF', '#A640BF'],   // the crown code's four (share.js FOUR)
     cycle: ['#FF0000', '#FF8000', '#70B300', '#2D8686', '#00A0FF', '#A640BF'],   // the crown's six
     armGap: 5, armFade: 70, armMin: 0.16, armMax: 0.85, armGrey: null   // THE ARMS (armGrey: the page's --faint when null)
@@ -73,7 +75,7 @@
     const arm = (dir, k) => { const key = dir + k; if (armOf[key]) return armOf[key];
       const start = dir === 'u' ? cy + 1 : dir === 'd' ? H - cy : W - cx;
       const a = { r: dir === 'u' ? cy - start - k : dir === 'd' ? cy + start + k : cy, c: dir === 'r' ? cx + start + k : cx, d: start + k,
-                  ox: 0, oy: 0, wait: 0, fx: 0, fy: 0, j: 0, on: k % (1 + Math.floor(k / KNOBS.armGap)) === 0,
+                  ox: 0, oy: 0, wait: 0, fx: 0, fy: 0, j: 0, col: (Math.random() * 4) | 0, on: k % (1 + Math.floor(k / KNOBS.armGap)) === 0,
                   alpha: Math.max(KNOBS.armMin, KNOBS.armMax - k / KNOBS.armFade) };
       ARMS.push(a); armOf[key] = a; return a; };
     const reach = rect => { if (!opts.bounds || !rect || !rect.width) return { u: 0, d: 0, r: 0 };
@@ -81,7 +83,7 @@
       return { u: Math.max(0, Math.floor((hy - b.top) / S) - (cy + 1)), d: Math.max(0, Math.floor((b.bottom - hy) / S) - (H - cy)), r: Math.max(0, Math.floor((b.right - hx) / S) - (W - cx)) }; };
 
     /* each beat: every gem takes one of the four colours, in its own place (the sending crown's look) */
-    function beat() { GEMS.forEach(g => { g.col = (Math.random() * 4) | 0; }); }
+    function beat() { GEMS.forEach(g => { g.col = (Math.random() * 4) | 0; }); ARMS.forEach(a => { a.col = (Math.random() * 4) | 0; }); }
     /* the number in the heart: one digit at a time, a second each, then a space */
     function digit(g, X, Y) {
       const s = String(Math.max(0, Math.floor(st.shown == null ? st.count : st.shown))), seq = s.split('').concat([' ']);
@@ -95,10 +97,11 @@
         if (root.document.body.classList.contains('setting') || !rect || !rect.width) return;
         X = Math.round(rect.left); Y = Math.round(rect.top); }
       else own.clearRect(0, 0, canvas.width, canvas.height);
-      if (OV && opts.bounds) { const R = reach(rect); g.fillStyle = KNOBS.armGrey || css('--faint') || '#6e6e6e';
-        ['u', 'd', 'r'].forEach(dir => { for (let k = 0; k < R[dir]; k++) { const a = arm(dir, k); if (!a.on) continue;
-          g.globalAlpha = a.alpha; g.fillRect(X + (PAD + a.c + a.ox) * S, Y + (PAD + a.r + a.oy) * S, S, S); } });
-        g.globalAlpha = 1; }
+      const owned = Math.max(0, Math.floor(st.shown == null ? st.count : st.shown)), extra = owned - GEMS.length;   // the gems beyond the crown's 76
+      if (OV && opts.bounds && extra > 0) { const R = reach(rect), line = [];
+        ['u', 'd', 'r'].forEach(dir => { for (let k = 0; k < R[dir]; k++) { const a = arm(dir, k); if (a.on) line.push(a); } });
+        line.sort((p, q) => p.d - q.d);   // from the heart outward, on all three lines at once
+        for (let i = 0; i < Math.min(extra, line.length); i++) { const a = line[i]; g.fillStyle = KNOBS.four[a.col]; g.fillRect(X + (PAD + a.c + a.ox) * S, Y + (PAD + a.r + a.oy) * S, S, S); } }
       const n = Math.min(st.count, GEMS.length);
       for (let i = 0; i < n; i++) { const gm = GEMS[i]; g.fillStyle = KNOBS.four[gm.col];
         g.fillRect(X + (PAD + gm.c + gm.ox) * S, Y + (PAD + gm.r + gm.oy) * S, S, S); }
