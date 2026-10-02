@@ -47,7 +47,8 @@
       c.style.cssText = 'position:fixed;left:0;top:0;pointer-events:none;z-index:7;image-rendering:pixelated';
       root.document.body.appendChild(c); }
     const ctx = c.getContext('2d');
-    const fit = () => { const d = root.devicePixelRatio || 1; c.width = Math.round(root.innerWidth * d); c.height = Math.round(root.innerHeight * d);
+    /* pixel art drawn in whole crown pixels: one to one looks the same and costs a ninth (an iOS engineer, 2026-10-02) */
+    const fit = () => { const d = 1; c.width = Math.round(root.innerWidth * d); c.height = Math.round(root.innerHeight * d);
       c.style.width = root.innerWidth + 'px'; c.style.height = root.innerHeight + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); ctx.imageSmoothingEnabled = false; };
     fit(); root.addEventListener('resize', fit);
     return { c, ctx, w: () => root.innerWidth, h: () => root.innerHeight };
@@ -83,7 +84,8 @@
       return { u: Math.max(0, Math.floor((hy - b.top) / S) - (cy + 1)), d: Math.max(0, Math.floor((b.bottom - hy) / S) - (H - cy)), r: Math.max(0, Math.floor((b.right - hx) / S) - (W - cx)) }; };
 
     /* each beat: every gem takes one of the four colours, in its own place (the sending crown's look) */
-    function beat() { GEMS.forEach(g => { g.col = (Math.random() * 4) | 0; }); ARMS.forEach(a => { a.col = (Math.random() * 4) | 0; }); }
+    function beat() { if (typeof root.inkStill === 'function' && root.inkStill()) return;   // his word "still": the colours hold
+      GEMS.forEach(g => { g.col = (Math.random() * 4) | 0; }); ARMS.forEach(a => { a.col = (Math.random() * 4) | 0; }); }
     /* the number in the heart: one digit at a time, a second each, then a space */
     function digit(g, X, Y) {
       const s = String(Math.max(0, Math.floor(st.shown == null ? st.count : st.shown))), seq = s.split('').concat([' ']);
@@ -118,8 +120,12 @@
         g.wait = Math.max(g.wait, Math.round(g.d * KNOBS.lagPerPx + g.j * KNOBS.scatter)); });
     }
     const home = v => v === 0 ? 0 : v - Math.sign(v) * Math.min(Math.abs(v), 1 + Math.floor(Math.abs(v) / KNOBS.stride));
+    /* THE CROWN RESTS between beats when nothing moves (it was redrawing the whole screen sixty times a second to change colour
+       once): a drag, a resize, a new count or a bloom wakes it at once */
+    const resting = () => !GEMS.some(g => g.ox || g.oy || g.wait) && !ARMS.some(a => a.ox || a.oy || a.wait) && Date.now() > st.bloomUntil + 50;
+    function wake() { clearTimeout(st.idle); st.idle = 0; if (!st.raf && st.alive && !reduce) st.raf = requestAnimationFrame(frame); }
     function frame(ts) {
-      if (!st.alive) return;
+      st.raf = 0; if (!st.alive) return;
       const r = canvas.getBoundingClientRect();
       if (st.last && r.width) moved(r.left - st.last[0], r.top - st.last[1]);
       if (r.width) st.last = [r.left, r.top];
@@ -127,15 +133,20 @@
       const tick = Math.floor(ts / KNOBS.stepMs);
       if (tick !== st.t) { st.t = tick;
         GEMS.concat(ARMS).forEach(g => { if (!g.ox && !g.oy) return; if (g.wait > 0) { g.wait--; return; } g.ox = home(g.ox); g.oy = home(g.oy); }); }
-      draw(r); st.raf = requestAnimationFrame(frame);
+      const still = st.last && r.width && r.left === st.last[0] && r.top === st.last[1];
+      draw(r);
+      if (still && resting()) { st.calm = (st.calm || 0) + 1; if (st.calm > 3) { st.idle = setTimeout(wake, KNOBS.beatMs - Date.now() % KNOBS.beatMs + 2); return; } } else st.calm = 0;
+      st.raf = requestAnimationFrame(frame);
     }
+    root.addEventListener('resize', wake);
     const reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) { const once = () => draw(canvas.getBoundingClientRect()); once(); root.addEventListener('resize', once); setInterval(once, KNOBS.secondMs); }
     else st.raf = requestAnimationFrame(frame);
     return {
       gems: GEMS.length,
-      set(n, shown) { if ((shown == null ? null : shown) !== st.shown) st.from = Date.now(); st.count = Math.max(0, Math.min(GEMS.length, Math.round(n))); st.shown = shown == null ? null : shown; if (reduce) draw(canvas.getBoundingClientRect()); },
-      bloom(ms) { st.bloomUntil = Date.now() + (ms || 1000); moved(0, -3 * S); if (reduce) draw(canvas.getBoundingClientRect()); },   // a deed: the true face, and a jolt the gems click home from
+      set(n, shown) { if ((shown == null ? null : shown) !== st.shown) st.from = Date.now(); wake(); st.count = Math.max(0, Math.min(GEMS.length, Math.round(n))); st.shown = shown == null ? null : shown; if (reduce) draw(canvas.getBoundingClientRect()); },
+      bloom(ms) { st.bloomUntil = Date.now() + (ms || 1000); moved(0, -3 * S); wake(); if (reduce) draw(canvas.getBoundingClientRect()); },   // a deed: the true face, and a jolt the gems click home from
+      wake,
       get count() { return st.count; },
       stop() { st.alive = false; cancelAnimationFrame(st.raf); }
     };

@@ -6,16 +6,16 @@
 <meta name="apple-mobile-web-app-title" content="Inkling">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790920208';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790920208"></script>
-<script src="./share.js?v=1790920208"></script>
-<script src="./sky.js?v=1790920208"></script>
+<script>window.INK_V = '1790922538';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790922538"></script>
+<script src="./share.js?v=1790922538"></script>
+<script src="./sky.js?v=1790922538"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790920208">
+<link rel="stylesheet" href="./fonts.css?v=1790922538">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -156,6 +156,9 @@ body.setting #wheel { visibility: hidden; }
 #arc { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 13; pointer-events: none; overflow: visible; }
 #arc[hidden] { display: none; }
 #arc .hit { pointer-events: stroke; cursor: pointer; }
+#arc, #arc .hit { touch-action: none; }
+html, body { overscroll-behavior: none; }
+#talk, #say, .skyp, #set { overscroll-behavior: contain; }
 body.setting #arc { display: none; }
 #cig { position: fixed; z-index: 20; top: calc(env(safe-area-inset-top) + 10px); right: calc(var(--pad) - 4px); image-rendering: pixelated; cursor: pointer; padding: 6px; }
 #cig[hidden], #salmon[hidden] { display: none; }
@@ -236,17 +239,27 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
 #run .row.timed .line { padding-left: calc(var(--gut, 46px) + 8px); }
 #run .row.seq .line { padding-left: 8px; margin-top: 2px; }
 /* THE FUSE: the magical bar on the very left edge of the screen, its colours stepping once a second */
-#fuse { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; image-rendering: pixelated; }
+#fuse { position: fixed; left: 0; top: env(safe-area-inset-top, 0px); z-index: 3; pointer-events: none; image-rendering: pixelated; }
 body.setting #fuse { visibility: hidden; }
 .price { font-family: 'Dogica', ui-monospace, monospace; font-size: 10px; color: var(--gold); margin: 5px 0 0 6px; }
 .chap { font-family: 'Dogica', ui-monospace, monospace; font-size: 12px; white-space: normal; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.acts { display: flex; flex-wrap: wrap; gap: 0 4px; margin: 2px 0 0; flex: 0 0 100%; }
+#run .row.timed .acts { padding-left: calc(var(--gut, 46px) + 8px); } #run .row.seq .acts { padding-left: 8px; }
+.act { all: unset; font-family: 'Dogica', ui-monospace, monospace; font-size: 11px; color: var(--ink); padding: 10px 9px 10px 0; cursor: pointer; }
+.act:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.st-p .acts { display: inline-flex; margin: 0 4px; }
+#oneActs .act, #oneStep .act { font-size: 11px; padding: 8px 14px 6px 0; }
+#oneStep .act { color: var(--dim); font-family: 'W95FA', ui-monospace, monospace; font-size: 14px; }
+#one:not(.open) #oneActs { display: none; }
+#run .row.more { color: var(--dim); padding-top: 6px; padding-bottom: 6px; cursor: pointer; font-size: 14px; }
 .krixPop { position: fixed; z-index: 30; pointer-events: none; font-family: 'Dogica', ui-monospace, monospace; font-size: 14px; color: var(--gold); }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="main">
-    <div id="left"><div id="list" aria-label="your sword: the story above, the one thing, then what is ahead"><div id="story" aria-label="the story so far"></div><div id="one" aria-label="the one thing: swipe right when it is done, left to set it aside"><span class="mark yes">✓</span><span class="mark no">✗</span><div id="oneWord"></div><div id="oneLine"></div><div id="sparks"></div><div id="clock"></div></div><div id="run" aria-label="what is ahead: the timed things by their times, then the rest in order"></div></div><div id="list2" hidden aria-label="Squatch's sword: his day"></div></div>
+    <div id="left"><div id="list" aria-label="your sword: the story above, the one thing, then what is ahead"><div id="story" aria-label="the story so far"></div><div id="one" aria-label="the one thing: swipe right when it is done, left to set it aside"><span class="mark yes">✓</span><span class="mark no">✗</span><div id="oneWord" role="heading" aria-level="2"></div><div id="oneLine"></div><div id="oneStep"></div><div id="oneActs"></div><div id="sparks"></div><div id="clock"></div></div><div id="run" aria-label="what is ahead: the timed things by their times, then the rest in order"></div></div><div id="list2" hidden aria-label="Squatch's sword: his day"></div></div>
     <div id="skyO" class="skyp" aria-label="Orv's constellation: your kingdom"></div><div id="skyS" class="skyp" hidden aria-label="Squatch's constellation"></div>
     <div id="div" role="separator" aria-label="drag: far left shows your words, far right is action mode"></div>
     <div id="right"><div id="talk" aria-label="the whole talk"><div id="chatLog"></div></div><div id="say"></div><div id="mode"></div></div>
@@ -261,6 +274,7 @@ body.setting #fuse { visibility: hidden; }
 <button id="keep" aria-label="keep a copy of the list">keep</button>
 <input id="restore" type="file" accept="image/*,.inkling,application/json,.json,text/plain" hidden>
 <div id="flash"></div>
+<div id="sr" class="sr" aria-live="polite"></div>
 <canvas id="salmon" role="button" tabindex="0" aria-label="settings (the salmon of knowledge)"></canvas>
 <canvas id="cig" role="button" tabindex="0" aria-label="settings (Squatch's cigarette)" hidden></canvas>
 <svg id="arc" hidden aria-label="story or focus"></svg>
@@ -284,6 +298,11 @@ const K = {
   freeDoors: ['groq', 'gemini', 'openrouter'], password: 'Cha-ching',
   swipe: 70, orvScale: 5, beat: [1400, 520, 130, 190], fps: 12, memory: 6, maxOps: 12, timeoutMs: 120000
 };
+/* WORDS IN COLOUR THAT CAN BE READ (the accessibility reader, 2026-10-02: four of the twelve vanish as text on the grey, the blue at
+   1.2 to 1). Pixels (the fuse, the crown, sparks) keep all twelve; a tapped word wears only one that stands out 4.5 to 1 or more;
+   his name and the big clock digits, large, may also wear the two that stand out 3 to 1. */
+K.inkText = ['#12D6FF', '#12FFC2', '#12FF5A', '#22FF12', '#8AFF12', '#F2FF12'];
+K.inkBig = ['#FF7A12', '#12D6FF', '#12FFC2', '#FA12FF', '#12FF5A', '#22FF12', '#8AFF12', '#F2FF12'];
 /* THE NEW ORV (bead-pattern(2).png, 2026-10-01 20:22), his word: "idle should be slight SLIGHT up and down motion, turn the
    summon knob way, way down … the idle can make sparks come out of orv's brass hand too" */
 K.idle = { summon: 0.05,           // the Summon rig's energy, way, way down (it was 0.34 at rest, 0.42 listening)
@@ -300,6 +319,9 @@ const DOORS = {
   gemini:     { list: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', chat: 'https://generativelanguage.googleapis.com/v1beta/models/' }
 };
 const $ = id => document.getElementById(id);
+const STILLQ = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+const still = () => STILLQ.matches || !!load('inkling.still', false);   // the phone's Reduce Motion, or his word "still"
+window.inkStill = still;   // the crown asks too
 const nowIso = () => new Date().toISOString();
 
 /* ═══ STORAGE: his list and his words, on this phone ═══ */
@@ -312,13 +334,21 @@ const SPARE = { db: null, t: 0,
   snap() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k === BOX || k.startsWith('inkling.')) o[k] = localStorage.getItem(k); } } catch (e) {} return o; },
   save() { if (this.hold) return; clearTimeout(this.t); this.t = setTimeout(async () => { if (this.hold) return; try { const db = await this.open(), o = this.snap();
     if (!Object.keys(o).length) return; db.transaction('s', 'readwrite').objectStore('s').put(o, 'all'); } catch (e) {} }, 300); },
+  over(k, v) { (async () => { try { const db = await this.open(), t = db.transaction('s', 'readwrite').objectStore('s'), r = t.get('over');   // a write the drawer refused, kept in the deep drawer
+    r.onsuccess = () => { const o = r.result || {}; o[k] = JSON.stringify(v); t.put(o, 'over'); }; } catch (e) {} })(); },
+  rec(k) { return this.open().then(db => new Promise(ok => { const r = db.transaction('s').objectStore('s').get(k); r.onsuccess = () => ok(r.result == null ? null : r.result); r.onerror = () => ok(null); })).catch(() => null); },
+  put(k, v) { return this.open().then(db => new Promise(ok => { const t = db.transaction('s', 'readwrite'); t.objectStore('s').put(v, k); t.oncomplete = () => ok(true); t.onerror = () => ok(false); })).catch(() => false); },
+  keys(prefix) { return this.open().then(db => new Promise(ok => { const r = db.transaction('s').objectStore('s').getAllKeys(); r.onsuccess = () => ok((r.result || []).filter(k => String(k).startsWith(prefix))); r.onerror = () => ok([]); })).catch(() => []); },
+  overLog(x) { this.LQ = (this.LQ || Promise.resolve()).then(async () => { const a = (await this.rec('overlog')) || []; a.push(x); await this.put('overlog', a); }); },   // a line the full drawer refused: kept, one by one, in order
   async get() { try { const db = await this.open(); return await new Promise(ok => { const r = db.transaction('s').objectStore('s').get('all'); r.onsuccess = () => ok(r.result || null); r.onerror = () => ok(null); }); } catch (e) { return null; } }
 };
 /* how this open began, read before anything writes: a kingdom arriving, a new kingdom asked for, or a phone that has forgotten.
    A forgetting phone writes nothing to the spare until the spare has been asked (else the blank would bury the kingdom). */
-const BOOT = { arriving: /#k=/.test(location.hash), fresh: location.hash === '#new', wiped: (() => { try { return localStorage.getItem('inkling.state') == null; } catch (e) { return true; } })() };
+const BOOT = { arriving: /#k=/.test(location.hash), fresh: location.hash === '#new' || (() => { try { const f = sessionStorage.getItem('inkling.newk') === '1'; sessionStorage.removeItem('inkling.newk'); return f; } catch (e) { return false; } })(), wiped: (() => { try { return localStorage.getItem('inkling.state') == null; } catch (e) { return true; } })() };
 SPARE.hold = BOOT.wiped;
-const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); SPARE.save(); return true; } catch (e) { try { say('(This phone would not keep that. Tap keep to save a copy.)', true); } catch (x) {} return false; } };
+let FULL = 0;
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); SPARE.save(); return true; }
+  catch (e) { if (k !== 'inkling.log') SPARE.over(k, v); FULL++; if (Date.now() - (store.at || 0) > 60000) { store.at = Date.now(); try { UNDO = null; const s = document.getElementById('say'); if (s) { s.textContent = '(The phone\'s drawer is full. Your words are kept in the deep drawer. Double-tap the crown, then save.)'; s.classList.add('stage'); } } catch (x) {} } return false; } };   // said again at most once a minute while it stays full
 function blank() { return { v: 1, tasks: [], one: null, n: 0 }; }
 /* #k= : a kingdom arrives INSIDE the link (share.js — the crown's double-tap; or the Mac's own code). What is after the #
    never leaves the phone. Whatever was here is set aside under inkling.archive.<time> (never deleted), the new kingdom is
@@ -326,25 +356,41 @@ function blank() { return { v: 1, tasks: [], one: null, n: 0 }; }
 function fromKingdom() { const m = /#k=([A-Za-z0-9_-]+)/.exec(location.hash); if (!m) return;
   history.replaceState(null, '', location.pathname + location.search);
   if (!window.INKSHARE) return;
+  let mine = false; try { const v = sessionStorage.getItem('inkling.mine'); sessionStorage.removeItem('inkling.mine'); mine = !!v && m[1].startsWith(v); } catch (e) {}
+  if (m[1].length > 1.5e6) return;
   INKSHARE.decode(m[1]).then(o => {
     if (!o || o.v !== 1 || !Array.isArray(o.t)) throw new Error('not a kingdom');
-    const tasks = o.t.filter(Array.isArray).slice(0, 200).map((x, i) => ({ id: 't' + (i + 1).toString(36), word: String(x[0] || '').trim().split(/\s+/)[0].slice(0, 24) || 'thing',
-      text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3],
-      doneAt: x[3] && x[5] && !isNaN(Date.parse(x[5])) ? new Date(x[5]).toISOString() : null,   // the day it was done travels with it; unknown stays unknown ("earlier")
-      krix: x[3] && +x[6] > 0 ? Math.min(99, Math.round(+x[6])) : undefined, archived: x[3] && x[7] ? nowIso() : undefined,
-      sub: Array.isArray(x[4]) ? x[4].slice(0, 60).map(y => String(y).slice(0, 300)) : undefined }));   // what hangs under it, read in Orv's upper right
-    const sq = o.sq && Array.isArray(o.sq.c) && Array.isArray(o.sq.l) && Array.isArray(o.sq.s) ? o.sq : null;   // Squatch's constellation, his own sword
-    /* only now, with the new kingdom whole: the old one is set aside first, and if the phone will not keep it aside, nothing changes */
-    const was = load('inkling.state', null), wasSq = load('inkling.squatch', null);
-    if ((was && Array.isArray(was.tasks) && was.tasks.length) || wasSq)
-      if (!store('inkling.archive.' + Date.now(), { state: was, squatch: wasSq, log: load('inkling.log', []) })) throw new Error('this phone would not keep the old kingdom aside');
-    if (sq) store('inkling.squatch', sq);
-    if (+o.kx > krixHeld()) store('inkling.krix', { n: Math.round(+o.kx), at: nowIso(), from: 'a kingdom arrived carrying it' });   // the purse travels; the larger stands, so nothing is paid twice by a round trip
-    try { localStorage.removeItem('inkling.brought'); } catch (e) {}   // the other glasses are read in again on the new kingdom (the same words never double)
-    ST = { v: 1, tasks, one: Number.isInteger(o.one) && tasks[o.one] ? tasks[o.one].id : null, n: tasks.length }; save();   // in memory too, so nothing writes the old one back
-    const L = load('inkling.log', []); L.push({ at: nowIso(), who: 'k', what: 'a kingdom arrived', text: (o.from || 'a link') + ' · ' + tasks.length + ' things' }); store('inkling.log', L);
-    setTimeout(() => location.reload(), 350);
+    if (mine) return takeIn(o);
+    /* a link someone tapped (or texted him): nothing changes until he says so, in Orv's own line (security reader, 2026-10-02) */
+    setTimeout(() => offerLine('(A kingdom came by a link' + (o.from ? ', from ' + String(o.from).slice(0, 40) : '') + ': ' + Math.min(200, o.t.length) + ' things. Tap here to take it in; yours is set aside first, never lost.)',
+      () => takeIn(o).catch(e => say('(That kingdom would not come in' + (e && e.message ? ': ' + e.message : '') + '.)', true))), 0);
   }).catch(e => { try { say('(That link would not open' + (e && e.message ? ': ' + e.message : '') + '.)', true); } catch (x) {} });
+}
+/* his own hand brings a kingdom in: no history step is added (so the left-edge swipe has nowhere to go back to) */
+function takeKingdom(code) { try { sessionStorage.setItem('inkling.mine', String(code).slice(0, 64)); } catch (e) {} history.replaceState(null, '', location.pathname + location.search + '#k=' + code); fromKingdom(); }
+const clip = (a, n, f) => Array.isArray(a) ? a.slice(0, n).map(f) : [];
+async function takeIn(o) {
+  const tasks = o.t.filter(Array.isArray).slice(0, 200).map((x, i) => ({ id: 't' + (i + 1).toString(36), word: String(x[0] || '').trim().split(/\s+/)[0].slice(0, 24) || 'thing',
+    text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3],
+    doneAt: x[3] && x[5] && !isNaN(Date.parse(x[5])) ? new Date(x[5]).toISOString() : null,   // the day it was done travels with it; unknown stays unknown ("earlier")
+    krix: x[3] && +x[6] > 0 ? Math.min(99, Math.round(+x[6])) : undefined, archived: x[3] && x[7] ? nowIso() : undefined,
+    sub: Array.isArray(x[4]) ? x[4].slice(0, 60).map(y => String(y).slice(0, 300)) : undefined }));   // what hangs under it, read in Orv's upper right
+  /* Squatch's constellation, his own sword: checked and cut to size, so a bad one can never jam the wheel */
+  const q = o.sq && typeof o.sq === 'object' ? o.sq : null;
+  const sq = q && Array.isArray(q.c) && Array.isArray(q.l) && Array.isArray(q.s) ? { title: String(q.title || '').slice(0, 80), capL: q.capL ? String(q.capL).slice(0, 20) : undefined, capC: q.capC ? String(q.capC).slice(0, 20) : undefined,
+    c: clip(q.c, 300, x => String(x).slice(0, 60)), l: clip(q.l, 300, x => String(x).slice(0, 60)),
+    s: clip(q.s, 2000, b => Array.isArray(b) ? [b[0] | 0, clip(b[1], 40, i => i | 0), String(b[2] || '').slice(0, 600)] : null).filter(Boolean) } : null;
+  /* only now, with the new kingdom whole: the old one is set aside first (the log is one book: the archive marks where it stood) */
+  const was = load('inkling.state', null), wasSq = load('inkling.squatch', null);
+  if ((was && Array.isArray(was.tasks) && was.tasks.length) || wasSq)
+    if (!store('inkling.archive.' + Date.now(), { state: was, squatch: wasSq, logAt: load('inkling.log', []).length })) throw new Error('this phone would not keep the old kingdom aside');
+  if (sq) store('inkling.squatch', sq);
+  const carried = tasks.reduce((a, t) => a + (t.krix || 0), 0);
+  if (carried > krixHeld()) store('inkling.krix', { n: carried, at: nowIso(), from: 'the deeds that arrived' });   // the purse comes from deeds, never from a link's say-so
+  try { localStorage.removeItem('inkling.brought'); } catch (e) {}   // the other glasses are read in again on the new kingdom (the same words never double)
+  ST = { v: 1, tasks, one: Number.isInteger(o.one) && tasks[o.one] ? tasks[o.one].id : null, n: tasks.length }; save();   // in memory too, so nothing writes the old one back
+  log({ who: 'k', what: 'a kingdom arrived', text: String(o.from || 'a link').slice(0, 60) + ' · ' + tasks.length + (o.t.length > 200 ? ' of ' + o.t.length + ' (the rest stay on the sending phone)' : '') + ' things' });
+  setTimeout(() => location.reload(), 350);
 }
 fromKingdom(); window.addEventListener('hashchange', fromKingdom);   // a fresh open, or a link tapped while the app is open
 /* the kingdom as a link: the share/save carries this */
@@ -358,14 +404,48 @@ async function kingdomLink() {
   const sq = load('inkling.squatch', null), o = { v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t, kx: krixHeld() }; if (sq) o.sq = sq;
   return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }
-async function openShare() { teach.done('crown'); try { if (!window.INKSHARE) throw new Error('no share'); const c = $('crown').getBoundingClientRect();
-  await INKSHARE.show(await kingdomLink(), { from: [c.left + c.width / 2, c.top + c.height / 2], onRead: code => { location.hash = '#k=' + code; } }); /* shown, and read with a camera: nothing else */ } catch (e) { say('(The code would not draw.)', true); } }
+async function openShare() { teach.done('crown'); try { if (!window.INKSHARE) throw new Error('no share'); const c = $('crown').getBoundingClientRect(), link = await kingdomLink(), satchel = satchelFile(link, { overlog: (await SPARE.rec('overlog')) || [] });
+  await INKSHARE.show(link, { from: [c.left + c.width / 2, c.top + c.height / 2], onRead: code => takeKingdom(code), onSave: () => shareFile(satchel), onOpen: () => $('restore').click() }); /* sent, read, saved, opened */ } catch (e) { say('(The code would not draw.)', true); } }
+/* ═══ THE SATCHEL (three readers tonight: "no copy of the kingdom can leave the phone"). The crown's double-tap offers "save": the
+   whole drawer (the kingdom, every word of the log, the Breath, the krix, Squatch's tapes, the archives) as one .inkling file through
+   the phone's own share sheet (Files, iCloud Drive, AirDrop, Google Drive). Never the key. "open" reads one back. ═══ */
+const GLASS = !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));   // the Home Screen icon (its own drawer) or a Safari tab
+function satchelFile(link, spill) {
+  const o = SPARE.snap(); delete o[BOX];
+  const text = JSON.stringify({ inkling: 2, made: nowIso(), from: 'Inkling', drawer: GLASS ? 'icon' : 'tab', link, keys: o, spill: spill || null }) + '\n';
+  return new File([text], 'inkling-satchel-' + new Date().toLocaleDateString('en-CA') + '.inkling', { type: 'text/plain' });
+}
+function shareFile(f) {
+  const done = () => { store('inkling.savedAt', nowIso()); log({ who: 'k', what: 'saved a satchel', text: f.name }); };
+  try { if (navigator.canShare && navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: f.name }).then(done).catch(() => {}); return; } } catch (e) {}
+  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); done(); }
+/* a satchel opened: the whole drawer comes home, the log joined (never cut), the larger purse stands; this kingdom is set aside first */
+function openSatchel(o, name) {
+  const K2 = o.keys || {}, J = k => { try { return JSON.parse(K2[k] || 'null'); } catch (e) { return null; } }, st = J('inkling.state');
+  const n = st && Array.isArray(st.tasks) ? st.tasks.length : 0, M = (J('inkling.log') || []).concat((o.spill && Array.isArray(o.spill.overlog)) ? o.spill.overlog : []);
+  offerLine('(A satchel, made ' + fmtAt(o.made) + ': ' + n + ' things and ' + M.length + ' lines of the log. Tap here to take it in; this kingdom is set aside first.)', () => {
+    /* this kingdom is set aside whole first (if the phone will not keep it aside, nothing changes) */
+    if (!store('inkling.archive.' + Date.now(), { state: ST, squatch: load('inkling.squatch', null), breath: load('inkling.breath', []), tapes: load('inkling.squatch.tapes', []),
+      legend: load('inkling.legend', null), logAt: load('inkling.log', []).length, why: 'a satchel came home' })) return say('(This phone would not keep this kingdom aside, so nothing changed.)', true);
+    const join = (k, A, keyf) => { const L = load(k, []) || [], seen = new Set(L.map(keyf)); (A || []).forEach(e => { if (e && !seen.has(keyf(e))) { L.push(e); seen.add(keyf(e)); } }); L.sort((a, b) => String(a.at).localeCompare(String(b.at))); return store(k, L); };
+    join('inkling.log', M, e => e && (e.at + '|' + e.who + '|' + e.what + '|' + (e.text || e.id || '')));           // the book of his words: joined, never cut
+    join('inkling.breath', J('inkling.breath'), e => e && (e.at + '|' + e.text));                                   // the Breath: joined
+    join('inkling.squatch.tapes', J('inkling.squatch.tapes'), e => e && (e.at + '|' + e.name));                      // Squatch's tapes: joined
+    if (st && Array.isArray(st.tasks)) { ST = st; save(); }                                                         // the kingdom itself: the satchel's (this one is in the archive)
+    const sq = J('inkling.squatch'); if (sq && Array.isArray(sq.c)) store('inkling.squatch', sq);
+    const lg = J('inkling.legend'), mine = load('inkling.legend', null); if (lg && Array.isArray(lg.ids) && (!mine || lg.ids.length > (mine.ids || []).length)) store('inkling.legend', lg);
+    Object.keys(K2).forEach(k => { if (k.startsWith('inkling.archive.') && localStorage.getItem(k) == null) { try { localStorage.setItem(k, K2[k]); } catch (e) {} } });   // its archives, beside ours
+    const carried = (st && Array.isArray(st.tasks) ? st.tasks : []).reduce((a, t) => a + (t && t.krix > 0 ? Math.min(99, t.krix) : 0), 0);   // the purse from the deeds, never a file's say-so
+    if (carried > krixHeld()) store('inkling.krix', { n: carried, at: nowIso(), from: 'the deeds a satchel carried' });
+    /* never from a file: the paid doors, the models, the gems, the settings of this glass */
+    log({ who: 'k', what: 'a satchel came home', text: String(name || '').slice(0, 80) }); setTimeout(() => location.reload(), 300); }); }
 /* #new: a new kingdom. Whatever was here is set aside (kept under orv.archive.<time>, never deleted). */
-if (location.hash === '#new') {
-  const was = load('inkling.state', null);
-  if (was) store('inkling.archive.' + Date.now(), { state: was, log: load('inkling.log', []) });
-  ['inkling.state', 'inkling.log', 'inkling.chat', 'inkling.summary', 'inkling.breath'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
-  history.replaceState(null, '', location.pathname + location.search);
+if (location.hash === '#new') { history.replaceState(null, '', location.pathname + location.search);
+  setTimeout(() => offerLine('(A new kingdom was asked for. Tap here to begin one; this one is set aside first, never lost.)', () => {
+    const was = load('inkling.state', null);
+    if (was && !store('inkling.archive.' + Date.now(), { state: was, chat: load('inkling.chat', []), breath: load('inkling.breath', []), logAt: load('inkling.log', []).length })) return say('(This phone would not keep the old kingdom aside, so nothing changed.)', true);
+    ['inkling.state', 'inkling.chat', 'inkling.summary', 'inkling.breath'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+    log({ who: 'k', what: 'a new kingdom', text: 'the old one set aside' }); try { sessionStorage.setItem('inkling.newk', '1'); } catch (e) {} setTimeout(() => location.reload(), 200); }), 0);
 }
 /* every open is counted, so a phone that forgets everything shows itself (opens stuck at 1) */
 const OPENS = (load('inkling.opens', 0) || 0) + 1; store('inkling.opens', OPENS);
@@ -373,7 +453,15 @@ let ST = load('inkling.state', null);
 if (!ST || !Array.isArray(ST.tasks)) { ST = blank(); store('inkling.state', ST); }
 /* ask the phone to keep this kingdom for good (Safari honours it for sites he uses) */
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
-function log(e) { const L = load('inkling.log', []); L.push(Object.assign({ at: nowIso() }, e)); store('inkling.log', L); }
+/* once: an archive that carries a whole copy of the log (the old way) keeps only where the log stood, when its copy is word for word
+   the start of the log itself (so nothing is lost: the words are still there, once); a copy that differs is left exactly as it is */
+(function slimArchives() { if (load('inkling.slim', null)) return; let L = null, n = 0;
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k || !k.startsWith('inkling.archive.')) continue;
+    const a = load(k, null); if (!a || !Array.isArray(a.log)) continue; L = L || load('inkling.log', []);
+    const same = a.log.length <= L.length && a.log.every((e, j) => JSON.stringify(e) === JSON.stringify(L[j]));
+    if (same) { const b = Object.assign({}, a); delete b.log; b.logAt = a.log.length; if (store(k, b)) n++; } } } catch (e) {}
+  store('inkling.slim', { at: new Date().toISOString(), n }); })();
+function log(e) { const x = Object.assign({ at: nowIso() }, e), L = load('inkling.log', []); L.push(x); if (!store('inkling.log', L)) SPARE.overLog(x); }   // a full drawer: the line goes to the deep drawer, never lost
 const save = () => store('inkling.state', ST);
 const live = () => ST.tasks.filter(t => !t.gone);
 const open = () => live().filter(t => !t.done);
@@ -405,7 +493,7 @@ function inkOf(word) {
   INK.set(word, r); return r;
 }
 if (document.fonts && document.fonts.load) document.fonts.load("bold 17px 'Dogica'").then(() => { INK.clear(); try { render(); } catch (e) {} }).catch(() => {});
-function rainbow(el, text) { el.textContent = ''; Array.from(text).forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch; s.style.color = K.wheel[i % K.wheel.length]; el.appendChild(s); }); }
+function rainbow(el, text) { el.textContent = ''; Array.from(text).forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch; s.style.color = K.inkBig[i % K.inkBig.length]; s.setAttribute('aria-hidden', 'true'); el.appendChild(s); }); el.setAttribute('aria-label', text); }
 let SEL = null;
 /* ═══ KRIX (his word, 2026-10-02): "make sure that when you do check things off, it gives you krix and that if you decide to
    remove them from the story to archive them, the krix stays." Inkling keeps its own purse, 'inkling.krix' {n}, outside the
@@ -455,7 +543,7 @@ K.teases = [
 ];
 const tease = () => { const n = (load('inkling.tease', 0) || 0) % K.teases.length; store('inkling.tease', n + 1); return K.teases[n]; };
 /* a thing keeps one colour wherever it stands: on the sword, in the story, in Orv's corner */
-const inkFor = t => K.wheel[(Math.max(0, ST.tasks.indexOf(t)) * 5 + 2) % K.wheel.length];
+const inkFor = t => K.inkText[(Math.max(0, ST.tasks.indexOf(t)) * 5 + 2) % K.inkText.length];
 
 /* ═══ THE STORY: his deeds, told from his name down to the one thing (the Focus story's own law, 2026-09-13/15: his name the
    biggest thing on the page, in THE 23 letter by letter; one running paragraph; every subject white until tapped, and a tapped
@@ -466,20 +554,22 @@ const deeds = () => live().filter(t => t.done && !t.archived).sort((a, b) => (Da
 function dayOf(iso) { const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) return { key: 'earlier', word: 'earlier' };   // a deed that came in done, its day unknown
   const a = new Date(d.getFullYear(), d.getMonth(), d.getDate()), n = new Date(), b = new Date(n.getFullYear(), n.getMonth(), n.getDate()), k = Math.round((b - a) / 864e5);
   const word = k === 0 ? 'today' : k === 1 ? 'yesterday' : k > 1 && k < 7 ? 'on ' + d.toLocaleDateString('en-US', { weekday: 'long' }) : 'on ' + d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-  return { key: a.toDateString(), word }; }
+  return { key: a.toDateString(), word, d: a }; }
 function drawStory(one) {
   const S = $('story'); S.textContent = '';
   const name = document.createElement('div'); name.className = 'st-name'; rainbow(name, NAME); S.appendChild(name);
+  name.setAttribute('role', 'button'); name.setAttribute('aria-label', NAME + ', tap for a tease');
   name.addEventListener('click', () => { typeSay(tease()); if (ORV.burst) ORV.burst(6); });   // his own name, tapped: Orv has something to say about it
   const P = document.createElement('div'); P.className = 'st-p'; S.appendChild(P);
   const text = s => P.appendChild(document.createTextNode(s));
   const CH = new Map(((load('inkling.legend', null) || {}).chapters || []).map(c => [c.id, c]));
-  const groups = []; deeds().forEach(t => { const d = dayOf(t.doneAt), g = groups[groups.length - 1]; if (g && g.key === d.key) g.ts.push(t); else groups.push({ key: d.key, word: d.word, ts: [t] }); });
+  const groups = []; deeds().forEach(t => { const d = dayOf(t.doneAt), g = groups[groups.length - 1]; if (g && g.key === d.key) g.ts.push(t); else groups.push({ key: d.key, word: d.word, d: d.d, ts: [t] }); });
   groups.forEach((g, gi) => {
-    text(gi === 0 ? 'did ' : g.word.charAt(0).toUpperCase() + g.word.slice(1) + ' he did ');   // "High King Leevzo the Lucky did this and that"
+    const back = gi > 0 && g.d && groups[gi - 1].d && g.d - groups[gi - 1].d >= 2 * 864e5;   // a gap of days is a turn in the tale, never a hole
+    text(gi === 0 ? 'did ' : back ? 'Then he came back, and ' + g.word + ' he did ' : g.word.charAt(0).toUpperCase() + g.word.slice(1) + ' he did ');   // "High King Leevzo the Lucky did this and that"
     g.ts.forEach((t, i) => {
       const last = i === g.ts.length - 1, w = document.createElement('span'), dw = document.createElement('span');
-      w.className = 'deed'; w.dataset.id = t.id; w.textContent = t.word; if (t.id === SEL) w.style.color = inkFor(t);
+      w.className = 'deed'; w.dataset.id = t.id; w.textContent = t.word; if (t.id === SEL) w.style.color = inkFor(t); w.setAttribute('role', 'button'); w.setAttribute('aria-expanded', String(t.id === SEL));
       dw.className = 'dw'; dw.appendChild(w);
       if (!last && i < g.ts.length - 2) dw.appendChild(document.createTextNode(','));   // the comma rides with its word: no line begins with one
       if (last && gi > 0) dw.appendChild(document.createTextNode('.'));
@@ -491,39 +581,50 @@ function drawStory(one) {
     if (s) { const d = document.createElement('span'); d.className = 'deed-line'; const say = String(s.text || '').trim();
       d.appendChild(document.createTextNode((say ? say + (/[.!?]$/.test(say) ? '' : '.') + ' ' : '') + (s.doneAt && !isNaN(Date.parse(s.doneAt)) ? 'Done ' + fmtAt(s.doneAt) : 'Done earlier') + (s.krix ? ', ' : '.')));
       if (s.krix) { const b = document.createElement('b'); b.textContent = '+' + s.krix + ' krix'; d.appendChild(b); d.appendChild(document.createTextNode('.')); }
-      P.appendChild(d); text(' '); }
+      P.appendChild(d); P.appendChild(acts([['↩ back', () => storyBack(s)], ['archive', () => storyArchive(s)]])); text(' '); }
   });
   text(groups.length ? (one ? 'And now:' : 'And the sword is clear.') : (one ? 'and now:' : 'and the sword is clear.'));
 }
 
 /* ═══ WHAT IS AHEAD: the timed things first, each against the fuse on its own time; then the rest, a little to the right,
    stacked close, in the order Orv keeps them (the order IS the priority) ═══ */
-K.run = { gut: 46, seq: 58 };   // px: the time column beside the fuse; where the sequential things stand
+K.run = { gut: 46, seq: 58, show: 7 };   // show: how many things stand on the sword before the rest wait under one line   // px: the time column beside the fuse; where the sequential things stand
 const timedOf = t => !!(t.at && !isNaN(Date.parse(t.at)));
 function drawRun(one) {
   const R = $('run'); R.textContent = '';
   R.style.setProperty('--gut', K.run.gut + 'px'); R.style.setProperty('--seq', K.run.seq + 'px');
   const rest = open().filter(t => !one || t.id !== one.id);
-  const timed = rest.filter(timedOf).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)), seq = rest.filter(t => !timedOf(t));
+  const timed = rest.filter(timedOf).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)), seqAll = rest.filter(t => !timedOf(t));
+  const room = RUN_ALL ? seqAll.length : Math.max(3, K.run.show - timed.length), seq = seqAll.slice(0, room), waiting = seqAll.length - seq.length;   // a long list overloads: the first seven, the rest wait
   const fresh = [];
+  R.setAttribute('role', 'list');
   timed.concat(seq).forEach(t => {
     const isT = timedOf(t), r = document.createElement('div'); r.className = 'row ' + (isT ? 'timed' : 'seq') + (t.id === SEL ? ' sel' : ''); r.dataset.id = t.id;
     const yes = document.createElement('span'); yes.className = 'mark yes'; yes.textContent = '✓';
     const no = document.createElement('span'); no.className = 'mark no'; no.textContent = '✗';
     r.append(yes, no);
-    if (isT) { const a = document.createElement('span'); a.className = 'at'; a.textContent = fmtAt(t.at); if (Date.parse(t.at) < Date.now()) a.classList.add('late'); r.appendChild(a); }
+    r.setAttribute('role', 'listitem');
+    if (isT) { const a = document.createElement('span'); a.className = 'at'; const gone = pastGrace(t); a.textContent = (gone ? 'was ' : '') + fmtAt(t.at); if (Date.parse(t.at) < Date.now() && !gone) a.classList.add('late'); r.appendChild(a); }
     const w = document.createElement('span'); w.className = 'word'; w.textContent = t.word; if (t.id === SEL) w.style.color = inkFor(t);   // white until tapped (his word)
+    w.setAttribute('role', 'button'); w.setAttribute('aria-expanded', String(t.id === SEL)); if (isT) w.setAttribute('aria-label', t.word + ', ' + fmtAt(t.at));
     const ink = inkOf(t.word); w.style.setProperty('--il', ink.l + 'px'); w.style.setProperty('--ib', ink.b + 'px');   // the Anchor: its bottom-left ink pixel on the hex centre
     const l = document.createElement('div'); l.className = 'line'; l.textContent = t.text || '';
     r.append(w); if (krixRate(t) > K.krix.per) { const pr = document.createElement('span'); pr.className = 'price'; pr.textContent = krixRate(t); r.append(pr); }   // what it will pay, seen before
-    r.append(l); R.appendChild(r);
+    r.append(l); if (t.id === SEL) r.append(acts([['✓ done', () => checkOff(t, w)], ['✗ aside', () => setAside(t)]]));   // the same as the swipes, for a thumb that cannot swipe (or VoiceOver)
+    R.appendChild(r);
     if (FORGE.ready && !FORGE.seen.has(t.id)) fresh.push(r); FORGE.seen.add(t.id);
   });
+  if (waiting > 0) { const r = document.createElement('div'); r.className = 'row seq more'; r.setAttribute('role', 'button'); r.tabIndex = 0; r.textContent = '+' + waiting + ' waiting'; const all = () => { RUN_ALL = true; render(); }; r.addEventListener('click', all); r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); all(); } }); R.appendChild(r); }
+  rest.forEach(t => FORGE.seen.add(t.id));   // the waiting ones count as seen too: only truly new things come in one by one
   fresh.forEach((r, k) => { r.style.opacity = '0'; setTimeout(() => { r.style.opacity = ''; }, (k + 1) * K.turn.stepMs * 2); });   // the forge: one by one
   if (fresh.length) setTimeout(click, (fresh.length + 1) * K.turn.stepMs * 2);
   FORGE.ready = true;
 }
 const FORGE = { seen: new Set(), ready: false };
+let RUN_ALL = false;
+/* a little line of words to press (no box): the swipes' own marks, as buttons */
+function acts(list) { const d = document.createElement('div'); d.className = 'acts';
+  list.forEach(([t, fn]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'act'; b.textContent = t; b.addEventListener('click', e => { e.stopPropagation(); fn(); }); d.appendChild(b); }); return d; }
 
 /* the sword rests on the one thing: RUNREL is where the reader stands, measured from it (0 resting on it, below 0 up in the
    story). Every redraw puts him back where he stood, so a deed rising into the story never moves what he is looking at. */
@@ -538,6 +639,9 @@ function render(hold) {
   const one = theOne();
   $('oneWord').textContent = one ? one.word : (ST.tasks.length ? 'clear' : 'tell orv'); $('oneWord').style.transform = ''; $('oneWord').style.opacity = '';
   $('oneLine').textContent = one ? one.text : (ST.tasks.length ? 'every task is done' : 'what does the day hold?');
+  const OS = $('oneStep'); OS.textContent = ''; const st = one && Array.isArray(one.sub) && one.sub.length && (one.subDone || 0) < one.sub.length ? one.sub[one.subDone || 0] : null;
+  if (st && one.steps) OS.appendChild(acts([['first: ' + st, () => { one.subDone = (one.subDone || 0) + 1; log({ who: 'k', what: 'step', id: one.id, n: one.subDone }); save(); click(); HAPT(1); render(); }]]));   // the first stone; a tap strikes it
+  const OA = $('oneActs'); OA.textContent = ''; if (one) OA.appendChild(acts([['✓ done', () => checkOff(theOne(), $('oneWord'))], ['✗ aside', () => setAside(theOne())]]));
   drawStory(one); drawRun(one);
   tick();
   if (window._crown) { const G = load('inkling.gems', null), held = G && typeof G.n === 'number' ? G.n : 0, gems = held + krixHeld();   // his crystals held in the other glasses, and the krix earned here
@@ -550,47 +654,69 @@ function render(hold) {
 /* the clock: a countdown to THE ONE THING if it is timed, else to the next timed task; the digits wheel through colour */
 function span(ms) { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
   return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); }
+/* ═══ TIME, AS AN ADHD MIND CAN SEE IT (a reader brought the research, 2026-10-02): a late thing is red for fifteen minutes and
+   then asks "when now?" instead of counting forever (a broken record shown keeps people from returning; his law: the return
+   counts, never the streak); "fuse 15" lights a fuse on the one thing, any thing, one task and one countdown, and Orv sits
+   with him while it burns (a body double). ═══ */
+K.late = { graceMs: 15 * 60000 };
+const boxNow = () => { const b = ST.box; if (!b) return null; const t = byId(b.id), end = Date.parse(b.from) + b.mins * 60000; if (!t || t.done || Date.now() >= end) return null; return { t, end, box: b }; };
+const pastGrace = t => timedOf(t) && Date.now() - Date.parse(t.at) >= K.late.graceMs;
 function tick() {
-  const c = $('clock'), one = theOne(), now = Date.now();
-  const timed = open().filter(t => t.at && !isNaN(new Date(t.at))).sort((a, b) => new Date(a.at) - new Date(b.at));
-  const next = timed.find(x => new Date(x.at) > now);                       // the next thing scheduled
-  const t = one && one.at && new Date(one.at) <= now ? one : next;          // the one thing gone late outranks it
+  const c = $('clock'), one = theOne(), now = Date.now(), bx = boxNow(); if (SIT.wl && !bx) sit(false);   // the fused thing is done or gone: the screen may sleep
+  const timed = open().filter(timedOf).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const next = timed.find(x => Date.parse(x.at) > now);                       // the next thing scheduled
+  const fresh = x => x && timedOf(x) && Date.parse(x.at) <= now && !pastGrace(x);   // the one thing just gone late outranks it, for a while
+  const t = bx ? { word: bx.t.word, at: new Date(bx.end).toISOString(), box: true } : fresh(one) ? one : next;
   fuseDraw();
-  c.textContent = ''; if (!t) return;
-  const ms = new Date(t.at) - now, late = ms < 0, txt = span(Math.abs(ms));
-  const d = document.createElement('span'); d.className = 'digits';
+  c.textContent = '';
+  if (!t) { if (one && timedOf(one) && pastGrace(one)) { const w = document.createElement('span'); w.className = 'what'; w.textContent = 'was ' + fmtAt(one.at) + ' · when now?'; c.append(w); } return; }
+  const ms = Date.parse(t.at) - now, late = ms < 0, txt = span(Math.abs(ms));
+  const d = document.createElement('span'); d.className = 'digits'; d.setAttribute('aria-hidden', 'true');
   Array.from(txt).forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch;
-    s.style.color = late ? 'var(--late)' : /\d/.test(ch) ? K.wheel[(i + Math.floor(now / 1000)) % K.wheel.length] : 'var(--dim)'; d.appendChild(s); });
+    s.style.color = late ? 'var(--late)' : /\d/.test(ch) ? K.inkBig[(i + (still() ? 0 : Math.floor(now / 1000))) % K.inkBig.length] : 'var(--dim)'; d.appendChild(s); });
   const w = document.createElement('span'); w.className = 'what';
-  w.textContent = late ? (t === one ? 'late' : t.word + ' is late') : 'until ' + (t === one ? 'it starts' : t.word) + ' · ' + fmtAt(t.at);
+  w.textContent = t.box ? 'on ' + t.word : late ? (t === one ? 'late' : t.word + ' is late') : 'until ' + (t === one ? 'it starts' : t.word) + ' · ' + fmtAt(t.at);
   c.append(d, w);
 }
-/* ═══ THE FUSE: the magical bar on the very left edge of the whole screen. It is lit full length the moment a thing becomes
-   the next timed thing, and burns back toward the top as that time comes; at the time it is gone, and the next one lights.
-   Its pixels are Orv's own grain, in the twelve, stepping once a second. ═══ */
-K.fuse = { px: 5, from: 'top', hotMs: 10 * 60000 };   // from: the end it hangs from ('top' or 'bottom')
+/* ═══ THE FUSE: the magical bar on the very left edge of the whole screen. Its whole length is one hour (the Time Timer's one
+   trick, from the research: a fixed face, so half burned always means half an hour): a thing further off than that stands
+   full and sleeps, stepping its colours once a minute; inside the hour it burns toward the top, a step a second; in the last
+   ten minutes its tip blinks; at the time it goes off, and the next one lights. "fuse 15" lights it on the one thing. ═══ */
+K.fuse = { px: 5, from: 'top', hotMs: 10 * 60000, faceMin: 60 };   // faceMin: the bar's whole length in minutes (60, the Time Timer; 25, a pomodoro)
 let FUSE = load('inkling.fuse', null);
-function fuseTarget() { const now = Date.now(); return open().filter(t => timedOf(t) && Date.parse(t.at) > now).sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0] || null; }
+function fuseTarget() { const bx = boxNow(); if (bx) return { id: bx.t.id, at: new Date(bx.end).toISOString(), box: true };
+  const now = Date.now(); return open().filter(t => timedOf(t) && Date.parse(t.at) > now).sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0] || null; }
 function fuseDraw() {
-  const c = $('fuse'); if (!c) return; const P = K.fuse.px, n = Math.max(1, Math.floor(innerHeight / P));
+  const c = $('fuse'); if (!c) return; const P = K.fuse.px, top = parseFloat(getComputedStyle(c).top) || 0, n = Math.max(1, Math.floor((innerHeight - top) / P));   // under the status bar, never behind it
   if (c.width !== P || c.height !== n * P) { c.width = P; c.height = n * P; c.style.width = P + 'px'; c.style.height = n * P + 'px'; }
   const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height);
   const t = fuseTarget(), now = Date.now();
-  if (FUSE && !FUSE.popped && Date.parse(FUSE.at) <= now && now - Date.parse(FUSE.at) < 180000 && (!t || t.id !== FUSE.id)) { FUSE.popped = true; store('inkling.fuse', FUSE); fusePop(FUSE); }
+  if (FUSE && !FUSE.popped && Date.parse(FUSE.at) <= now && now - Date.parse(FUSE.at) < 180000 && (!t || t.id !== FUSE.id || !!t.box !== !!FUSE.box)) { FUSE.popped = true; store('inkling.fuse', FUSE); fusePop(FUSE); }
   if (!t || FUSEPOP) return;
   const at = Date.parse(t.at);
-  if (!FUSE || FUSE.id !== t.id || FUSE.at !== t.at) { FUSE = { id: t.id, at: t.at, lit: now }; store('inkling.fuse', FUSE); }
-  const F = FUSE;
-  const m = Math.ceil(n * Math.max(0, Math.min(1, (at - now) / Math.max(1, at - F.lit)))), s = Math.floor(now / 1000);
+  if (!FUSE || FUSE.id !== t.id || FUSE.at !== t.at) { FUSE = { id: t.id, at: t.at, lit: now, box: !!t.box }; store('inkling.fuse', FUSE); }
+  const left = at - now, face = K.fuse.faceMin * 60000;
+  const m = Math.ceil(n * Math.max(0, Math.min(1, left / face))), s = still() ? 0 : left > face ? Math.floor(now / 60000) : Math.floor(now / 1000);   // far off it sleeps
   for (let i = 0; i < m; i++) { x.fillStyle = K.wheel[(i + s) % K.wheel.length]; x.fillRect(0, (K.fuse.from === 'bottom' ? n - 1 - i : i) * P, P, P); }
-  if (at - now < K.fuse.hotMs && m > 0) { x.fillStyle = s % 2 ? css('--late') : css('--ink'); x.fillRect(0, (K.fuse.from === 'bottom' ? n - m : m - 1) * P, P, P); }   // the burning tip, its last minutes
+  if (left < K.fuse.hotMs && m > 0 && !still()) { x.fillStyle = Math.floor(now / 1000) % 2 ? css('--late') : css('--ink'); x.fillRect(0, (K.fuse.from === 'bottom' ? n - m : m - 1) * P, P, P); }   // the burning tip, its last minutes
 }
+/* Orv sits with him while a fuse he lit burns: the screen kept awake, a quiet aside now and then, never a nudge */
+K.sit = { every: [7, 12], lines: ['(Orv turns a page of his dictionary.)', '(Orv, under the table, calculating recoil.)', '(Orv glances at the fuse, then at you, then back at his grammar.)',
+  '(Orv hums something in a language he invented.)', '(Orv sharpens a quill he will never use.)', '(Orv counts the gears in his arm. Still all there.)'] };
+const SIT = { wl: null, t: 0 };
+async function sit(on) { clearTimeout(SIT.t);
+  if (!on) { try { SIT.wl && SIT.wl.release(); } catch (e) {} SIT.wl = null; return; }
+  try { if (navigator.wakeLock && !SIT.wl) { SIT.wl = await navigator.wakeLock.request('screen'); SIT.wl.addEventListener && SIT.wl.addEventListener('release', () => { SIT.wl = null; }); } } catch (e) {}
+  const next = () => { const [a, b] = K.sit.every; SIT.t = setTimeout(() => { if (!boxNow()) return sit(false); if (!BUSY && !UNDO) typeSay(K.sit.lines[Math.floor(Math.random() * K.sit.lines.length)], true); next(); }, (a + Math.random() * (b - a)) * 60000); };
+  next(); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && boxNow()) sit(true); });
 const css = n => (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim();
 /* the time has come: three beats of the late colour down the whole bar, one click, and Orv says so (only if it is still undone) */
 let FUSEPOP = false;
-async function fusePop(F) { const t = ST.tasks.find(x => x.id === F.id); if (!t || t.done || t.gone) return;
-  FUSEPOP = true; const c = $('fuse'), x = c.getContext('2d'); click(); HAPT(2); say('(Orv covers his ears.) Now: ' + t.word + '.', true);
-  for (let k = 0; k < 3; k++) { x.fillStyle = css('--late'); x.fillRect(0, 0, c.width, c.height); await sleep(300); x.clearRect(0, 0, c.width, c.height); await sleep(200); }
+async function fusePop(F) { const t = ST.tasks.find(x => x.id === F.id); if (F.box && ST.box) { delete ST.box; save(); sit(false); } if (!t || t.done || t.gone) return;
+  FUSEPOP = true; const c = $('fuse'), x = c.getContext('2d'); click(); HAPT(2);
+  if (F.box) { log({ who: 'orv', what: 'fuse out', id: t.id }); say('(The fuse is out.) Swipe ' + t.word + ' done, or say fuse again.', true); } else say('(Orv covers his ears.) Now: ' + t.word + '.', true);
+  for (let k = 0; k < (still() ? 1 : 3); k++) { x.fillStyle = css('--late'); x.fillRect(0, 0, c.width, c.height); await sleep(300); x.clearRect(0, 0, c.width, c.height); await sleep(200); }
   FUSEPOP = false; fuseDraw(); }
 addEventListener('resize', fuseDraw);
 (function beat(first) { if (!first) tick(); setTimeout(beat, 1000 - Date.now() % 1000 + 4); })(true);   // one heartbeat: on the whole second, with the crown
@@ -680,16 +806,14 @@ function afterDeeds(ts, one, quiet) {
   if (!teach('story')) quip(one);
 }
 
-/* six seconds to take any swipe back: Orv's own line says what happened; tap it */
-let UNDO = null;
+/* ORV'S LINE CAN HOLD AN OFFER: six seconds to take any swipe back, or (with no clock) a kingdom, a satchel or a new kingdom
+   waiting for his tap. Anything else Orv says withdraws the offer, so a later tap can never take something by accident. */
+var UNDO = null;
 function restoreWords() { const w = wordsOf(window.WHEEL_FRONT || 'orv'), s = $('say'); s.textContent = w.text; s.classList.toggle('stage', !!w.stage); }
-function offerUndo(t, what, back) {
-  UNDO = { t, back, until: Date.now() + K.feel.undoMs }; const s = $('say'); clearInterval(TYPING); unload();
-  s.textContent = '(' + what + ': ' + t.word + '. Tap here to bring it back.)'; s.classList.add('stage');
-  clearTimeout(offerUndo.t); offerUndo.t = setTimeout(() => { if (UNDO && Date.now() >= UNDO.until) { UNDO = null; restoreWords(); } }, K.feel.undoMs + 30);
-}
-$('say').addEventListener('click', () => { if (!UNDO || Date.now() > UNDO.until) return; const u = UNDO; UNDO = null; clearTimeout(offerUndo.t);
-  u.back(u.t); log({ who: 'k', what: 'brought back', id: u.t.id, word: u.t.word }); save(); render(); restoreWords(); HAPT(1); });
+function offerLine(text, act, ms) { UNDO = { act, until: ms ? Date.now() + ms : Infinity }; const s = $('say'); clearInterval(TYPING); unload(); s.textContent = text; s.classList.add('stage'); tell(text);
+  clearTimeout(offerLine.t); if (ms) offerLine.t = setTimeout(() => { if (UNDO && Date.now() >= UNDO.until) { UNDO = null; restoreWords(); } }, ms + 30); }
+function offerUndo(t, what, back) { offerLine('(' + what + ': ' + t.word + '. Tap here to bring it back.)', () => { back(t); log({ who: 'k', what: 'brought back', id: t.id, word: t.word }); save(); render(); HAPT(1); }, K.feel.undoMs); }
+$('say').addEventListener('click', () => { if (!UNDO || Date.now() > UNDO.until) return; const u = UNDO; UNDO = null; clearTimeout(offerLine.t); restoreWords(); u.act(); });
 
 /* ORV TEACHES each verb once, in his own line, the first time it matters (nothing pops up); using a verb first marks it learned */
 K.teach = { swipe: '(Orv mimes it.) Swipe a thing right when it is done; left sets it aside.', story: '(Orv points up.) Pull down from the one thing: your legend is up there.',
@@ -702,28 +826,30 @@ teach.done = k => { if (!TAUGHT[k]) { TAUGHT[k] = nowIso(); store('inkling.taugh
 async function checkOff(t, el) {
   if (!t || RISING) return; RISING = true; const n = t.krix ? 0 : krixRate(t), one = t === theOne();
   HAPT(n >= K.krix.side ? 3 : 1); ching(n || 1); teach.done('swipe');
-  try { await rise(el, n); setDone(t, true); log({ who: 'k', what: 'done', id: t.id }); if (SEL === t.id) SEL = null; save(); }
+  try { await rise(el, n); setDone(t, true); log({ who: 'k', what: 'done', id: t.id }); if (SEL === t.id) SEL = null; RUN_ALL = false;
+    const bx = ST.box && ST.box.id === t.id ? ST.box : null; if (bx) { log({ who: 'k', what: 'took', id: t.id, mins: Math.round((Date.now() - Date.parse(bx.from)) / 60000), lit: bx.mins }); delete ST.box; sit(false); }
+    save(); }
   finally { RISING = false; render(); }
   afterDeeds([t], one);
 }
 function setAside(t) { if (!t) return; t.gone = true; teach.done('swipe'); log({ who: 'k', what: 'set aside', id: t.id, word: t.word }); if (SEL === t.id) SEL = null; save(); render();
   offerUndo(t, 'set aside', x => { delete x.gone; }); }
+function storyBack(t) { if (SEL === t.id) SEL = null; HAPT(1); setDone(t, false); log({ who: 'k', what: 'undone', id: t.id }); save(); render(); offerUndo(t, 'back on the sword', x => { setDone(x, true); }); }
+function storyArchive(t) { if (SEL === t.id) SEL = null; HAPT(1); t.archived = nowIso(); log({ who: 'k', what: 'archived', id: t.id, word: t.word, krix: t.krix || 0 }); save(); render(); offerUndo(t, 'archived, its krix kept', x => { delete x.archived; }); }
 const markMove = (host, dx, f) => { host.querySelector('.mark.yes').style.opacity = dx > 0 ? f : 0; host.querySelector('.mark.no').style.opacity = dx < 0 ? f : 0; };
-swiper($('run'), x => x.closest('.row'), {
-  move: (r, dx, f) => { r.querySelector('.word').style.transform = dx ? 'translateX(' + dx + 'px)' : ''; markMove(r, dx, f); },
-  swipe: (r, way) => { const t = byId(r.dataset.id); if (way === 'right') checkOff(t, r.querySelector('.word')); else setAside(t); },
-  tap: r => { const t = byId(r.dataset.id); if (!t) return; SEL = SEL === t.id ? null : t.id; render(); }
+swiper($('run'), x => x.closest('.act') ? null : x.closest('.row'), {
+  move: (r, dx, f) => { if (!r.querySelector('.word')) return; r.querySelector('.word').style.transform = dx ? 'translateX(' + dx + 'px)' : ''; markMove(r, dx, f); },
+  swipe: (r, way) => { const t = byId(r.dataset.id); if (!t) return; if (way === 'right') checkOff(t, r.querySelector('.word')); else setAside(t); },
+  tap: r => { if (r.classList.contains('more')) { RUN_ALL = true; render(); return; } const t = byId(r.dataset.id); if (!t) return; SEL = SEL === t.id ? null : t.id; render(); }
 });
-swiper($('one'), x => x.closest('#one'), {
+swiper($('one'), x => x.closest('.act') ? null : x.closest('#one'), {
   move: (o, dx, f) => { $('oneWord').style.transform = dx ? 'translateX(' + dx + 'px)' : ''; markMove(o, dx, f); },
   swipe: (o, way) => { const t = theOne(); if (!t) return; if (way === 'right') checkOff(t, $('oneWord')); else setAside(t); },
   tap: o => { o.classList.toggle('open'); if (SEL) { SEL = null; render(); } }
 });
-swiper($('story'), x => x.closest('.deed'), {
+swiper($('story'), x => x.closest('.act') ? null : x.closest('.deed'), {
   move: (w, dx, f) => { w.style.transform = dx ? 'translateX(' + dx + 'px)' : ''; w.style.opacity = dx ? String(1 - f * 0.6) : ''; },
-  swipe: (w, way) => { const t = byId(w.dataset.id); if (!t) return; if (SEL === t.id) SEL = null; HAPT(1);
-    if (way === 'right') { setDone(t, false); log({ who: 'k', what: 'undone', id: t.id }); save(); render(); offerUndo(t, 'back on the sword', x => { setDone(x, true); }); }
-    else { t.archived = nowIso(); log({ who: 'k', what: 'archived', id: t.id, word: t.word, krix: t.krix || 0 }); save(); render(); offerUndo(t, 'archived, its krix kept', x => { delete x.archived; }); } },
+  swipe: (w, way) => { const t = byId(w.dataset.id); if (!t) return; if (way === 'right') storyBack(t); else storyArchive(t); },
   tap: w => { const t = byId(w.dataset.id); if (!t) return; SEL = SEL === t.id ? null : t.id; render('.deed[data-id="' + t.id + '"]'); }
 });
 
@@ -733,7 +859,7 @@ let TYPING = 0;
 let LOAD = 0;
 function unload() { if (LOAD) { cancelAnimationFrame(LOAD); LOAD = 0; } }
 function loading() {
-  clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.remove('stage');
+  UNDO = null; clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.remove('stage');
   const P = 3, W = Math.max(40, Math.floor((s.clientWidth || 200) / P)), H = 16;
   const cv = document.createElement('canvas'); cv.width = W * P; cv.height = H * P; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
   cv.style.imageRendering = 'pixelated'; cv.setAttribute('aria-label', 'Orv is thinking'); s.appendChild(cv);
@@ -742,7 +868,7 @@ function loading() {
   const words = [], x0 = 18;
   [[1, 1], [6, 1], [11, .6]].forEach(([y, part]) => { let at = x0; const end = x0 + Math.floor((W - x0 - 1) * part);
     while (at < end - 2) { const w = Math.min(end - at, 3 + Math.floor(Math.random() * 7)); if (w >= 2) words.push({ x: at, y, w }); at += w + 2; } });
-  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const stillNow = still();
   let t0 = 0, last = -1;
   const draw = ts => {
     if (!t0) t0 = ts; const f = Math.floor((ts - t0) / (1000 / K.fps));
@@ -755,15 +881,16 @@ function loading() {
       words.forEach(wd => { for (let i = 0; i < wd.w; i++) for (let j = 0; j < 2; j++) {
         const cxx = wd.x + i, near = Math.abs(cxx - sweep), lit = near < 3 || Math.random() < .015;
         x.fillStyle = lit ? K.wheel[(cxx + f) % N] : '#5a5a5a'; x.fillRect(cxx * P, (wd.y + j) * P, P, P); } }); }
-    if (!still) LOAD = requestAnimationFrame(draw);
+    if (!stillNow) LOAD = requestAnimationFrame(draw);
   };
   LOAD = requestAnimationFrame(draw);
 }
 /* each master keeps his own last words (his word: "when character changes, their words come out") */
 const wordsOf = m => load('inkling.say.' + m, m === 'squatch' ? { text: 'Squatches don\'t smoke.', stage: false } : { text: '', stage: false });   // his harness: the one line he keeps
 const keepWords = (text, stage) => store('inkling.say.' + (window.WHEEL_FRONT || 'orv'), { text: String(text || ''), stage: !!stage });
-function say(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = text; s.classList.toggle('stage', !!stage); keepWords(text, stage); }
-function typeSay(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.toggle('stage', !!stage); keepWords(text, stage);
+function tell(t) { const r = document.getElementById('sr'); if (!r) return; r.textContent = ''; setTimeout(() => { r.textContent = String(t || ''); }, 60); }
+function say(text, stage) { UNDO = null; clearInterval(TYPING); unload(); const s = $('say'); s.textContent = text; s.classList.toggle('stage', !!stage); keepWords(text, stage); tell(text); }
+function typeSay(text, stage) { UNDO = null; clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.toggle('stage', !!stage); keepWords(text, stage); tell(text);
   const a = Array.from(String(text)); let i = 0; TYPING = setInterval(() => { i = Math.min(a.length, i + 3); s.textContent = a.slice(0, i).join(''); if (i >= a.length) clearInterval(TYPING); }, 1000 / K.fps); }
 function lastLine() { /* his lines show only when the divider is dragged far left */ }
 /* the whole talk, on the right pane: every word he said and every answer, from the log, oldest first */
@@ -774,8 +901,8 @@ function drawChat() { const c = $('chatLog'); c.textContent = '';
     else if (e.what === 'summary') { el = document.createElement('div'); el.className = 'sum'; el.textContent = '✦ ' + e.text; }
     if (el) c.appendChild(el); });
   const p = $('talk'); p.scrollTop = p.scrollHeight; }
-function flash() { const f = $('flash'); let i = 0; const go = () => { if (i >= K.wheel.length) { f.style.opacity = 0; return; }
-  f.style.background = K.wheel[i++]; f.style.opacity = .5; setTimeout(go, 1000 / K.fps); }; if (!matchMedia('(prefers-reduced-motion: reduce)').matches) go(); }
+function flash() { const f = $('flash'), C = [K.wheel[0], K.wheel[6], K.wheel[9]]; let i = 0; const go = () => { if (i >= C.length) { f.style.opacity = 0; return; }   // three slow steps, never a strobe
+  f.style.background = C[i++]; f.style.opacity = .25; setTimeout(go, 340); }; if (!still()) go(); }
 
 /* ═══ THE DOOR: his key, his door, the door's own models ═══ */
 function fetchT(url, init) { const c = new AbortController(), t = setTimeout(() => c.abort(), K.timeoutMs);
@@ -787,12 +914,16 @@ function headers(d, key) {
 }
 async function model(d, key, avoid) {
   const b = box(), named = String(((b.models || {})[d]) || '') || String((((b.lists || {})[d]) || {}).pick || '');
-  if (named && named !== avoid) return named;
-  const kept = load('inkling.model', {}); if (kept[d] && kept[d] !== avoid) return kept[d];
+  const coin = d !== 'openrouter' || !!(load('inkling.paid', {}) || {}).openrouter, freeName = id => coin || /:free$/.test(id);
+  if (named && named !== avoid && freeName(named)) return named;
+  const kept = load('inkling.model', {}); if (kept[d] && kept[d] !== avoid && freeName(kept[d])) return kept[d];
   const o = await (await fetchT(DOORS[d].list, { headers: headers(d, key) })).json();
   let ids = d === 'gemini' ? (o.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''))
                            : (o.data || []).map(m => String(m.id));
   ids = ids.filter(id => !/whisper|tts|embed|guard|image|audio|vision|search|realtime|transcribe|moderation|veo|imagen|live/i.test(id));
+  if (d === 'openrouter' && !(load('inkling.paid', {}) || {}).openrouter) {   // $0 unless Cha-ching: only the door's free models
+    const free = new Set((o.data || []).filter(x => /:free$/.test(x.id) || (x.pricing && +x.pricing.prompt === 0 && +x.pricing.completion === 0)).map(x => String(x.id)));
+    ids = ids.filter(id => free.has(id)); }
   if (avoid) ids = ids.filter(id => id !== avoid);
   if (!ids.length) throw new Error('that door listed no models');
   if (d === 'gemini') {   // the newest plain flash: fast, free, not a preview
@@ -813,7 +944,7 @@ async function answer(d, key, sys, turns) {
   const m = await model(d, key);
   try { return { m, text: await call(d, key, m, sys, turns) }; }
   catch (e) {
-    if (e.status === 401 || e.status === 403) throw e;
+    if (e.status === 401 || e.status === 403 || e.status === 408 || e.status === 413 || e.status === 429 || e.status >= 500 || e.name === 'AbortError') throw e;   // busy, too big, too slow: say so; keep his model
     const kept = load('inkling.model', {}); delete kept[d]; store('inkling.model', kept);
     await new Promise(r => setTimeout(r, 1200));
     const m2 = await model(d, key, m);
@@ -831,14 +962,14 @@ async function call(d, key, m, system, turns) {
   }
   if (d === 'gemini') {
     const body = { systemInstruction: { parts: [{ text: system }] }, contents: turns.map(t => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })),
-      generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } } };
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 1800, thinkingConfig: { thinkingBudget: 0 } } };
     const go = () => fetchT(DOORS.gemini.chat + encodeURIComponent(m) + ':generateContent', { method: 'POST', headers: headers(d, key), body: JSON.stringify(body) });
     let r = await go();
     if (r.status === 400) { delete body.generationConfig.thinkingConfig; r = await go(); }
     const o = await r.json().catch(() => ({})); if (!r.ok) throw doorError(r, o);
     return ((((o.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
   }
-  const body = { model: m, messages: [{ role: 'system', content: system }].concat(turns), temperature: 0.6, response_format: { type: 'json_object' } };
+  const body = { model: m, messages: [{ role: 'system', content: system }].concat(turns), temperature: 0.6, max_tokens: 1600, response_format: { type: 'json_object' } };
   let r = await fetchT(DOORS[d].chat, { method: 'POST', headers: headers(d, key), body: JSON.stringify(body) });
   if (r.status === 400) { delete body.response_format; r = await fetchT(DOORS[d].chat, { method: 'POST', headers: headers(d, key), body: JSON.stringify(body) }); }
   const o = await r.json().catch(() => ({})); if (!r.ok) throw doorError(r, o);
@@ -848,10 +979,12 @@ async function call(d, key, m, system, turns) {
 /* ═══ WHAT ORV IS TOLD: the seed first, then the list as it stands, then the rules of the reply ═══ */
 function system() {
   const now = new Date(), tz = -now.getTimezoneOffset(), off = (tz >= 0 ? '+' : '-') + String(Math.floor(Math.abs(tz) / 60)).padStart(2, '0') + ':' + String(Math.abs(tz) % 60).padStart(2, '0');
-  const list = open().map((t, i) => (i + 1) + '. [' + t.id + '] ' + t.word + ' — ' + (t.text || '') + (t.at ? ' (at ' + t.at + ')' : '')).join('\n') || '(the list is empty)';
+  const list = open().map((t, i) => (i + 1) + '. [' + t.id + '] ' + t.word + (i < 30 ? ' — ' + String(t.text || '').slice(0, 200) : '') + (t.at ? ' (at ' + t.at + ')' : '')).join('\n') || '(the list is empty)';   // the first thirty whole, the rest by name
   const one = theOne();
   return (WHEEL.front === 'squatch' ? K.seedSquatch + tapeMind() : K.seed) + '\n\nYou keep the King\'s list of pure tasks on his phone, and each day you sort it with him: merge duplicates, turn vague wishes into plain doable tasks, drop nothing he did not ask to drop, and order by what matters most (deadlines first, then what unblocks other things, then what he named as important). The order of the list IS its priority. Now is ' + now.toISOString() + ' (his local offset ' + off + ').' +
     '\nTHE ONE THING: ' + (one ? one.word + ' [' + one.id + ']' : 'none') + '\nOPEN TASKS, in priority order:\n' + list +
+    (() => { const g = ST.tasks.filter(t => t.gone).slice(-10); return g.length ? '\nSET ASIDE (he can call them back): ' + g.map(t => '[' + t.id + '] ' + t.word).join(', ') : ''; })() +
+    '\nNever count what he missed or how long he was away. If he has been away, greet the return in one breath and name the one thing.' +
     '\nDone: ' + live().filter(t => t.done).length + '. Krix earned here: ' + krixHeld() + ' (a check-off pays 1, a side quest 8).' +
     '\n\nAnswer ONLY with one JSON object: {"say": "...", "ops": [...]}' +
     '\n"quips" (optional): up to three one-line teases in your voice, for his next check-offs, about things on this list only. They wait in your pocket.' +
@@ -862,6 +995,8 @@ function system() {
     '\n {"op":"edit","id":"<id>","word":"...","text":"...","at":"<ISO or null>"}' +
     '\n {"op":"order","ids":["<id>", "..."]}   (the whole open list, highest priority first)' +
     '\n {"op":"one","id":"<id>"}   (THE ONE THING)' +
+    '\n {"op":"back","id":"<id>"}   (bring a set-aside thing back onto the sword)' +
+    '\n {"op":"steps","id":"<id>","steps":["<the first, under two minutes>","..."],"when":"<If X, then I Y>"}   (when he is stuck or THE ONE THING is big: 3 to 7 steps, the first tiny; one if-then from his own day)' +
     '\nNew tasks you add go to the end unless you also send an order. Use only ids that exist. Never invent tasks he did not mention.' +
     (FIRST ? '\nTHIS IS HIS FIRST BREATH: build his list from it. Add every task, idea and plan he names (one word each, his own line), order them by priority, set THE ONE THING, and give times only where he gives them. In "say", one or two sentences on the shape of his day, in your own voice.' : '') +
     meterLine() +
@@ -880,8 +1015,13 @@ function apply(ops) {
       const word = String(o.word || '').trim().split(/\s+/)[0]; if (!word) return drop('no word'); if (!okAt(o.at)) return drop('bad time');
       ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: word.slice(0, 24), text: String(o.text || '').slice(0, 600), at: o.at ? new Date(o.at).toISOString() : null, done: false, doneAt: null });
     } else if (o.op === 'done' || o.op === 'undone') { if (!t) return drop('no such task'); setDone(t, o.op === 'done', 'orv'); }
-    else if (o.op === 'remove') { if (!t) return drop('no such task'); t.gone = true; }
+    else if (o.op === 'remove') { if (!t) return drop('no such task'); t.gone = true; t.goneBy = 'orv'; t.goneAt = nowIso(); }
+    else if (o.op === 'steps') { if (!t) return drop('no such task'); if (!Array.isArray(o.steps) || !o.steps.length) return drop('no steps');
+      if (t.sub && t.sub.length) (t.subWas = t.subWas || []).push({ at: nowIso(), sub: t.sub }); t.sub = o.steps.slice(0, 12).map(x => String(x).slice(0, 140)); t.subDone = 0; t.steps = true;
+      if (o.when) t.when = String(o.when).slice(0, 200); }
+    else if (o.op === 'back') { const g = ST.tasks.find(x => x.id === String(o.id) && x.gone); if (!g) return drop('not set aside'); delete g.gone; }
     else if (o.op === 'edit') { if (!t) return drop('no such task'); if (!okAt(o.at)) return drop('bad time');
+      (t.was = t.was || []).push({ on: nowIso(), word: t.word, text: t.text, at: t.at, by: 'orv' });   // his own words for it are never lost to an edit
       if (o.word) t.word = String(o.word).trim().split(/\s+/)[0].slice(0, 24); if (o.text != null) t.text = String(o.text).slice(0, 600);
       if ('at' in o) t.at = o.at ? new Date(o.at).toISOString() : null; }
     else if (o.op === 'order') { if (!Array.isArray(o.ids)) return drop('no ids'); const seen = new Set(), first = [];
@@ -898,22 +1038,33 @@ function apply(ops) {
 /* ═══ HE SPEAKS ═══ */
 let BUSY = false, LASTFAIL = false;
 let FIRST = !load('inkling.log', []).some(e => e.who === 'k' && e.what === 'said');
-async function speak(raw) {
-  const words = String(raw || '').trim(); if (!words || BUSY) return; LASTFAIL = false; let won = [], oneWas = null;
-  const km = /#k=[A-Za-z0-9_-]+/.exec(words); if (km) { setLine(''); location.hash = km[0]; return; }   // a kingdom link pasted here: the Home Screen app takes it in
-  setLine('');
-  if (looksLikeKey(words)) { setOpen(); $('setKey').value = words.replace(/\s+/g, ''); grow($('setKey')); return setTest(); }
-  log({ who: 'k', what: 'said', text: words });               // his words first, verbatim, always
+async function speak(raw, how) {
+  let words = String(raw || '').trim(); if (!words) return; const link = !!(how && how.via === 'link'), queued = !!(how && how.queued);
+  if (looksLikeKey(words)) { if (!queued) setLine(''); if (link) return say('(A key came in by a link. Keys go in by hand, behind the salmon.)', true); setOpen(); $('setKey').value = words.replace(/\s+/g, ''); grow($('setKey')); return setTest(); }
+  const keys = []; words = words.replace(/(gsk_|sk-ant-|sk-or-|xai-|AIza|sk-)[\w-]{16,}/g, k => (keys.push(k), '[a key]'));   // a key inside a sentence never reaches the log or a model
+  if (keys.length && !link && !queued) { setOpen(); $('setKey').value = keys[0]; grow($('setKey')); setTest(); if (!words.replace('[a key]', '').trim()) { setLine(''); return; } }
+  if (BUSY) { log({ who: 'k', what: 'said', text: words, queued: true }); (speak.q = speak.q || []).push({ w: words, link }); setLine(''); return; }   // his words are never dropped while Orv is busy
+  LASTFAIL = false; let won = [], oneWas = null;
+  const km = /#k=([A-Za-z0-9_-]+)/.exec(words);
+  if (km) { if (!queued) setLine(''); if (link) { history.replaceState(null, '', location.pathname + location.search + '#k=' + km[1]); fromKingdom(); } else takeKingdom(km[1]); return; }   // pasted by his hand: in at once; inside a link: it waits for his tap
+  if (!queued) setLine('');
+  if (!(how && how.queued)) log({ who: 'k', what: 'said', text: words });               // his words first, verbatim, always
   if (FIRST) { const B = load('inkling.breath', []); B.push({ at: nowIso(), text: words, first: true }); store('inkling.breath', B); }
   store('inkling.summary', '');
-  if (words.toLowerCase() === K.password.toLowerCase()) { const d = keyDoor(); if (d) { const p = load('inkling.paid', {}); p[d] = nowIso(); store('inkling.paid', p); } return say('Cha-ching heard. The ' + (d || '') + ' door is open.', true); }
+  if (!link && words.toLowerCase() === K.password.toLowerCase()) { const d = keyDoor(); if (d) { const p = load('inkling.paid', {}); p[d] = nowIso(); store('inkling.paid', p); } return say('Cha-ching heard. The ' + (d || '') + ' door is open.', true); }
   if (/^many thanks\b/i.test(words)) { await thanks(); return; }
+  const NUMW = { five: 5, ten: 10, fifteen: 15, twenty: 20, 'twenty-five': 25, thirty: 30, forty: 40, 'forty-five': 45, fifty: 50, sixty: 60, hour: 60, 'an hour': 60 };
+  const fz = /^(?:light the )?fuse\s+(?:for\s+)?(\d{1,3}|an hour|[a-z-]+)(?:\s*min(?:ute)?s?)?\.?$/i.exec(words);
+  if (fz && /^(off|out|stop|done)$/i.test(fz[1])) { delete ST.box; save(); sit(false); FUSE = null; render(); return say('(Orv blows the match out.)', true); }
+  if (fz && theOne()) { const n = +fz[1] || NUMW[fz[1].toLowerCase()]; if (n > 0) { const o = theOne(); ST.box = { id: o.id, from: nowIso(), mins: Math.min(180, n) }; save();
+    log({ who: 'k', what: 'fuse', id: o.id, mins: ST.box.mins }); FUSE = null; sit(true); render(); return say('(Orv strikes a match.) ' + ST.box.mins + ' minutes on ' + o.word + '. I will sit with you.', true); } }
+  if (/^(still|move)$/i.test(words)) { store('inkling.still', /still/i.test(words)); render(); return say(/still/i.test(words) ? '(Orv holds very still.) The fuse, the clock, the crown\'s colours and the turns hold still until you say move.' : '(Orv stretches.) Moving again.', true); }
   const naming = load('inkling.naming', null);
   if (naming) { try { localStorage.removeItem('inkling.naming'); } catch (e) {}
     if (words.split(/\s+/).length <= 8) { const g = legend(), c = g.chapters.find(x => x.n === naming); if (c) { c.name = words; store('inkling.legend', g); }
       log({ who: 'k', what: 'chapter named', n: naming, text: words }); typeSay('(Orv writes it in gold.) Chapter ' + naming + ': ' + words + '.', true); render(); if (ORV.burst) ORV.burst(12); return; } }   // his words, verbatim, in the story
   if (/\btease me\b/i.test(words) && words.length < 40) { const t = tease(); log({ who: 'orv', what: 'answered', text: t }); typeSay(t); drawChat(); if (ORV.burst) ORV.burst(5); return; }   // no key, no coin
-  const use = /^use\s+([\w.-]{2,40})$/i.exec(words);
+  const use = !link && /^use\s+([\w.-]{2,40})$/i.exec(words);
   if (use) { const k2 = String(box().apiKey || '').trim(), d2 = keyDoor(); if (!d2) return say('(No key yet.)', true);
     try { const o = await (await fetchT(DOORS[d2].list, { headers: headers(d2, k2) })).json();
       const ids = d2 === 'gemini' ? (o.models || []).map(x => String(x.name).replace(/^models\//, '')) : (o.data || []).map(x => String(x.id));
@@ -922,12 +1073,13 @@ async function speak(raw) {
       const kept = load('inkling.model', {}); kept[d2] = hit; store('inkling.model', kept); const b = box(); if (b.models && b.models[d2]) { delete b.models[d2]; store(BOX, b); }
       return say('Now thinking with ' + hit + '.', true); } catch (e) { return say('(The door would not list its models.)', true); } }
   const key = String(box().apiKey || '').trim(), d = keyDoor();
-  if (!key || !d) { const w = words.split(/\s+/).map(x => x.replace(/[^\p{L}\p{N}'-]/gu, '')).find(x => x && !/^(i|to|the|a|an|my|need|have|should|want|gotta|must|go|and|or|of|for|do|get|it|is)$/i.test(x)) || words.split(/\s+/)[0];
+  if (!key || !d) { const w = words.split(/\s+/).map(x => x.replace(/[^\p{L}\p{N}'-]/gu, '')).find(x => x && !/^(i|to|the|a|an|my|need|have|should|want|gotta|must|go|and|or|of|for|do|get|it|is|here|there|this|that|please|thanks|ok|okay|so|um|uh)$/i.test(x)) || words.split(/\s+/)[0];
     apply([{ op: 'add', word: w, text: words }]); render(); salmonCall();
     say('(Orv writes it on the sword himself, tongue out.) There. Feed the salmon a key, Groq or Gemini, both free, and I can talk back.', true); return; }
   if (!paidOpen(d)) { setLine(words); setOpen('The ' + d + ' key costs money. Type ' + K.password + ' on the coin line.'); return; }
   lastLine(words); BUSY = true; ORV.listening = true; loading();
-  const chat = load('inkling.chat', []).slice(-K.memory * 2), turns = chat.concat([{ role: 'user', content: words }]);
+  const chat = load('inkling.chat', []).slice(-K.memory * 2); while (chat.length && JSON.stringify(chat).length > 6000) chat.shift();   // the talk carried is kept small enough for a free door's minute
+  const turns = chat.concat([{ role: 'user', content: words }]);
   try {
     const { m, text } = await answer(d, key, system(), turns);
     let reply = null; try { reply = JSON.parse(text); } catch (e) { const j = /\{[\s\S]*\}/.exec(text); if (j) try { reply = JSON.parse(j[0]); } catch (e2) { reply = null; } }
@@ -943,6 +1095,8 @@ async function speak(raw) {
   } catch (e) { log({ who: 'ai:' + d, what: 'error', text: String(e.message || e) }); if (e.status === 401 || e.status === 403) { BUSY = false; ORV.listening = false; setLine(words); return setOpen('The ' + d + ' door turned the key away: ' + String(e.message || e).slice(0, 140), true); } say('(Orv could not get through: ' + plainWhy(e) + '. Your words are kept; tap me to try again.)', true); setLine(words); LASTFAIL = true; }
   BUSY = false; ORV.listening = false; render(); drawChat();
   if (won.length) afterDeeds(won, won.includes(oneWas), true);
+  if (speak.q && speak.q.length) { const x = speak.q.shift(); setTimeout(() => speak(x.w, { queued: true, via: x.link ? 'link' : '' }), 400); }   // what he said while Orv was busy
+  if (freshOpen.later) { freshOpen.later = false; freshOpen(); }
 }
 /* "many thanks": Orv sums up the talk in a line or two; the summary stays in the window until he types again */
 async function thanks() {
@@ -960,9 +1114,12 @@ async function thanks() {
   log({ who: 'orv', what: 'summary', text: sum }); store('inkling.chat', []); store('inkling.summary', sum);
   flash(); lastLine(''); say(sum); render(); drawChat();
 }
+/* a half-typed line is kept on the phone, so a reload or iOS closing the app never loses it (the iOS engineer, 2026-10-02) */
+let DRAFT_T = 0; const keepDraft = () => { clearTimeout(DRAFT_T); DRAFT_T = setTimeout(() => store('inkling.draft', { text: $('line').value, at: nowIso() }), 300); };
+addEventListener('pagehide', () => { try { localStorage.setItem('inkling.draft', JSON.stringify({ text: $('line').value, at: nowIso() })); } catch (e) {} });
 function growLine() { const l = $('line'); l.style.height = 'auto'; l.style.height = Math.min(l.scrollHeight + 2, innerHeight * 0.4) + 'px'; }
-function setLine(v) { $('line').value = v; growLine(); }
-$('line').addEventListener('input', growLine);
+function setLine(v) { $('line').value = v; growLine(); keepDraft(); }
+$('line').addEventListener('input', () => { growLine(); keepDraft(); });
 $('line').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); speak($('line').value); } });
 /* ═══ ORV'S HANDS: tap = send (or open the line) · double-tap = the meter, story ↔ focus · hold = he listens, live ═══
    (the double-tap is also where the other masters will turn, later) */
@@ -1015,6 +1172,7 @@ function arcClose() { if (!ARC.open) return; ARC.open = false; $('arc').setAttri
   A.addEventListener('pointerdown', e => { if (!e.target.classList.contains('hit')) return; drag = true; try { A.setPointerCapture(e.pointerId); } catch (x) {} arcSet(e); e.stopPropagation(); });
   A.addEventListener('pointermove', e => { if (drag) arcSet(e); });
   A.addEventListener('pointerup', () => { if (drag) { drag = false; log({ who: 'k', what: 'meter', of: WHEEL.front, v: meterVal() }); } });
+  A.addEventListener('pointercancel', () => { drag = false; });
   document.addEventListener('pointerdown', e => { if (ARC.open && !A.contains(e.target) && !$('wheel').contains(e.target)) arcClose(); }, true);
   addEventListener('resize', () => { if (ARC.open) arcDraw(); });
 })();
@@ -1027,13 +1185,14 @@ const EAR = { rec: null, on: false, held: false, base: 0, n: 0, fin: '', live: '
 function hearShow() { setLine([EAR.pre, EAR.fin, EAR.live].filter(Boolean).join(' ')); }   // his voice, live, in the very box he types in
 function earWake() {
   if (EAR.on) return true;
-  if (!SR) { say('(Orv cups an ear.) This phone will not let a page listen. Tap the line and use the keyboard\'s mic.', true); return false; }
+  if (!SR) { EAR.noService = true; return false; }
   if (!EAR.rec) {
     const r = new SR(); r.continuous = true; r.interimResults = true; r.lang = navigator.language || 'en-US';
     r.onresult = ev => { EAR.n = ev.results.length; EAR.last = ev.results; if (!EAR.held) return;
       let fin = '', live = ''; for (let i = EAR.base; i < ev.results.length; i++) { const x = ev.results[i]; if (x.isFinal) fin += x[0].transcript; else live += x[0].transcript; }
       EAR.fin = fin.trim(); EAR.live = live.trim(); hearShow(); };
-    r.onerror = ev => { if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { EAR.on = false; EAR.denied = true;
+    r.onerror = ev => { if (ev.error === 'service-not-allowed') { EAR.on = false; EAR.noService = true; say('(Orv cups an ear.) This glass will not lend me its ears; hold me again and I will hear you by tape, through your key\'s free door.', true); return; }
+      if (ev.error === 'not-allowed') { EAR.on = false; EAR.denied = true;
       say('(Orv cannot hear you: the microphone was refused. In Safari: aA → Website Settings → Microphone → Allow.)', true); } };
     r.onend = () => { EAR.n = 0; EAR.base = 0; if (EAR.on && !EAR.denied && !document.hidden) { try { r.start(); } catch (e) { EAR.on = false; } } else EAR.on = false; };
     EAR.rec = r;
@@ -1045,11 +1204,13 @@ function earRest() { EAR.on = false; try { EAR.rec && EAR.rec.stop(); } catch (e
 document.addEventListener('visibilitychange', () => { if (document.hidden) earRest(); });
 function listenStart() {
   teach.done('hold');
+  if (GLASS || EAR.noService || !SR) { EAR.held = true; ORV.listening = true; document.body.classList.add('holding'); holdTape(); return true; }   // the icon hears by tape
   if (!earWake()) return false;
   clearTimeout(EAR.rest); EAR.held = true; EAR.base = EAR.n; EAR.pre = $('line').value.trim(); EAR.fin = ''; EAR.live = ''; ORV.listening = true;
   document.body.classList.add('holding'); hearShow(); return true;
 }
 function listenStop() {
+  if (TAPE.mr || TAPE.s || (EAR.held && (GLASS || EAR.noService))) return holdTapeStop();
   if (!EAR.held) return;
   setTimeout(() => {                                           // a breath for the last words to land
     EAR.held = false; ORV.listening = false; document.body.classList.remove('holding');
@@ -1087,10 +1248,10 @@ function listenStop() {
   $('restore').addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return; e.target.value = '';
     /* a .inkling file goes through the same safe door as a scanned code: the old kingdom set aside, the new one whole */
     if (/^image\//.test(f.type) || /\.(png|jpe?g|heic|webp)$/i.test(f.name)) {   // a picture of a throne: the crowns read back
-      try { const code = window.INKSHARE && await INKSHARE.readThrone(f); if (code) { log({ who: 'k', what: 'opened', text: f.name }); location.hash = '#k=' + code; return; } } catch (x) {}
-      say('(That picture holds no throne I can read.)', true); return; }
-    try { const code = window.INKSHARE && INKSHARE.readInkling(await f.text()); if (code) { log({ who: 'k', what: 'opened', text: f.name }); location.hash = '#k=' + code; return; } } catch (x) {}
-    try { const o = JSON.parse(await f.text()); if (o && o.state && Array.isArray(o.state.tasks)) { store('inkling.archive.' + Date.now(), { state: ST, log: load('inkling.log', []) }); ST = o.state; save(); if (o.krix && +o.krix.n > krixHeld()) store('inkling.krix', o.krix); log({ who: 'k', what: 'restored', text: f.name }); render(); say('Restored from ' + f.name + '.', true); } }
+      say('(A picture cannot carry a kingdom yet. Use read, with the camera, on another phone\'s crown.)', true); return; }
+    const body = await f.text(); try { const o = JSON.parse(body); if (o && o.inkling === 2 && o.keys && typeof o.keys === 'object') { log({ who: 'k', what: 'opened', text: f.name }); return openSatchel(o, f.name); } } catch (x) {}
+    try { const code = window.INKSHARE && INKSHARE.readInkling(body); if (code) { log({ who: 'k', what: 'opened', text: f.name }); takeKingdom(code); return; } } catch (x) {}
+    try { const o = JSON.parse(body); if (o && o.state && Array.isArray(o.state.tasks)) { store('inkling.archive.' + Date.now(), { state: ST, logAt: load('inkling.log', []).length }); ST = o.state; save(); if (o.krix && +o.krix.n > krixHeld()) store('inkling.krix', o.krix); log({ who: 'k', what: 'restored', text: f.name }); render(); say('Restored from ' + f.name + '.', true); } }
     catch (x) { say('(That file would not open.)', true); } });
 })();
 
@@ -1175,36 +1336,73 @@ K.tape = { groqMB: 24, geminiMB: 18, mind: 14000 };   // what each free door tak
 function tapeMind() { const T = load('inkling.squatch.tapes', []); const t = T[T.length - 1]; if (!t || !t.text) return '';
   return '\n\nTHE TAPE the King dropped for the movie ("' + t.name + '", ' + (t.mins ? t.mins + ' min, ' : '') + 'his words, verbatim; quote it, never invent):\n' + t.text.slice(0, K.tape.mind); }
 function mins(file) { return new Promise(ok => { try { const a = new Audio(); a.preload = 'metadata'; a.onloadedmetadata = () => { ok(isFinite(a.duration) ? Math.round(a.duration / 6) / 10 : null); URL.revokeObjectURL(a.src); }; a.onerror = () => ok(null); a.src = URL.createObjectURL(file); setTimeout(() => ok(null), 8000); } catch (e) { ok(null); } }); }
+/* THE EAR'S MODEL comes from the door's own list (NOTHING BOUND: never a name fixed in this code) */
+async function earModel(d, key) { const kept = load('inkling.model.ear', {}) || {}; if (kept[d]) return kept[d];
+  const o = await (await fetchT(DOORS[d].list, { headers: headers(d, key) })).json(), ids = (o.data || []).map(m => String(m.id)).filter(id => /whisper|transcribe/i.test(id));
+  const pick = ids.find(id => /whisper.*turbo/i.test(id)) || ids.find(id => /whisper/i.test(id)) || ids[0]; if (!pick) throw new Error('this door lists no ear');
+  kept[d] = pick; store('inkling.model.ear', kept); return pick; }
+/* audio → his words, through his own key's door (Groq's whisper or Gemini, both free; OpenAI only after Cha-ching) */
+async function transcribe(file, tape) {
+  const b = box(), key = b.apiKey, d = keyDoor();
+  if (!key || !d) throw new Error('no key yet: a Groq or Gemini key is free, behind the salmon');
+  if (!['groq', 'gemini', 'openai'].includes(d)) throw new Error('this key\'s door cannot hear; a Groq or Gemini key can, free');
+  if (!paidOpen(d)) throw new Error('the ' + d + ' door costs money: type ' + K.password + ' on the coin line first');
+  let text = '';
+  if (d === 'gemini') {
+    const raw = new Uint8Array(await file.arrayBuffer()); let bin = ''; for (let i = 0; i < raw.length; i += 32768) bin += String.fromCharCode.apply(null, raw.subarray(i, i + 32768));
+    const mdl = await model(d, key), mime = file.type || 'audio/mp4';
+    const r = await fetchT(DOORS.gemini.chat + encodeURIComponent(mdl) + ':generateContent', { method: 'POST', headers: headers(d, key), body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ inline_data: { mime_type: mime, data: btoa(bin) } }, { text: 'Transcribe this audio verbatim: every word as spoken, nothing added, nothing summarised.' + (tape ? ' Put [mm:ss] at the start of each paragraph.' : ' Answer with the words only.') }] }],
+      generationConfig: { maxOutputTokens: tape ? 65536 : 2048 } }) });
+    const o = await r.json().catch(() => ({})); if (!r.ok) throw doorError(r, o);
+    text = ((((o.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
+  } else {
+    const f = new FormData(); f.append('file', file, file.name || 'tape.m4a'); f.append('model', await earModel(d, key)); f.append('response_format', 'text');
+    const r = await fetchT(DOORS[d].chat.replace('/chat/completions', '/audio/transcriptions'), { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: f });
+    text = await r.text(); if (!r.ok) { if (r.status === 400 || r.status === 404) { const kept = load('inkling.model.ear', {}) || {}; delete kept[d]; store('inkling.model.ear', kept); }   // the door retired that ear: pick again next time
+      throw doorError(r, (() => { try { return JSON.parse(text); } catch (e) { return { error: { message: text.slice(0, 200) } }; } })()); }
+  }
+  text = String(text || '').trim(); if (!text) throw new Error('the door heard nothing'); return text;
+}
 async function hearTape(file) {
-  const b = box(), key = b.apiKey, d = keyDoor(), MB = file.size / 1048576, tell = t => say(t, true);
-  if (!key || !d) return tell('(no key yet: the cigarette opens Settings, a Groq or Gemini key is free)');
-  if (!['groq', 'gemini', 'openai'].includes(d)) return tell('(this key\'s door cannot hear a tape; a Groq or Gemini key can, free)');
-  if (!paidOpen(d)) return tell('(the ' + d + ' door costs money: type ' + K.password + ' on the coin line first)');
+  const d = keyDoor(), MB = file.size / 1048576, tell = t => say(t, true);
   const cap = d === 'gemini' ? K.tape.geminiMB : K.tape.groqMB;
   if (MB > cap) return tell('(the tape is ' + MB.toFixed(0) + ' MB; this door hears up to ' + cap + ' MB at once. Trim it into parts, or drop it on the Mac\'s Scriptorium, which hears any length.)');
   const m = await mins(file); tell('(listening to the tape: ' + file.name + (m ? ', ' + m + ' min' : '') + ' …)');
   try {
-    let text = '';
-    if (d === 'gemini') {
-      const raw = new Uint8Array(await file.arrayBuffer()); let bin = ''; for (let i = 0; i < raw.length; i += 32768) bin += String.fromCharCode.apply(null, raw.subarray(i, i + 32768));
-      const mdl = await model(d, key), mime = file.type || 'audio/mp4';
-      const r = await fetchT(DOORS.gemini.chat + encodeURIComponent(mdl) + ':generateContent', { method: 'POST', headers: headers(d, key), body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ inline_data: { mime_type: mime, data: btoa(bin) } }, { text: 'Transcribe this audio verbatim: every word as spoken, nothing added, nothing summarised. Put [mm:ss] at the start of each paragraph.' }] }],
-        generationConfig: { maxOutputTokens: 65536 } }) });
-      const o = await r.json().catch(() => ({})); if (!r.ok) throw doorError(r, o);
-      text = ((((o.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
-    } else {
-      const f = new FormData(); f.append('file', file, file.name || 'tape.m4a'); f.append('model', d === 'groq' ? 'whisper-large-v3-turbo' : 'whisper-1'); f.append('response_format', 'text');
-      const url = d === 'groq' ? 'https://api.groq.com/openai/v1/audio/transcriptions' : 'https://api.openai.com/v1/audio/transcriptions';
-      const r = await fetchT(url, { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: f });
-      text = await r.text(); if (!r.ok) throw doorError(r, (() => { try { return JSON.parse(text); } catch (e) { return { error: { message: text.slice(0, 200) } }; } })());
-    }
-    text = String(text || '').trim(); if (!text) throw new Error('the door heard nothing');
+    const text = await transcribe(file, true);
     const T = load('inkling.squatch.tapes', []); T.push({ name: file.name || 'tape', at: nowIso(), mins: m, door: d, text }); store('inkling.squatch.tapes', T);
     log({ who: 'k', what: 'tape', text: (file.name || 'tape') + (m ? ' · ' + m + ' min' : '') + ' · ' + text.split(/\s+/).length + ' words, kept whole' });
     tell('(the tape is in, heard whole: ' + text.split(/\s+/).length + ' words. Squatch has it now; talk to him.)');
   } catch (e) { tell('(the tape would not go through: ' + plainWhy(e) + ')'); }
 }
+/* THE HOME SCREEN EAR (an iOS engineer read the code, 2026-10-02): an app on the Home Screen is never given the page's speech
+   recognition, so there a hold records his voice, and letting go hands the recording to his own free door. A breath that will
+   not go through waits in Orv's line to be tried again; it is never thrown away while the app is open. */
+const TAPE = { mr: null, s: null, bits: [], t0: 0 };
+var BREATHS = [];   // breaths recorded but not yet heard: each is kept in the deep drawer until its words are in the log
+async function holdTape() {
+  try { const st = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!EAR.held) { st.getTracks().forEach(t => t.stop()); return say('(Orv\'s ear is open now. Hold me again, and speak.)', true); }   // the first time, the permission ends the hold
+    const mr = new MediaRecorder(st); TAPE.s = st; TAPE.mr = mr; TAPE.bits = []; TAPE.t0 = Date.now(); mr.ondataavailable = e => { if (e.data && e.data.size) TAPE.bits.push(e.data); }; mr.start(); }
+  catch (e) { EAR.held = false; ORV.listening = false; document.body.classList.remove('holding'); say('(Orv cannot hear you: the microphone was refused' + (GLASS ? '. Settings → Apps → Safari → Microphone.' : '.') + ')', true); }
+}
+async function hearBreaths() {   // every breath waiting, oldest first; each one heard is let go of only once its words are in the log
+  if (hearBreaths.on) return; hearBreaths.on = true;
+  try { while (BREATHS.length) { const b = BREATHS[0]; say('(Orv listens…)', true); ORV.listening = true;
+      let text = ''; try { text = await transcribe(b.f, false); } catch (e) { ORV.listening = false;
+        offerLine('(Orv could not hear ' + (BREATHS.length > 1 ? BREATHS.length + ' breaths' : 'that') + ': ' + plainWhy(e) + '. They are kept. Tap here to try again.)', () => hearBreaths()); return; }
+      ORV.listening = false; BREATHS.shift(); log({ who: 'k', what: 'voice', text }); SPARE.put(b.key, null);
+      speak(($('line').value + ' ' + text).replace(/\s+/g, ' ').trim()); } }
+  finally { hearBreaths.on = false; } }
+function heardBreath(f) { const key = 'breath:' + Date.now(); BREATHS.push({ f, key }); SPARE.put(key, f); log({ who: 'k', what: 'voice kept', text: '(a breath of ' + Math.round(f.size / 1024) + ' KB, kept until it is heard)' }); hearBreaths(); }
+function holdTapeStop() { const mr = TAPE.mr, st = TAPE.s, bits = TAPE.bits; TAPE.mr = null; TAPE.s = null;
+  EAR.held = false; ORV.listening = false; document.body.classList.remove('holding');
+  if (!mr) { if (st) st.getTracks().forEach(t => t.stop()); return; }
+  const long = Date.now() - TAPE.t0;
+  mr.onstop = () => { try { st.getTracks().forEach(t => t.stop()); } catch (e) {} const type = mr.mimeType || 'audio/mp4', f = new File(bits, 'breath.' + (/webm/.test(type) ? 'webm' : 'm4a'), { type });
+    if (long >= 700 && f.size > 1500) heardBreath(f); };   // shorter than a breath: a tap, not words
+  try { mr.stop(); } catch (e) {} }
 (function ear() {
   $('tapeBtn').addEventListener('click', () => $('tape').click());
   $('tape').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) hearTape(f); });
@@ -1246,13 +1444,13 @@ function drawList2() { const sq = load('inkling.squatch', null), L = $('list2');
     const ink = inkOf(w.textContent); w.style.setProperty('--il', ink.l + 'px'); w.style.setProperty('--ib', ink.b + 'px');
     const l = document.createElement('div'); l.className = 'line'; l.textContent = b[2] || ''; r.append(w, l);
     r.addEventListener('click', () => { const on = !r.classList.contains('sel'); [...L.children].forEach(x => { x.classList.remove('sel'); x.querySelector('.word').style.color = ''; });
-      if (on) { r.classList.add('sel'); w.style.color = K.wheel[(i * 5 + 2) % K.wheel.length]; } });
+      if (on) { r.classList.add('sel'); w.style.color = K.inkText[(i * 5 + 2) % K.inkText.length]; } });
     L.appendChild(r); }); }
 /* the swords swing about the lower LEFT corner, the opposite way to the wheel: the one going leaves to the left (for Squatch)
    or back to the right (for Orv), the one coming swings in from the other side, step for step with the wheel's clicks */
 /* one pair swings about a corner of the screen: the one going turns away, the one coming turns in from the other side */
 async function swing(out, inn, corner, dir, late) {
-  const n = K.turn.steps, cx = corner[0] === 'r' ? innerWidth : 0, cy = corner[1] === 'b' ? innerHeight : 0;
+  const n = still() ? 1 : K.turn.steps, cx = corner[0] === 'r' ? innerWidth : 0, cy = corner[1] === 'b' ? innerHeight : 0;
   inn.hidden = false;
   [out, inn].forEach(el => { const r = el.getBoundingClientRect(); el.style.transformOrigin = (cx - r.left) + 'px ' + (cy - r.top) + 'px'; });
   late = true;   // his word: "too many things rotating around … fade into view rotating into spot a split second before they get there"
@@ -1273,7 +1471,7 @@ function swingWords(to, d) {
 /* THE SWORD'S POP (his word: "when I double tap orv, the sword pops out of screen left and comes back on from there"):
    the old sword slides off the left edge in clicks, the new one slides back in from the same edge */
 async function popSword(out, inn) {
-  const n = K.turn.steps, half = Math.ceil(n / 2), off = el => -(el.getBoundingClientRect().right + 12);
+  const n = still() ? 2 : K.turn.steps, half = Math.ceil(n / 2), off = el => -(el.getBoundingClientRect().right + 12);
   const gone = off(out);
   for (let i = 1; i <= half; i++) { out.style.transform = 'translateX(' + Math.round(gone * i / half) + 'px)'; await sleep(K.turn.stepMs); }
   out.hidden = true; out.style.transform = '';
@@ -1292,12 +1490,12 @@ function swapSwords(to) {
 }
 async function turnWheel() {
   teach.done('wheel');
-  if (WHEEL.busy) return; WHEEL.busy = true; arcClose();
-  const to = WHEEL.front === 'orv' ? 'squatch' : 'orv', from = WHEEL.phi, dest = to === 'squatch' ? 90 : 0, n = K.turn.steps;
+  if (WHEEL.busy) return; WHEEL.busy = true; arcClose(); try {
+  const to = WHEEL.front === 'orv' ? 'squatch' : 'orv', from = WHEEL.phi, dest = to === 'squatch' ? 90 : 0, n = still() ? 1 : K.turn.steps;
   const swing = swapSwords(to);
   click();   // his word: one click a turn, not a bunch
   for (let i = 1; i <= n; i++) { WHEEL.phi = from + (dest - from) * i / n; wheelPlace(); await sleep(K.turn.stepMs); }
-  await swing; WHEEL.front = to; window.WHEEL_FRONT = to; store('inkling.front', to); frontWords(); WHEEL.busy = false;
+  await swing; WHEEL.front = to; window.WHEEL_FRONT = to; store('inkling.front', to); frontWords(); } finally { WHEEL.busy = false; }
 }
 (function wheelBoot() { frontWords(); const sq = WHEEL.front === 'squatch'; { const w = wordsOf(WHEEL.front); if (w.text && !$('say').textContent) { $('say').textContent = w.text; $('say').classList.toggle('stage', !!w.stage); } }
   $('list').hidden = sq; $('list2').hidden = !sq; $('skyO').hidden = sq; $('skyS').hidden = !sq; $('salmon').hidden = sq; $('cig').hidden = !sq;
@@ -1330,8 +1528,8 @@ let MODE = 'talk';
     SIDE = (f - lo) * W <= KD.stick ? 'left' : (hi - f) * W <= KD.stick ? 'right' : null;
     if (SIDE === 'left') f = lo; if (SIDE === 'right') f = hi;   // flush against the side
     A.style.setProperty('--d', (f * 100).toFixed(2) + '%');
-    const was = MODE; MODE = SIDE === 'right' ? 'action' : 'talk'; A.classList.toggle('open', SIDE === 'left'); A.classList.toggle('action', MODE === 'action');
-    $('mode').textContent = MODE === 'action' ? 'ACTION' : ''; if (A.classList.contains('open')) drawChat();
+    const was = MODE, wasOpen = A.classList.contains('open'); MODE = SIDE === 'right' ? 'action' : 'talk'; A.classList.toggle('open', SIDE === 'left'); A.classList.toggle('action', MODE === 'action');
+    $('mode').textContent = MODE === 'action' ? 'ACTION' : ''; if (!wasOpen && A.classList.contains('open')) drawChat();   // the whole talk is drawn once, on the way in
     if (typeof drawCross === 'function') drawCross(); if (keep) store('inkling.d', f); };
   let drag = false, x0 = 0, f0 = 0, lastTap = 0, y0 = 0, e0 = 0, E = 0.45;
   /* the horizontal line: a share of the main area's height; it may rise all the way up the screen */
@@ -1343,7 +1541,7 @@ let MODE = 'talk';
   addEventListener('resize', () => setE(E, false));
   setD(load('inkling.d', KD.dflt), false); setE(load('inkling.e', 0.45), false);
   STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; y0 = e.clientY; e0 = E; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; try { STAR.setPointerCapture(e.pointerId); } catch (x) {} });
-  STAR.addEventListener('pointermove', e => { if (!drag) return; const r = M.getBoundingClientRect(); setD(f0 + (e.clientX - x0) / r.width, false); setE(e0 + (e.clientY - y0) / r.height, false); });   // free moving: the cross goes where the crown goes
+  STAR.addEventListener('pointermove', e => { if (window._crown && window._crown.wake) window._crown.wake(); if (!drag) return; const r = M.getBoundingClientRect(); setD(f0 + (e.clientX - x0) / r.width, false); setE(e0 + (e.clientY - y0) / r.height, false); });   // free moving: the cross goes where the crown goes
   STAR.addEventListener('pointerup', e => { if (!drag) return; drag = false; const r = M.getBoundingClientRect(), f = f0 + (e.clientX - x0) / r.width;
     const t = Date.now(); if (Math.abs(e.clientX - x0) < 4 && Math.abs(e.clientY - y0) < 4 && t - lastTap < 350) { lastTap = 0; openShare(); return; } lastTap = t; setD(f, true); setE(e0 + (e.clientY - y0) / r.height, true); });   // double-tap: the share/save
 })();
@@ -1355,7 +1553,7 @@ let MODE = 'talk';
 function bringHome() {
   const got = load('inkling.brought', {}) || {}, have = new Set(live().map(t => (t.word + '|' + (t.text || '')).toLowerCase())); let added = 0;
   const add = (src, id, word, text, done, at, sub, dAt) => { const key = src + ':' + id;
-    if (got[key]) { const t = ST.tasks.find(x => x.src === key); if (t && sub) { t.sub = sub.slice(0, 60); added += 0; } return; } got[key] = 1;
+    if (got[key]) { const t = ST.tasks.find(x => x.src === key); if (t && sub && !t.steps) { t.sub = sub.slice(0, 60); } return; } got[key] = 1;   // the steps Orv broke it into are never overwritten
     const w = String(word || '').trim().split(/\s+/)[0].slice(0, 24), x = String(text || '').slice(0, 600); if (!w) return;
     const sig = (w + '|' + x).toLowerCase(); if (have.has(sig)) return; have.add(sig);
     ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: w, text: x, at: at && !isNaN(new Date(at)) ? new Date(at).toISOString() : null, done: !!done, doneAt: done && dAt && !isNaN(Date.parse(dAt)) ? new Date(dAt).toISOString() : null, from: src, src: key, sub: sub ? sub.slice(0, 60) : undefined }); added++; };
@@ -1385,17 +1583,21 @@ if (!/#k=/.test(location.hash)) bringHome();
 /* ═══ THE FRESH OPEN (his word: "I am not seeing changes reflected on app, try again"). A phone keeps the site's files for a
    while, and a Home Screen app longer. So on every open, and every return to it, the app asks version.json (never cached)
    which build stands; if it is not this one, it opens that build's own address, so every file comes fresh. Once per build. ═══ */
+const busyNow = () => BUSY || RISING || WHEEL.busy || EAR.held || ORV.listening || UNDO || (window.BREATHS && BREATHS.length) || $('line').value.trim() || !$('set').hidden || document.getElementById('inkEye') || document.getElementById('inkShare');
 async function freshOpen() {
+  if (busyNow()) { freshOpen.later = true; return; }   // never mid-sentence, mid-offer or mid-breath
   try { const j = await (await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' })).json(); if (!j || !j.v || j.v === window.INK_V) return;
+    if (busyNow()) { freshOpen.later = true; return; }
     const tried = sessionStorage.getItem('inkling.fresh'); if (tried === j.v) return; sessionStorage.setItem('inkling.fresh', j.v);
     location.replace(location.pathname + '?v=' + j.v + location.hash); } catch (e) {}
 }
 freshOpen(); document.addEventListener('visibilitychange', () => { if (!document.hidden) freshOpen(); });
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('./sw.js').catch(() => {});   // opens with no signal (the iOS engineer)
 
 /* ═══ BOOT: #say= from the Tell Orv Shortcut arrives as if typed ═══ */
 render();
 function fromHash() { const m = /^#say=(.*)$/s.exec(location.hash); if (!m) return; let w = ''; try { w = decodeURIComponent(m[1].replace(/\+/g, ' ')); } catch (e) { w = ''; }
-  history.replaceState(null, '', location.pathname + location.search); if (w.trim()) speak(w); }
+  history.replaceState(null, '', location.pathname + location.search); if (w.trim()) speak(w, { via: 'link' }); }
 fromHash(); window.addEventListener('hashchange', fromHash);
 drawChat();
 /* ═══ SETTINGS, behind the Salmon of Knowledge (top right). Minimal lines: key · coin (paid doors only) · model.
@@ -1437,7 +1639,7 @@ async function setTest() {
   if (!v) { setSay('Paste your key on the key line first.', 'bad'); return $('setKey').focus(); }
   SET_BUSY = true; $('setTest').textContent = 'testing…'; setSay('asking the doors whose key this is…');
   try {
-    const guess = doorOf(v), order = guess ? [guess].concat(TRY.filter(x => x !== guess)) : TRY;
+    const guess = doorOf(v), order = guess ? [guess] : TRY;   // a key with a known stamp goes to its own door and no other
     let door = null, firstWhy = '';
     for (const d of order) {
       try { const r = await fetchT(DOORS[d].list, { headers: headers(d, v) }); const o = await r.json().catch(() => ({}));
@@ -1534,9 +1736,34 @@ salmonCall();
     catch (e) { SPARE.hold = false; return; }
     location.reload(); return; }
   SPARE.hold = false; SPARE.save();
-  if (needKey) { salmonCall(); typeSay('(Orv points at the salmon.) Feed him a key, Groq or Gemini, both free, and I can talk. Until then, tell me a thing and I will write it on the sword myself.', true); }
+  if (needKey && !UNDO) { salmonCall(); typeSay('(Orv points at the salmon.) Feed him a key, Groq or Gemini, both free, and I can talk. Until then, tell me a thing and I will write it on the sword myself.', true); }
 })();
-setTimeout(() => { if (BUSY || !$('set').hidden || UNDO) return;
+/* BACK: when he returns after twenty minutes away, Orv says where he was (the research: an interruption wipes working memory; the
+   cure is a cue outside the head at the moment of return). Returns are counted in the log; nothing is ever counted against him. */
+K.back = { min: 20 };
+function seen() { try { localStorage.setItem('inkling.seen', String(Date.now())); } catch (e) {} }
+function welcome() { let was = 0; try { was = +(localStorage.getItem('inkling.seen') || 0); } catch (e) {} seen();
+  const away = Date.now() - was; if (!was || away < K.back.min * 60000 || BUSY || UNDO || !$('set').hidden) return false;
+  const o = theOne(); if (!o) return false; const st = o.steps && o.sub && o.sub[o.subDone || 0];
+  say('(Orv looks up.) Back. You were on ' + o.word + (st ? '. First stone: ' + st : '') + '.', true); log({ who: 'k', what: 'returned', away: Math.round(away / 60000) }); return true; }
+document.addEventListener('visibilitychange', () => { if (document.hidden) seen(); else welcome(); });
+addEventListener('pagehide', seen);
+const WELCOMED = welcome();
+(async () => { try { const ks = (await SPARE.keys('breath:')).sort(); for (const k of ks) { const f = await SPARE.rec(k); if (f && f.size) BREATHS.push({ f, key: k }); }
+  if (BREATHS.length) offerLine('(' + BREATHS.length + (BREATHS.length > 1 ? ' breaths are' : ' breath is') + ' still waiting to be heard. Tap here.)', () => hearBreaths()); } catch (e) {} })();
+/* the line he was typing comes back after a reload or iOS closing the app */
+(() => { const dr = load('inkling.draft', null); if (dr && dr.text && !$('line').value) setLine(dr.text); })();
+/* a full drawer's overflow comes home to the log when there is room again */
+(async () => { try { const ol = await SPARE.rec('overlog'); if (!Array.isArray(ol) || !ol.length) return; const L = load('inkling.log', []), kf = e => e && (e.at + '|' + e.who + '|' + e.what + '|' + (e.text || e.id || '')), seen = new Set(L.map(kf));
+  ol.forEach(e => { if (e && !seen.has(kf(e))) { L.push(e); seen.add(kf(e)); } }); L.sort((a, b) => String(a.at).localeCompare(String(b.at))); if (store('inkling.log', L)) SPARE.put('overlog', []); } catch (e) {} })();
+/* the sound wakes with his touch (a sound first made outside a touch would leave it asleep all sitting) */
+document.addEventListener('pointerup', () => { try { const A = click.a || (click.a = new (window.AudioContext || window.webkitAudioContext)()); if (A.state !== 'running') A.resume().catch(() => {}); } catch (e) {} }, { capture: true, passive: true });
+setTimeout(() => { if (BUSY || !$('set').hidden || UNDO || WELCOMED) return;
+  /* the satchel's nudge: a week without a copy off the phone, Orv says so once that day (never a pop-up, never twice a day) */
+  const savedAt = Date.parse(load('inkling.savedAt', '') || '') || 0, today = new Date().toDateString();
+  if (live().length >= 5 && Date.now() - savedAt > 7 * 864e5 && load('inkling.nudged', '') !== today) { store('inkling.nudged', today);
+    const days = savedAt ? Math.floor((Date.now() - savedAt) / 864e5) : 0;
+    return say('(Orv taps the satchel.) ' + (days ? days + ' days since a copy of your kingdom left this phone.' : 'No copy of your kingdom has ever left this phone.') + ' Double-tap the crown, then save.', true); }
   const lessons = [['swipe', () => open().length > 0], ['crown', () => krixHeld() > 0], ['hold', () => load('inkling.log', []).some(e => e && e.who === 'k' && e.what === 'said' && String(e.text).split(/\s+/).length > 12)], ['wheel', () => OPENS >= 3]];
   for (const [k, ok] of lessons) if (!TAUGHT[k] && ok()) { teach(k); break; } }, 2600);   // Orv teaches one verb an open, never two
 if (HAD && HAD_D) {

@@ -32,6 +32,8 @@
   const WHEEL = ['#FF7A12', '#FF12A1', '#FA12FF', '#9212FF', '#2A12FF', '#126EFF', '#12D6FF', '#12FFC2', '#12FF5A', '#22FF12', '#8AFF12', '#F2FF12'];
   function hashOf(name) { let h = 0; const s = String(name == null ? '' : name); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
   const colourOf = name => WHEEL[hashOf(name) % WHEEL.length];
+  const TEXT = ['#12D6FF', '#12FFC2', '#12FF5A', '#22FF12', '#8AFF12', '#F2FF12'];   // a word wears only a colour that reads on the grey (4.5:1); stars and lines keep all twelve
+  const textOf = name => TEXT[hashOf(name) % TEXT.length];
 
   /* ── the greys (the room's own, read live) ── */
   function greys() {
@@ -107,7 +109,7 @@
       const lo = px / 2 + 1, hi = S.h - px / 2 - 1, clear = y => !S.hits.some(h => tx < h.x1 && tx + w > h.x0 && y - px / 2 - 2 < h.y1 - 4 && y + px / 2 + 2 > h.y0 + 4);
       let ty = Math.max(lo, Math.min(hi, sy));
       for (let k = 1, y0 = ty; !clear(ty) && k < 12; k++) { const y = y0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (px + 3); if (y >= lo && y <= hi) ty = y; }
-      x.strokeStyle = G.ground; x.lineWidth = 3; x.strokeText(s.name, tx, ty); x.fillStyle = big ? colourOf(s.name) : G.ink; x.fillText(s.name, tx, ty);
+      x.strokeStyle = G.ground; x.lineWidth = 3; x.strokeText(s.name, tx, ty); x.fillStyle = big ? textOf(s.name) : G.ink; x.fillText(s.name, tx, ty);
       S.hits.push({ id: s.id, x0: tx - 3, x1: tx + w + 3, y0: ty - px / 2 - 4, y1: ty + px / 2 + 4 }); });
     x.globalAlpha = 1;
   }

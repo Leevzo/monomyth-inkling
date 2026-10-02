@@ -4,5 +4,5 @@
 cd "$(dirname "$0")"
 OLD=$(sed -E 's/.*"v":"([0-9]+)".*/\1/' version.json)
 NEW=$(date +%s)
-for f in index.html crown.html share.js version.json; do perl -pi -e "s/\Q$OLD\E/$NEW/g" "$f"; done
+for f in index.html crown.html share.js read.html version.json; do perl -pi -e "s/\Q$OLD\E/$NEW/g" "$f"; done
 echo "build $OLD -> $NEW"
