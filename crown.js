@@ -6,6 +6,10 @@
      "double tap opens it and that's your qr code, with orv in the center. that's the share/save" (share.js)
      "it seems liek the grey pixels are contained to a square, I want them to be able to move anywhere on screen if
       pushed there" — so the gems are drawn on the whole screen (opts.overlay), never inside a box.
+     "the crown can have greyed out pixels intermittent as it gets farther away along the line" … "no need for fixed pixels
+      on the borders, I want them to be part of the crown" — so THE ARMS: grey crown pixels running out from the heart
+      along the cross (up, down, and to the right, to opts.bounds()), intermittent and paler the farther they reach, and
+      they lag like every other gem.
 
    · THE PATTERN is his, cell for cell (crown.json); nothing here redraws it. Its empty heart is crown.json "heart".
    · THE GEMS are its pixels. They light from the heart outward (ties: counter-clockwise from the top). A gem not yet
@@ -25,7 +29,10 @@
     boxLag: 14,          // without the overlay, a gem never trails further than its canvas allows (min of this and pad)
     secondMs: 1000,      // the colours step this often
     cycle: ['#FF0000', '#FF8000', '#70B300', '#2D8686', '#00A0FF', '#A640BF'],   // the crown's six, in hue order
-    quiet: null          // the unlit gem: the page's --faint grey when null
+    quiet: null,         // the unlit gem: the page's --faint grey when null
+    armGap: 5,           // along an arm, every pixel at first; one in two after this many; one in three after twice this …
+    armFade: 70,         // an arm pixel this many crown pixels out is at its palest
+    armMin: 0.16, armMax: 0.85   // the arms' opacity, far and near
   };
   async function load(url) { const r = await fetch(url || './crown.json'); return r.json(); }
 
@@ -65,6 +72,17 @@
       return { r, c, base: Math.max(0, KNOBS.cycle.indexOf(hex.toUpperCase())), d: Math.hypot(dx, dy), ang, ox: 0, oy: 0, wait: 0 };
     }).sort((a, b) => a.d - b.d || a.ang - b.ang);
     const st = { count: opts.count == null ? gems.length : opts.count, shown: null, step: 0, sec: null, last: null, acc: [0, 0], raf: 0, t: 0, alive: true };
+    /* THE ARMS: grey pixels out from the heart along the cross, part of the crown (they lag like gems) */
+    const ARMS = [], armOf = {};
+    const arm = (dir, k) => { const key = dir + k; if (armOf[key]) return armOf[key];
+      const start = dir === 'u' ? cy + 1 : dir === 'd' ? H - cy : W - cx;   // just past the crown's own edge
+      const a = { dir, k, r: dir === 'u' ? cy - start - k : dir === 'd' ? cy + start + k : cy, c: dir === 'r' ? cx + start + k : cx,
+                  d: start + k, ox: 0, oy: 0, wait: 0, on: k % (1 + Math.floor(k / KNOBS.armGap)) === 0,
+                  alpha: Math.max(KNOBS.armMin, KNOBS.armMax - k / KNOBS.armFade) };
+      ARMS.push(a); armOf[key] = a; return a; };
+    const reach = rect => { if (!opts.bounds || !rect || !rect.width) return { u: 0, d: 0, r: 0 };
+      const b = opts.bounds(), hx = rect.left + (PAD + cx + 0.5) * S, hy = rect.top + (PAD + cy + 0.5) * S;
+      return { u: Math.max(0, Math.floor((hy - b.top) / S) - (cy + 1)), d: Math.max(0, Math.floor((b.bottom - hy) / S) - (H - cy)), r: Math.max(0, Math.floor((b.right - hx) / S) - (W - cx)) }; };
 
     function digits(g, X, Y, n) {
       const s = String(Math.max(0, Math.floor(n))), k = s.length;
@@ -82,6 +100,10 @@
         const hide = root.document.body.classList.contains('setting') || !rect || !rect.width; if (hide) return;
         X = Math.round(rect.left); Y = Math.round(rect.top); }
       else own.clearRect(0, 0, canvas.width, canvas.height);
+      if (OV && opts.bounds) { const R = reach(rect); g.fillStyle = q;
+        ['u', 'd', 'r'].forEach(dir => { for (let k = 0; k < R[dir]; k++) { const a = arm(dir, k); if (!a.on) continue;
+          g.globalAlpha = a.alpha; g.fillRect(X + (PAD + a.c + a.ox) * S, Y + (PAD + a.r + a.oy) * S, S, S); } });
+        g.globalAlpha = 1; }
       gems.forEach((gm, i) => { g.fillStyle = i < st.count ? KNOBS.cycle[(gm.base + st.step) % KNOBS.cycle.length] : q;
         g.fillRect(X + (PAD + gm.c + gm.ox) * S, Y + (PAD + gm.r + gm.oy) * S, S, S); });
       digits(g, X, Y, st.shown == null ? st.count : st.shown);
@@ -91,7 +113,7 @@
       st.acc[0] += dx / S; st.acc[1] += dy / S;
       const mx = Math.trunc(st.acc[0]), my = Math.trunc(st.acc[1]); if (!mx && !my) return;
       st.acc[0] -= mx; st.acc[1] -= my;
-      gems.forEach(g => { g.ox = Math.max(-LAG, Math.min(LAG, g.ox - mx)); g.oy = Math.max(-LAG, Math.min(LAG, g.oy - my));
+      gems.concat(ARMS).forEach(g => { g.ox = Math.max(-LAG, Math.min(LAG, g.ox - mx)); g.oy = Math.max(-LAG, Math.min(LAG, g.oy - my));
         g.wait = Math.max(g.wait, Math.round(g.d * KNOBS.lagPerPx)); });
     }
     const home = v => v === 0 ? 0 : v - Math.sign(v) * Math.min(Math.abs(v), 1 + Math.floor(Math.abs(v) / KNOBS.stride));
@@ -102,7 +124,7 @@
       if (r.width) st.last = [r.left, r.top];
       const tick = Math.floor(ts / KNOBS.stepMs);
       if (tick !== st.t) { st.t = tick;
-        gems.forEach(g => { if (!g.ox && !g.oy) return; if (g.wait > 0) { g.wait--; return; } g.ox = home(g.ox); g.oy = home(g.oy); }); }
+        gems.concat(ARMS).forEach(g => { if (!g.ox && !g.oy) return; if (g.wait > 0) { g.wait--; return; } g.ox = home(g.ox); g.oy = home(g.oy); }); }
       const sec = Math.floor(Date.now() / KNOBS.secondMs); if (sec !== st.sec) { st.sec = sec; st.step = (st.step + 1) % KNOBS.cycle.length; }
       draw(r); st.raf = requestAnimationFrame(frame);
     }

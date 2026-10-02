@@ -141,12 +141,11 @@ body.setting #wheel { visibility: hidden; }
 #left { position: absolute; left: 0; top: 0; bottom: 0; width: var(--d, 58%); display: flex; flex-direction: column; }
 #list2 { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding-bottom: 8px; }
 #div { position: absolute; left: var(--d, 58%); top: 0; bottom: 0; width: 0; z-index: 6; }
-#star.crowned { top: var(--e, 45%); }
+#star.crowned { top: var(--e, 45%); transform: translate(-50%, calc(-50% + 7px)); }   /* the heart (row 8 of 19, ×7) sits on the cross, not the canvas middle */
 .skyp { position: absolute; left: var(--d, 58%); right: 0; top: 0; height: max(0px, var(--e, 45%)); overflow-y: auto; overflow-x: hidden; padding: 2px 0 6px 12px; }
 .skyp .sky-facts p { margin: 6px 0 0; font-size: var(--small); color: var(--dim); line-height: 1.4; }
 .skyp .sky-facts p.h { color: var(--ink); }
 #right { position: absolute; left: var(--d, 58%); right: 0; top: max(0px, var(--e, 45%)); bottom: 0; padding-left: 10px; }
-#cross { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 0; }
 #keep { display: none !important; }   /* his word: take the small keep word away (the crown's double-tap is the save) */
 #sparks { font-size: var(--small); color: var(--dim); margin-top: 2px; }
 #sparks:empty { display: none; }
@@ -196,7 +195,6 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
 <div id="app">
   <div id="one"><div id="oneWord"></div><div id="oneLine"></div><div id="sparks"></div><div id="clock"></div></div>
   <div id="main">
-    <canvas id="cross" aria-hidden="true"></canvas>
     <div id="left"><div id="list" aria-label="your list, in order of priority"></div><div id="list2" hidden aria-label="Squatch's sword: his day"></div></div>
     <div id="skyO" class="skyp" aria-label="Orv's constellation: your kingdom"></div><div id="skyS" class="skyp" hidden aria-label="Squatch's constellation"></div>
     <div id="div" role="separator" aria-label="drag: far left shows your words, far right is action mode"></div>
@@ -892,7 +890,7 @@ let MODE = 'talk';
      follow with their clicky lag. Double-tap: the share/save (share.js). The word comes back only if the crown cannot load. */
   D.innerHTML = '<span id="star" class="crowned" aria-label="the crown: drag to move the divide, double-tap for your kingdom as a code"><canvas id="crown"></canvas></span>';
   const STAR = $('star');
-  (window.CROWN ? CROWN.load('./crown.json') : Promise.reject(new Error('no crown'))).then(data => { window._crown = CROWN.make($('crown'), data, { scale: 7, pad: 3, count: 0, overlay: true }); render(); })
+  (window.CROWN ? CROWN.load('./crown.json') : Promise.reject(new Error('no crown'))).then(data => { window._crown = CROWN.make($('crown'), data, { scale: 7, pad: 3, count: 0, overlay: true, bounds: () => { const m = $('main').getBoundingClientRect(); return { top: m.top, bottom: m.bottom, right: innerWidth }; } }); render(); })
     .catch(() => { STAR.classList.remove('crowned'); STAR.textContent = 'INKLING'; });
   let dark = 0;
   const light = () => { clearTimeout(dark); STAR.classList.add('lit'); };
@@ -907,18 +905,9 @@ let MODE = 'talk';
   /* the horizontal line: a share of the main area's height; it may rise all the way up the screen */
   const setE = (e, keep) => { const r = M.getBoundingClientRect(), lo = (8 - r.top) / Math.max(1, r.height); E = Math.max(lo, Math.min(1 - 24 / Math.max(1, r.height), e));
     A.style.setProperty('--e', (E * 100).toFixed(2) + '%'); drawCross(); if (keep) store('inkling.e', E); };
-  /* THE CROSS, drawn: grey pixels along both lines, solid by the crown, falling away to intermittent and paler the farther they go */
-  function drawCross() { const c = $('cross'), r = M.getBoundingClientRect(), dpr = devicePixelRatio || 1, w = r.width, h = r.height;
-    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.style.width = w + 'px'; c.style.height = h + 'px'; }
-    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-    const x = Math.round(D.getBoundingClientRect().left - r.left), y = Math.round(E * h), P = 3, dim = getComputedStyle(document.documentElement).getPropertyValue('--dim').trim() || '#a9a9a9';
-    const run = (len, put) => { for (let k = 0; k * P < len; k++) { const d = k * P, gap = 1 + Math.floor(d / 34); if (k % gap) continue;
-      g.globalAlpha = Math.max(0.14, 0.8 - d / 520); put(d); } };
-    g.fillStyle = dim;
-    run(Math.max(0, y), d => g.fillRect(x - 1, y - d - P, P, P));                 // up from the crown
-    run(Math.max(0, h - y), d => g.fillRect(x - 1, y + d, P, P));                 // down from the crown
-    if (y >= 0 && y <= h) run(Math.max(0, w - x), d => g.fillRect(x + d, y - 1, P, P));   // right, the right half only
-    g.globalAlpha = 1; }
+  /* the cross is drawn by the crown itself now (crown.js THE ARMS): his word, "no need for fixed pixels on the borders, I want them
+     to be part of the crown" */
+  function drawCross() {}
   addEventListener('resize', () => setE(E, false));
   setD(load('inkling.d', KD.dflt), false); setE(load('inkling.e', 0.45), false);
   STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; y0 = e.clientY; e0 = E; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; try { STAR.setPointerCapture(e.pointerId); } catch (x) {} });

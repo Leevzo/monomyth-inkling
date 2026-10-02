@@ -268,7 +268,7 @@
                                  'color-interpolation-filters': 'sRGB' }, defs);
     el('feFuncA', { type: 'discrete', tableValues: '0 1' }, el('feComponentTransfer', {}, crisp));
     const g0 = el('g', { transform: 'translate(' + pf(L.ox) + ' ' + pf(L.oy) + ')' }, svg);
-    el('path', { d: bedPath(L), fill: 'none', stroke: G.bed, 'stroke-width': 1, 'shape-rendering': 'crispEdges', 'pointer-events': 'none' }, g0);
+    /* no mesh drawn (his word, 2026-10-01: "I don't need a hexagonal mesh, everything on the page should be anchored to it already") */
     L.caps.forEach(c => { el('text', { x: c.x, y: c.y, 'font-size': KNOBS.capPx, fill: G.faint, 'pointer-events': 'none', 'letter-spacing': '0.08em' }, g0).textContent = c.word; });
     const sel = STATE.sel && L.items.find(it => it.id === STATE.sel);
     const touched = new Set(sel ? partnersOf(W, sel).concat([sel.id]) : []);
