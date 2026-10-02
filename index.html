@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790914493';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790914493"></script>
-<script src="./share.js?v=1790914493"></script>
-<script src="./sky.js?v=1790914493"></script>
+<script>window.INK_V = '1790915048';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790915048"></script>
+<script src="./share.js?v=1790915048"></script>
+<script src="./sky.js?v=1790915048"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790914493">
+<link rel="stylesheet" href="./fonts.css?v=1790915048">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -284,13 +284,15 @@ function fromKingdom() { const m = /#k=([A-Za-z0-9_-]+)/.exec(location.hash); if
   INKSHARE.decode(m[1]).then(o => {
     if (!o || o.v !== 1 || !Array.isArray(o.t)) throw new Error('not a kingdom');
     const tasks = o.t.filter(Array.isArray).slice(0, 200).map((x, i) => ({ id: 't' + (i + 1).toString(36), word: String(x[0] || '').trim().split(/\s+/)[0].slice(0, 24) || 'thing',
-      text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3], doneAt: x[3] ? nowIso() : null }));
+      text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3], doneAt: x[3] ? nowIso() : null,
+      sub: Array.isArray(x[4]) ? x[4].slice(0, 60).map(y => String(y).slice(0, 300)) : undefined }));   // what hangs under it, read in Orv's upper right
     const sq = o.sq && Array.isArray(o.sq.c) && Array.isArray(o.sq.l) && Array.isArray(o.sq.s) ? o.sq : null;   // Squatch's constellation, his own sword
     /* only now, with the new kingdom whole: the old one is set aside first, and if the phone will not keep it aside, nothing changes */
     const was = load('inkling.state', null), wasSq = load('inkling.squatch', null);
     if ((was && Array.isArray(was.tasks) && was.tasks.length) || wasSq)
       if (!store('inkling.archive.' + Date.now(), { state: was, squatch: wasSq, log: load('inkling.log', []) })) throw new Error('this phone would not keep the old kingdom aside');
     if (sq) store('inkling.squatch', sq);
+    try { localStorage.removeItem('inkling.brought'); } catch (e) {}   // the other glasses are read in again on the new kingdom (the same words never double)
     ST = { v: 1, tasks, one: Number.isInteger(o.one) && tasks[o.one] ? tasks[o.one].id : null, n: tasks.length }; save();   // in memory too, so nothing writes the old one back
     const L = load('inkling.log', []); L.push({ at: nowIso(), who: 'k', what: 'a kingdom arrived', text: (o.from || 'a link') + ' · ' + tasks.length + ' things' }); store('inkling.log', L);
     setTimeout(() => location.reload(), 350);
@@ -300,7 +302,8 @@ fromKingdom(); window.addEventListener('hashchange', fromKingdom);   // a fresh 
 /* the kingdom as a link: the share/save carries this */
 async function kingdomLink() {
   const rows = live(), one = theOne();
-  const t = rows.map(x => { const a = [x.word, x.text || '']; if (x.at || x.done) a.push(x.at || 0); if (x.done) a.push(1); return a; });
+  const t = rows.map(x => { const a = [x.word, x.text || ''], sub = x.sub && x.sub.length ? x.sub : null;
+    if (x.at || x.done || sub) a.push(x.at || 0); if (x.done || sub) a.push(x.done ? 1 : 0); if (sub) a.push(sub); return a; });
   const sq = load('inkling.squatch', null), o = { v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t }; if (sq) o.sq = sq;
   return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }

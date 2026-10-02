@@ -54,7 +54,7 @@
      beats in any order until it holds them all, then checks the whole (crc16) before anything is taken in. ═══ */
   const FOUR = ['#FF0000', '#70B300', '#00A0FF', '#A640BF'];          // red · green · blue · magenta: the crown's four farthest apart
   const HUES = [0, 82, 202, 285];                                     // their hues, for the camera's eye
-  const CK = { beatMs: 260, chunk: 15, ground: '#1c1c1c', minSat: 0.32, minVal: 0.22, tilts: [0, 2, -2, 4, -4, 6, -6] };   // a beat: which · how many · 15 bytes · a two-byte check
+  const CK = { beatMs: 200, chunk: 15, ground: '#1c1c1c', minSat: 0.32, minVal: 0.22, tilts: [0, 2, -2, 4, -4, 6, -6] };   // a beat: which · how many · 15 bytes · a two-byte check
   let CC = null;
   async function crownCells() { if (CC) return CC; const d = await (await fetch('./crown.json?v=' + (root.INK_V || ''))).json();
     CC = { w: d.w, h: d.h, cells: d.cells.map(x => [x[0], x[1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]) }; return CC; }
