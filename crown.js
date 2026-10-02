@@ -1,51 +1,39 @@
 /* ═══ crown.js — THE CROWN: the brand, the gems, the adjuster ═══
-   His word, 2026-10-01 (with the pattern ~/Downloads/bead-pattern(1).png, "the crown", 76 pixels, 6 colours):
-     "I'm thinking that's the adjuster, up and down — that will be the brand. the number in the middle can be the
-      total of gems, and pixels are the gems themselves, growing from the middle, when you move it the gems follow you
-      with clicky lag, and they change once a second."
-     "double tap opens it and that's your qr code, with orv in the center. that's the share/save" (share.js)
-     "it seems liek the grey pixels are contained to a square, I want them to be able to move anywhere on screen if
-      pushed there" — so the gems are drawn on the whole screen (opts.overlay), never inside a box.
-     "the crown can have greyed out pixels intermittent as it gets farther away along the line" … "no need for fixed pixels
-      on the borders, I want them to be part of the crown" — so THE ARMS: grey crown pixels running out from the heart
-      along the cross (up, down, and to the right, to opts.bounds()), intermittent and paler the farther they reach, and
-      they lag like every other gem.
-
-   · THE PATTERN is his, cell for cell (crown.json); nothing here redraws it. Its empty heart is crown.json "heart".
-   · THE GEMS are its pixels. They light from the heart outward (ties: counter-clockwise from the top). A gem not yet
-     earned stands in the quiet grey, so the crown's shape is always there.
-   · THE NUMBER sits in the heart (3 × 5 crown pixels): one digit fills it exactly; more digits share it at a finer dot.
-   · THE LAG: when the crown moves, every gem stays where it was and walks home a click at a time, the far ones setting
-     off later; a gem flung far walks home in bigger clicks. With the overlay, a push can fling them anywhere on screen.
-   · ONCE A SECOND every lit gem steps to the next of the crown's own six colours.
-   Every tunable number is in KNOBS. Read only: it never writes anything.
+   His words, 2026-10-01 (the pattern ~/Downloads/bead-pattern(1).png, "the crown", 76 cells, 6 colours):
+     "the number in the middle can be the total of gems, and pixels are the gems themselves, growing from the middle, when
+      you move it the gems follow you with clicky lag, and they change once a second."
+     "I want them to be able to move anywhere on screen if pushed there" — drawn on the whole screen (opts.overlay).
+     "the crown can have greyed out pixels intermittent as it gets farther away along the line … I want them to be part of
+      the crown" — THE ARMS, grey crown pixels out from the heart along the cross, lagging like gems.
+     "take away the gray pixels around the number just add the colors of the gems. I want them to hit randomly fan out
+      from the middle and change position once a second" — no grey crown any more: only the gems, in their colours; each
+      second they burst out of the heart to new places among the crown's own cells.
+     "the [number] flash on one second off another second and if it's more than one digit, it will flash the first one for
+      a second the second one for a second and the third one will be a space" — one digit at a time, filling the heart.
+   · THE PATTERN is his, cell for cell (crown.json): its cells are the only places a gem may land; its heart is "heart".
+   · Every tunable number is in KNOBS. Read only: it never writes anything.
    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 (function (root) {
   'use strict';
   const KNOBS = {
-    stepMs: 30,          // a trailing gem takes a step this often: the click
-    lagPerPx: 0.35,      // his words: "follow immediately, not after a delay", then "slightly more delay and scatter" (was 1.4, then 0)
-    scatter: 3,          // each gem waits up to this many more clicks of its own before it sets off
-    fling: 0.45,         // and is thrown up to this much farther than the push (the far gems the most): the scatter
-    stride: 3,           // a gem this many crown pixels away walks home in 2-pixel clicks, twice this in 3, and so on
-    boxLag: 14,          // without the overlay, a gem never trails further than its canvas allows (min of this and pad)
-    secondMs: 1000,      // the colours step this often
-    cycle: ['#FF0000', '#FF8000', '#70B300', '#2D8686', '#00A0FF', '#A640BF'],   // the crown's six, in hue order
-    quiet: null,         // the unlit gem: the page's --faint grey when null
-    armGap: 5,           // along an arm, every pixel at first; one in two after this many; one in three after twice this …
-    armFade: 70,         // an arm pixel this many crown pixels out is at its palest
-    armMin: 0.16, armMax: 0.85   // the arms' opacity, far and near
+    stepMs: 30,          // a travelling gem takes a step this often: the click
+    lagPerPx: 0.35,      // ticks of wait per crown pixel from the heart before a gem follows a move ("slightly more delay")
+    scatter: 3,          // each gem waits up to this many more clicks of its own ("and scatter")
+    fling: 0.45,         // and is thrown up to this much farther than the push, the far ones most
+    stride: 3,           // a gem this many crown pixels away travels in 2-pixel clicks, twice this in 3 …
+    secondMs: 1000,      // the gems take new places, and the number its next digit, this often
+    burst: 4,            // on each second's burst a gem leaves the heart up to this many clicks after the first
+    cycle: ['#FF0000', '#FF8000', '#70B300', '#2D8686', '#00A0FF', '#A640BF'],   // the crown's six
+    armGap: 5, armFade: 70, armMin: 0.16, armMax: 0.85, armGrey: null   // THE ARMS (armGrey: the page's --faint when null)
   };
   async function load(url) { const r = await fetch(url || './crown.json'); return r.json(); }
 
-  /* the 3×5 digits, drawn as pixels */
   const DIG = { 0: ['111', '101', '101', '101', '111'], 1: ['010', '110', '010', '010', '111'], 2: ['111', '001', '111', '100', '111'],
                 3: ['111', '001', '111', '001', '111'], 4: ['101', '101', '111', '001', '001'], 5: ['111', '100', '111', '001', '111'],
                 6: ['111', '100', '111', '101', '111'], 7: ['111', '001', '010', '010', '010'], 8: ['111', '101', '111', '101', '111'],
                 9: ['111', '101', '111', '001', '111'] };
   const css = n => (getComputedStyle(root.document.documentElement).getPropertyValue(n) || '').trim();
 
-  /* the whole screen, for gems that are pushed anywhere (one per page) */
   function sky() {
     let c = root.document.getElementById('crownSky');
     if (!c) { c = root.document.createElement('canvas'); c.id = 'crownSky'; c.setAttribute('aria-hidden', 'true');
@@ -66,60 +54,65 @@
     canvas.style.imageRendering = 'pixelated';
     const own = canvas.getContext('2d'); own.imageSmoothingEnabled = false;
     const OV = opts.overlay ? sky() : null;
-    const LAG = OV ? Infinity : Math.min(KNOBS.boxLag, PAD);
+    const LAG = OV ? Infinity : PAD;
     const hr = Array.isArray(data.heart) ? data.heart : [Math.round((H - 1) / 2) - 2, Math.round((W - 1) / 2) - 1];
     const heart = { r0: hr[0], c0: hr[1], rows: 5, cols: 3 }, cy = heart.r0 + 2, cx = heart.c0 + 1;
-    const gems = data.cells.map(([r, c, hex]) => {
-      const dy = r - cy, dx = c - cx, ang = (Math.atan2(-dx, -dy) + Math.PI * 2) % (Math.PI * 2);
-      const h = ((r * 73856093) ^ (c * 19349663)) >>> 0, j = (h % 1000) / 1000;   // each gem's own temper, the same every open
-      return { r, c, base: Math.max(0, KNOBS.cycle.indexOf(hex.toUpperCase())), d: Math.hypot(dx, dy), ang, ox: 0, oy: 0, wait: 0, j, fx: 0, fy: 0 };
-    }).sort((a, b) => a.d - b.d || a.ang - b.ang);
-    const st = { count: opts.count == null ? gems.length : opts.count, shown: null, step: 0, sec: null, last: null, acc: [0, 0], raf: 0, t: 0, alive: true };
-    /* THE ARMS: grey pixels out from the heart along the cross, part of the crown (they lag like gems) */
+    const CELLS = data.cells.map(([r, c, hex]) => ({ r, c, base: Math.max(0, KNOBS.cycle.indexOf(hex.toUpperCase())), d: Math.hypot(r - cy, c - cx) }));
+    /* the gems: one per lit cell, each with its own colour and temper; they move between the crown's cells */
+    const GEMS = CELLS.map((cell, i) => ({ r: cell.r, c: cell.c, base: cell.base, d: cell.d, ox: 0, oy: 0, wait: 0, fx: 0, fy: 0,
+      j: (((i + 1) * 2654435761) >>> 0) % 1000 / 1000 }));
+    const st = { count: opts.count == null ? GEMS.length : opts.count, shown: null, step: 0, sec: null, last: null, acc: [0, 0], raf: 0, t: 0, alive: true };
+
+    /* THE ARMS */
     const ARMS = [], armOf = {};
     const arm = (dir, k) => { const key = dir + k; if (armOf[key]) return armOf[key];
-      const start = dir === 'u' ? cy + 1 : dir === 'd' ? H - cy : W - cx;   // just past the crown's own edge
-      const a = { dir, k, r: dir === 'u' ? cy - start - k : dir === 'd' ? cy + start + k : cy, c: dir === 'r' ? cx + start + k : cx,
-                  d: start + k, ox: 0, oy: 0, wait: 0, on: k % (1 + Math.floor(k / KNOBS.armGap)) === 0,
+      const start = dir === 'u' ? cy + 1 : dir === 'd' ? H - cy : W - cx;
+      const a = { r: dir === 'u' ? cy - start - k : dir === 'd' ? cy + start + k : cy, c: dir === 'r' ? cx + start + k : cx, d: start + k,
+                  ox: 0, oy: 0, wait: 0, fx: 0, fy: 0, j: 0, on: k % (1 + Math.floor(k / KNOBS.armGap)) === 0,
                   alpha: Math.max(KNOBS.armMin, KNOBS.armMax - k / KNOBS.armFade) };
       ARMS.push(a); armOf[key] = a; return a; };
     const reach = rect => { if (!opts.bounds || !rect || !rect.width) return { u: 0, d: 0, r: 0 };
       const b = opts.bounds(), hx = rect.left + (PAD + cx + 0.5) * S, hy = rect.top + (PAD + cy + 0.5) * S;
       return { u: Math.max(0, Math.floor((hy - b.top) / S) - (cy + 1)), d: Math.max(0, Math.floor((b.bottom - hy) / S) - (H - cy)), r: Math.max(0, Math.floor((b.right - hx) / S) - (W - cx)) }; };
 
-    function digits(g, X, Y, n) {
-      const s = String(Math.max(0, Math.floor(n))), k = s.length;
-      const dot = Math.max(1, Math.floor(Math.min((heart.cols * S) / (k * 4 - 1), (heart.rows * S) / 5)));
-      const wPx = (k * 4 - 1) * dot, hPx = 5 * dot;
-      const x0 = X + (PAD + heart.c0) * S + Math.round((heart.cols * S - wPx) / 2), y0 = Y + (PAD + heart.r0) * S + Math.round((heart.rows * S - hPx) / 2);
+    /* each second: the lit gems burst out of the heart to new cells, at random, a beat apart */
+    function burst() {
+      const n = Math.min(st.count, GEMS.length), order = CELLS.map((_, i) => i);
+      for (let i = order.length - 1; i > 0; i--) { const k = (Math.random() * (i + 1)) | 0; const t = order[i]; order[i] = order[k]; order[k] = t; }
+      for (let i = 0; i < n; i++) { const g = GEMS[i], to = CELLS[order[i]];
+        g.r = to.r; g.c = to.c; g.d = to.d; g.oy = cy - to.r; g.ox = cx - to.c;   // it sets out from the heart
+        g.wait = (Math.random() * (KNOBS.burst + 1)) | 0; }
+    }
+    /* the number in the heart: one digit at a time, a second each, then a space */
+    function digit(g, X, Y) {
+      const s = String(Math.max(0, Math.floor(st.shown == null ? st.count : st.shown))), seq = s.split('').concat([' ']);
+      const ch = seq[Math.floor(Date.now() / KNOBS.secondMs) % seq.length]; if (ch === ' ') return;
       g.fillStyle = css('--ink') || '#f2f2f2';
-      Array.from(s).forEach((ch, i) => (DIG[ch] || DIG[0]).forEach((row, y) => Array.from(row).forEach((b, x) => {
-        if (b === '1') g.fillRect(x0 + (i * 4 + x) * dot, y0 + y * dot, dot, dot); })));
+      (DIG[ch] || DIG[0]).forEach((row, y) => Array.from(row).forEach((b, x) => { if (b === '1') g.fillRect(X + (PAD + heart.c0 + x) * S, Y + (PAD + heart.r0 + y) * S, S, S); }));
     }
     function draw(rect) {
-      const q = KNOBS.quiet || css('--faint') || '#6e6e6e';
       let g = own, X = 0, Y = 0;
       if (OV) { g = OV.ctx; g.clearRect(0, 0, OV.w(), OV.h()); own.clearRect(0, 0, canvas.width, canvas.height);
-        const hide = root.document.body.classList.contains('setting') || !rect || !rect.width; if (hide) return;
+        if (root.document.body.classList.contains('setting') || !rect || !rect.width) return;
         X = Math.round(rect.left); Y = Math.round(rect.top); }
       else own.clearRect(0, 0, canvas.width, canvas.height);
-      if (OV && opts.bounds) { const R = reach(rect); g.fillStyle = q;
+      if (OV && opts.bounds) { const R = reach(rect); g.fillStyle = KNOBS.armGrey || css('--faint') || '#6e6e6e';
         ['u', 'd', 'r'].forEach(dir => { for (let k = 0; k < R[dir]; k++) { const a = arm(dir, k); if (!a.on) continue;
           g.globalAlpha = a.alpha; g.fillRect(X + (PAD + a.c + a.ox) * S, Y + (PAD + a.r + a.oy) * S, S, S); } });
         g.globalAlpha = 1; }
-      gems.forEach((gm, i) => { g.fillStyle = i < st.count ? KNOBS.cycle[(gm.base + st.step) % KNOBS.cycle.length] : q;
-        g.fillRect(X + (PAD + gm.c + gm.ox) * S, Y + (PAD + gm.r + gm.oy) * S, S, S); });
-      digits(g, X, Y, st.shown == null ? st.count : st.shown);
+      const n = Math.min(st.count, GEMS.length);
+      for (let i = 0; i < n; i++) { const gm = GEMS[i]; g.fillStyle = KNOBS.cycle[(gm.base + st.step) % KNOBS.cycle.length];
+        g.fillRect(X + (PAD + gm.c + gm.ox) * S, Y + (PAD + gm.r + gm.oy) * S, S, S); }
+      digit(g, X, Y);
     }
-    /* the crown moved on the screen by (dx, dy) px: the gems stay behind, then walk home */
     function moved(dx, dy) {
       st.acc[0] += dx / S; st.acc[1] += dy / S;
       const mx = Math.trunc(st.acc[0]), my = Math.trunc(st.acc[1]); if (!mx && !my) return;
       st.acc[0] -= mx; st.acc[1] -= my;
-      gems.concat(ARMS).forEach(g => { const j = g.j || 0, f = 1 + KNOBS.fling * j * Math.min(1, g.d / 9);   // the far gems, and the restless ones, fly wider
+      GEMS.concat(ARMS).forEach(g => { const f = 1 + KNOBS.fling * g.j * Math.min(1, g.d / 9);
         g.fx += mx * f; g.fy += my * f; const ix = Math.trunc(g.fx), iy = Math.trunc(g.fy); g.fx -= ix; g.fy -= iy;
         g.ox = Math.max(-LAG, Math.min(LAG, g.ox - ix)); g.oy = Math.max(-LAG, Math.min(LAG, g.oy - iy));
-        g.wait = Math.max(g.wait, Math.round(g.d * KNOBS.lagPerPx + j * KNOBS.scatter)); });
+        g.wait = Math.max(g.wait, Math.round(g.d * KNOBS.lagPerPx + g.j * KNOBS.scatter)); });
     }
     const home = v => v === 0 ? 0 : v - Math.sign(v) * Math.min(Math.abs(v), 1 + Math.floor(Math.abs(v) / KNOBS.stride));
     function frame(ts) {
@@ -127,18 +120,18 @@
       const r = canvas.getBoundingClientRect();
       if (st.last && r.width) moved(r.left - st.last[0], r.top - st.last[1]);
       if (r.width) st.last = [r.left, r.top];
+      const sec = Math.floor(Date.now() / KNOBS.secondMs); if (sec !== st.sec) { st.sec = sec; st.step = (st.step + 1) % KNOBS.cycle.length; burst(); }
       const tick = Math.floor(ts / KNOBS.stepMs);
       if (tick !== st.t) { st.t = tick;
-        gems.concat(ARMS).forEach(g => { if (!g.ox && !g.oy) return; if (g.wait > 0) { g.wait--; return; } g.ox = home(g.ox); g.oy = home(g.oy); }); }
-      const sec = Math.floor(Date.now() / KNOBS.secondMs); if (sec !== st.sec) { st.sec = sec; st.step = (st.step + 1) % KNOBS.cycle.length; }
+        GEMS.concat(ARMS).forEach(g => { if (!g.ox && !g.oy) return; if (g.wait > 0) { g.wait--; return; } g.ox = home(g.ox); g.oy = home(g.oy); }); }
       draw(r); st.raf = requestAnimationFrame(frame);
     }
     const reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) { const once = () => draw(canvas.getBoundingClientRect()); once(); root.addEventListener('resize', once); }
+    if (reduce) { const once = () => draw(canvas.getBoundingClientRect()); once(); root.addEventListener('resize', once); setInterval(once, KNOBS.secondMs); }
     else st.raf = requestAnimationFrame(frame);
     return {
-      gems: gems.length,
-      set(n, shown) { st.count = Math.max(0, Math.min(gems.length, Math.round(n))); st.shown = shown == null ? null : shown; if (reduce) draw(canvas.getBoundingClientRect()); },
+      gems: GEMS.length,
+      set(n, shown) { st.count = Math.max(0, Math.min(GEMS.length, Math.round(n))); st.shown = shown == null ? null : shown; if (reduce) draw(canvas.getBoundingClientRect()); },
       get count() { return st.count; },
       stop() { st.alive = false; cancelAnimationFrame(st.raf); }
     };

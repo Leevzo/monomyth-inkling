@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790912657';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790912657"></script>
-<script src="./share.js?v=1790912657"></script>
-<script src="./sky.js?v=1790912657"></script>
+<script>window.INK_V = '1790914188';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790914188"></script>
+<script src="./share.js?v=1790914188"></script>
+<script src="./sky.js?v=1790914188"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790912657">
+<link rel="stylesheet" href="./fonts.css?v=1790914188">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -162,6 +162,14 @@ body.setting #arc { display: none; }
 #line { display: block; resize: none; overflow: hidden; font-size: clamp(20px, 6vw, 28px) !important; line-height: 1.3; max-height: 40vh; }
 body.holding #bottom::before { content: '●'; position: absolute; left: -6px; top: 12px; color: var(--late); font-size: 10px; }
 #hear { display: none !important; }
+.det-word { font-family: 'Dogica', ui-monospace, monospace; font-size: 20px; line-height: 1.3; word-break: break-word; margin-top: 2px; }
+.det-text { font-size: 15px; line-height: 1.4; margin-top: 6px; white-space: pre-wrap; }
+.det-meta { font-size: var(--small); color: var(--dim); margin-top: 6px; }
+.det-sub { font-size: 14px; line-height: 1.4; margin-top: 4px; color: var(--ink); }
+.det-sub::before { content: '· '; color: var(--dim); }
+.det-quiet { font-size: var(--small); color: var(--faint); margin-top: 6px; }
+#tapeBtn { all: unset; position: absolute; right: 2px; bottom: 12px; font-family: 'Dogica', ui-monospace, monospace; font-size: 12px; color: var(--dim); cursor: pointer; }
+#tapeBtn[hidden] { display: none; }
 .sayGhost { position: absolute; font-size: 16px; line-height: 1.35; white-space: pre-wrap; padding: 0 2px 6px 6px; pointer-events: none; }
 .sayGhost.stage { color: var(--dim); font-style: italic; }
 #star.crowned { cursor: move; }
@@ -203,14 +211,14 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
     <div id="div" role="separator" aria-label="drag: far left shows your words, far right is action mode"></div>
     <div id="right"><div id="talk" aria-label="the whole talk"><div id="chatLog"></div></div><div id="say"></div><div id="mode"></div></div>
   </div>
-  <div id="bottom"><textarea id="line" rows="1" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></textarea></div>
+  <div id="bottom"><textarea id="line" rows="1" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></textarea><button id="tapeBtn" type="button" hidden aria-label="give Squatch a voice note">tape</button><input id="tape" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.caf,.ogg" hidden></div>
 </div>
 <div id="wheel" aria-label="Orv and Squatch on the wheel. Tap to send, double-tap to turn the wheel, hold to talk."><canvas id="orv"></canvas><canvas id="squatch"></canvas></div>
 <div id="meter" hidden><div id="meterTrack" role="slider" aria-label="story or focus" aria-valuemin="0" aria-valuemax="100"><div id="meterKnob"></div></div>
   <div id="meterWords"><span id="mwStory">story</span><span id="mwFocus">focus</span></div><div id="meterSays"></div></div>
 <div id="hear" hidden aria-live="polite"></div>
 <button id="keep" aria-label="keep a copy of the list">keep</button>
-<input id="restore" type="file" accept=".inkling,application/json,.json,text/plain" hidden>
+<input id="restore" type="file" accept="image/*,.inkling,application/json,.json,text/plain" hidden>
 <div id="flash"></div>
 <canvas id="salmon" role="button" tabindex="0" aria-label="settings (the salmon of knowledge)"></canvas>
 <canvas id="cig" role="button" tabindex="0" aria-label="settings (Squatch's cigarette)" hidden></canvas>
@@ -365,7 +373,8 @@ function render() {
     r.append(yes, no, a, w, l); L.appendChild(r);
   });
   tick();
-  if (window._crown) { const gems = live().filter(t => t.done).length; window._crown.set(Math.min(window._crown.gems, gems), gems); }   // a gem for each deed done
+  if (window._crown) { const G = load('inkling.gems', null), gems = G && typeof G.n === 'number' ? G.n : live().filter(t => t.done).length;   // his crystals held; else a gem a deed
+    window._crown.set(Math.min(window._crown.gems, gems), gems); }
   const sp = load('inkling.sparks', null); $('sparks').textContent = sp && typeof sp.lifetime === 'number' ? sp.lifetime.toLocaleString() + ' sparks' + (sp.today ? ' · ' + sp.today + ' today' : '') : '';
   try { drawSkyO(); } catch (e) {}
 }
@@ -441,7 +450,7 @@ function loading() {
   LOAD = requestAnimationFrame(draw);
 }
 /* each master keeps his own last words (his word: "when character changes, their words come out") */
-const wordsOf = m => load('inkling.say.' + m, { text: '', stage: false });
+const wordsOf = m => load('inkling.say.' + m, m === 'squatch' ? { text: 'Squatches don\'t smoke.', stage: false } : { text: '', stage: false });   // his harness: the one line he keeps
 const keepWords = (text, stage) => store('inkling.say.' + (window.WHEEL_FRONT || 'orv'), { text: String(text || ''), stage: !!stage });
 function say(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = text; s.classList.toggle('stage', !!stage); keepWords(text, stage); }
 function typeSay(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.toggle('stage', !!stage); keepWords(text, stage);
@@ -531,7 +540,7 @@ function system() {
   const now = new Date(), tz = -now.getTimezoneOffset(), off = (tz >= 0 ? '+' : '-') + String(Math.floor(Math.abs(tz) / 60)).padStart(2, '0') + ':' + String(Math.abs(tz) % 60).padStart(2, '0');
   const list = open().map((t, i) => (i + 1) + '. [' + t.id + '] ' + t.word + ' — ' + (t.text || '') + (t.at ? ' (at ' + t.at + ')' : '')).join('\n') || '(the list is empty)';
   const one = theOne();
-  return (WHEEL.front === 'squatch' ? K.seedSquatch : K.seed) + '\n\nYou keep the King\'s list of pure tasks on his phone, and each day you sort it with him: merge duplicates, turn vague wishes into plain doable tasks, drop nothing he did not ask to drop, and order by what matters most (deadlines first, then what unblocks other things, then what he named as important). The order of the list IS its priority. Now is ' + now.toISOString() + ' (his local offset ' + off + ').' +
+  return (WHEEL.front === 'squatch' ? K.seedSquatch + tapeMind() : K.seed) + '\n\nYou keep the King\'s list of pure tasks on his phone, and each day you sort it with him: merge duplicates, turn vague wishes into plain doable tasks, drop nothing he did not ask to drop, and order by what matters most (deadlines first, then what unblocks other things, then what he named as important). The order of the list IS its priority. Now is ' + now.toISOString() + ' (his local offset ' + off + ').' +
     '\nTHE ONE THING: ' + (one ? one.word + ' [' + one.id + ']' : 'none') + '\nOPEN TASKS, in priority order:\n' + list +
     '\nDone today: ' + live().filter(t => t.done).length + '.' +
     '\n\nAnswer ONLY with one JSON object: {"say": "...", "ops": [...]}' +
@@ -754,6 +763,9 @@ function listenStop() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); });
   $('restore').addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return; e.target.value = '';
     /* a .inkling file goes through the same safe door as a scanned code: the old kingdom set aside, the new one whole */
+    if (/^image\//.test(f.type) || /\.(png|jpe?g|heic|webp)$/i.test(f.name)) {   // a picture of a throne: the crowns read back
+      try { const code = window.INKSHARE && await INKSHARE.readThrone(f); if (code) { log({ who: 'k', what: 'opened', text: f.name }); location.hash = '#k=' + code; return; } } catch (x) {}
+      say('(That picture holds no throne I can read.)', true); return; }
     try { const code = window.INKSHARE && INKSHARE.readInkling(await f.text()); if (code) { log({ who: 'k', what: 'opened', text: f.name }); location.hash = '#k=' + code; return; } } catch (x) {}
     try { const o = JSON.parse(await f.text()); if (o && o.state && Array.isArray(o.state.tasks)) { store('inkling.archive.' + Date.now(), { state: ST, log: load('inkling.log', []) }); ST = o.state; save(); log({ who: 'k', what: 'restored', text: f.name }); render(); say('Restored from ' + f.name + '.', true); } }
     catch (x) { say('(That file would not open.)', true); } });
@@ -831,6 +843,51 @@ K.seedSquatch = 'You are Squatch, the sasquatch on the couch, stuck in one day, 
 const WHEEL = { front: load('inkling.front', 'orv') === 'squatch' ? 'squatch' : 'orv', phi: 0, busy: false };
 WHEEL.phi = WHEEL.front === 'squatch' ? 90 : 0; window.WHEEL_FRONT = WHEEL.front;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* ═══ SQUATCH'S EAR (his word, 2026-10-01: "get him ready so that I can just drop the voice note for the movie and have him
+   here"). Tap "tape" (or drop the file on the page): the voice note goes through his key's own door to be heard — Groq's
+   whisper or Gemini, both free; a paid door only after Cha-ching — and the words are kept WHOLE, verbatim, as his tape
+   (inkling.squatch.tapes). From then on the newest tape rides in Squatch's mind whenever he talks. Nothing is written for him. ═══ */
+K.tape = { groqMB: 24, geminiMB: 18, mind: 14000 };   // what each free door takes at once; how much of the tape Squatch carries in mind
+function tapeMind() { const T = load('inkling.squatch.tapes', []); const t = T[T.length - 1]; if (!t || !t.text) return '';
+  return '\n\nTHE TAPE the King dropped for the movie ("' + t.name + '", ' + (t.mins ? t.mins + ' min, ' : '') + 'his words, verbatim; quote it, never invent):\n' + t.text.slice(0, K.tape.mind); }
+function mins(file) { return new Promise(ok => { try { const a = new Audio(); a.preload = 'metadata'; a.onloadedmetadata = () => { ok(isFinite(a.duration) ? Math.round(a.duration / 6) / 10 : null); URL.revokeObjectURL(a.src); }; a.onerror = () => ok(null); a.src = URL.createObjectURL(file); setTimeout(() => ok(null), 8000); } catch (e) { ok(null); } }); }
+async function hearTape(file) {
+  const b = box(), key = b.apiKey, d = keyDoor(), MB = file.size / 1048576, tell = t => say(t, true);
+  if (!key || !d) return tell('(no key yet: the cigarette opens Settings, a Groq or Gemini key is free)');
+  if (!['groq', 'gemini', 'openai'].includes(d)) return tell('(this key\'s door cannot hear a tape; a Groq or Gemini key can, free)');
+  if (!paidOpen(d)) return tell('(the ' + d + ' door costs money: type ' + K.password + ' on the coin line first)');
+  const cap = d === 'gemini' ? K.tape.geminiMB : K.tape.groqMB;
+  if (MB > cap) return tell('(the tape is ' + MB.toFixed(0) + ' MB; this door hears up to ' + cap + ' MB at once. Trim it into parts, or drop it on the Mac\'s Scriptorium, which hears any length.)');
+  const m = await mins(file); tell('(listening to the tape: ' + file.name + (m ? ', ' + m + ' min' : '') + ' …)');
+  try {
+    let text = '';
+    if (d === 'gemini') {
+      const raw = new Uint8Array(await file.arrayBuffer()); let bin = ''; for (let i = 0; i < raw.length; i += 32768) bin += String.fromCharCode.apply(null, raw.subarray(i, i + 32768));
+      const mdl = await model(d, key), mime = file.type || 'audio/mp4';
+      const r = await fetchT(DOORS.gemini.chat + encodeURIComponent(mdl) + ':generateContent', { method: 'POST', headers: headers(d, key), body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ inline_data: { mime_type: mime, data: btoa(bin) } }, { text: 'Transcribe this audio verbatim: every word as spoken, nothing added, nothing summarised. Put [mm:ss] at the start of each paragraph.' }] }],
+        generationConfig: { maxOutputTokens: 65536 } }) });
+      const o = await r.json().catch(() => ({})); if (!r.ok) throw doorError(r, o);
+      text = ((((o.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
+    } else {
+      const f = new FormData(); f.append('file', file, file.name || 'tape.m4a'); f.append('model', d === 'groq' ? 'whisper-large-v3-turbo' : 'whisper-1'); f.append('response_format', 'text');
+      const url = d === 'groq' ? 'https://api.groq.com/openai/v1/audio/transcriptions' : 'https://api.openai.com/v1/audio/transcriptions';
+      const r = await fetchT(url, { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: f });
+      text = await r.text(); if (!r.ok) throw doorError(r, (() => { try { return JSON.parse(text); } catch (e) { return { error: { message: text.slice(0, 200) } }; } })());
+    }
+    text = String(text || '').trim(); if (!text) throw new Error('the door heard nothing');
+    const T = load('inkling.squatch.tapes', []); T.push({ name: file.name || 'tape', at: nowIso(), mins: m, door: d, text }); store('inkling.squatch.tapes', T);
+    log({ who: 'k', what: 'tape', text: (file.name || 'tape') + (m ? ' · ' + m + ' min' : '') + ' · ' + text.split(/\s+/).length + ' words, kept whole' });
+    tell('(the tape is in, heard whole: ' + text.split(/\s+/).length + ' words. Squatch has it now; talk to him.)');
+  } catch (e) { tell('(the tape would not go through: ' + plainWhy(e) + ')'); }
+}
+(function ear() {
+  $('tapeBtn').addEventListener('click', () => $('tape').click());
+  $('tape').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) hearTape(f); });
+  document.addEventListener('dragover', e => { if (WHEEL.front === 'squatch') e.preventDefault(); });
+  document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (!f || WHEEL.front !== 'squatch') return;
+    e.preventDefault(); if (/^audio\//.test(f.type) || /\.(m4a|mp3|wav|aac|caf|ogg)$/i.test(f.name)) hearTape(f); });
+})();
 /* each stands on the wheel at the same distance from the corner, a quarter turn apart, and upright when in front */
 function wheelPlace() {
   const W = $('wheel'), [cx, cy] = K.turn.at, r = Math.hypot(cx, cy), a0 = Math.atan2(cx, -cy);
@@ -842,12 +899,22 @@ function wheelPlace() {
 function click() { if (!K.turn.tick) return; try { const A = click.a || (click.a = new (window.AudioContext || window.webkitAudioContext)());
   const o = A.createOscillator(), g = A.createGain(); o.type = 'square'; o.frequency.value = 1700; g.gain.value = 0.025; o.connect(g); g.connect(A.destination);
   o.start(); o.stop(A.currentTime + 0.006); } catch (e) {} }
-function frontWords() { const sq = WHEEL.front === 'squatch'; $('line').placeholder = sq ? 'tell squatch' : 'tell orv'; $('line').setAttribute('aria-label', sq ? 'tell Squatch' : 'tell Orv'); }
+function frontWords() { const sq = WHEEL.front === 'squatch'; $('line').placeholder = sq ? 'tell squatch' : 'tell orv'; $('line').setAttribute('aria-label', sq ? 'tell Squatch' : 'tell Orv'); $('tapeBtn').hidden = !sq; }
 function drawSky() { if (!window.SKY) return; SKY.draw($('skyS'), load('inkling.squatch', null)); drawSkyO(); drawList2(); }
-/* Orv's constellation: the kingdom's open things, white on their brackets; a tap shows its line */
-function drawSkyO() { if (!window.SKY) return; const f = {}, c = [];
-  open().forEach(t => { if (!f[t.word]) { f[t.word] = []; c.push(t.word); } if (t.text) f[t.word].push(t.text); });
-  SKY.draw($('skyO'), { title: '', capC: 'your kingdom', c, l: [], s: [], f }); }
+/* ORV'S UPPER RIGHT (his word, 2026-10-01: "orv's section it's just more information on whatever you have highlighted on the
+   sword"): the lit thing, whole — its word, its whole line, its time, where it came from, and what hangs under it. With nothing
+   lit, THE ONE THING. */
+function drawSkyO() {
+  const H = $('skyO'); H.textContent = ''; const t = byId(SEL) || theOne(), mk = (c, x) => { const e = document.createElement('div'); e.className = c; e.textContent = x; H.appendChild(e); return e; };
+  if (!t) { mk('det-quiet', 'tap a word on the sword'); return; }
+  const one = theOne(), rows = open().concat(live().filter(x => x.done)), i = rows.findIndex(x => x.id === t.id);
+  const w = mk('det-word', t.word); w.style.color = one && t.id === one.id ? 'var(--gold)' : t.id === SEL ? K.wheel[(i * 5 + 2) % K.wheel.length] : 'var(--ink)';
+  if (t.text) mk('det-text', t.text);
+  const meta = [one && t.id === one.id ? 'the one thing' : '', t.done ? 'done' + (t.doneAt ? ' · ' + fmtAt(t.doneAt) : '') : '', t.at ? fmtAt(t.at) : '',
+    t.from ? 'from ' + ({ orv: 'Orv', monomyth: 'the Monomyth journey', focus: 'Monomyth Focus', kairos: 'Kairos' }[t.from] || t.from) : ''].filter(Boolean).join(' · ');
+  if (meta) mk('det-meta', meta);
+  (t.sub || []).slice(0, 40).forEach(x => mk('det-sub', x));
+}
 /* Squatch's own wooden sword: his day, in the tape's order */
 function drawList2() { const sq = load('inkling.squatch', null), L = $('list2'); L.textContent = '';
   if (!sq || !Array.isArray(sq.s)) { const p = document.createElement('div'); p.className = 'line'; p.style.display = 'block'; p.textContent = 'his sword comes with your link'; L.appendChild(p); return; }
@@ -864,11 +931,13 @@ async function swing(out, inn, corner, dir, late) {
   const n = K.turn.steps, cx = corner[0] === 'r' ? innerWidth : 0, cy = corner[1] === 'b' ? innerHeight : 0;
   inn.hidden = false;
   [out, inn].forEach(el => { const r = el.getBoundingClientRect(); el.style.transformOrigin = (cx - r.left) + 'px ' + (cy - r.top) + 'px'; });
+  late = true;   // his word: "too many things rotating around … fade into view rotating into spot a split second before they get there"
+  out.style.transition = 'opacity .09s linear'; out.style.opacity = '0';
   if (late) { inn.style.transition = 'none'; inn.style.opacity = '0'; }
   for (let i = 0; i <= n; i++) { const t = i / n; out.style.transform = 'rotate(' + (90 * dir * t) + 'deg)'; inn.style.transform = 'rotate(' + (-90 * dir * (1 - t)) + 'deg)';
     if (late && i === n - 1) { inn.style.transition = 'opacity .12s linear'; inn.style.opacity = '1'; }   // seen only just before it lands
     await sleep(K.turn.stepMs); }
-  out.hidden = true; out.style.transform = ''; inn.style.transform = ''; if (late) { inn.style.opacity = ''; inn.style.transition = ''; }
+  out.hidden = true; out.style.transform = ''; out.style.opacity = ''; out.style.transition = ''; inn.style.transform = ''; if (late) { inn.style.opacity = ''; inn.style.transition = ''; }
 }
 /* his words go out with his sky; the next master's come in with his: a ghost of the old words swings away while the box fills */
 function swingWords(to, d) {
@@ -891,7 +960,8 @@ async function turnWheel() {
   if (WHEEL.busy) return; WHEEL.busy = true; arcClose();
   const to = WHEEL.front === 'orv' ? 'squatch' : 'orv', from = WHEEL.phi, dest = to === 'squatch' ? 90 : 0, n = K.turn.steps;
   const swing = swapSwords(to);
-  for (let i = 1; i <= n; i++) { WHEEL.phi = from + (dest - from) * i / n; wheelPlace(); click(); await sleep(K.turn.stepMs); }
+  click();   // his word: one click a turn, not a bunch
+  for (let i = 1; i <= n; i++) { WHEEL.phi = from + (dest - from) * i / n; wheelPlace(); await sleep(K.turn.stepMs); }
   await swing; WHEEL.front = to; window.WHEEL_FRONT = to; store('inkling.front', to); frontWords(); WHEEL.busy = false;
 }
 (function wheelBoot() { frontWords(); const sq = WHEEL.front === 'squatch'; { const w = wordsOf(WHEEL.front); if (w.text && !$('say').textContent) { $('say').textContent = w.text; $('say').classList.toggle('stage', !!w.stage); } }
@@ -949,18 +1019,30 @@ let MODE = 'talk';
    Inkling comes in once (its source is remembered, so a thing set aside here stays aside); the sparks are read on every open. ═══ */
 function bringHome() {
   const got = load('inkling.brought', {}) || {}, have = new Set(live().map(t => (t.word + '|' + (t.text || '')).toLowerCase())); let added = 0;
-  const add = (src, id, word, text, done, at) => { const key = src + ':' + id; if (got[key]) return; got[key] = 1;
+  const add = (src, id, word, text, done, at, sub) => { const key = src + ':' + id;
+    if (got[key]) { const t = ST.tasks.find(x => x.src === key); if (t && sub) { t.sub = sub.slice(0, 60); added += 0; } return; } got[key] = 1;
     const w = String(word || '').trim().split(/\s+/)[0].slice(0, 24), x = String(text || '').slice(0, 600); if (!w) return;
     const sig = (w + '|' + x).toLowerCase(); if (have.has(sig)) return; have.add(sig);
-    ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: w, text: x, at: at && !isNaN(new Date(at)) ? new Date(at).toISOString() : null, done: !!done, doneAt: done ? nowIso() : null, from: src }); added++; };
+    ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: w, text: x, at: at && !isNaN(new Date(at)) ? new Date(at).toISOString() : null, done: !!done, doneAt: done ? nowIso() : null, from: src, src: key, sub: sub ? sub.slice(0, 60) : undefined }); added++; };
   try { const o = JSON.parse(localStorage.getItem('orv.state') || 'null');
     if (o && Array.isArray(o.tasks)) o.tasks.filter(t => t && !t.gone).forEach(t => add('orv', t.id, t.word, t.text, t.done, t.at)); } catch (e) {}
   try { const j = JSON.parse(localStorage.getItem('monomyth.journey.v1') || 'null'), s = j && (j.state || j);
     if (s && Array.isArray(s.quests)) s.quests.forEach(q => { if (q && q.name) add('monomyth', q.id, String(q.name).trim(), q.kind === 'one-thing' ? 'the one thing, in Monomyth' : '', !!q.doneAt, null); });
     if (s && typeof s.altimeter === 'number') { const today = new Date().toISOString().slice(0, 10);
       store('inkling.sparks', { lifetime: s.altimeter, today: String(s.sparksTodayDate || '').slice(0, 10) === today ? (s.sparksToday || 0) : 0, at: nowIso() }); } } catch (e) {}
+  /* the Focus glass (monomyth.focus.v1) and the Kairos camp app before it: their quests come onto the sword (their open tasks
+     hang under them, read in Orv's upper right), and their purse is the crown's gems: the crystals HELD (earned − spent) */
+  const readJ = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+  const fsx = readJ('monomyth.focus.v1'), purses = [];
+  [['focus', fsx && fsx.org, fsx && fsx.purse], ['kairos', readJ('kairos.org.v4'), readJ('kairos.purse.v7')]].forEach(([src, org, purse]) => {
+    if (org && Array.isArray(org.quests)) org.quests.forEach((q, qi) => { if (!q || !q.t || q.sealedAt) return;
+      const openT = (q.tasks || []).filter(t => t && !t.done && t.t).map(t => String(t.t));
+      add(src, q.id || 'q' + qi + ':' + q.t, String(q.t).trim().split(/\s+/)[0], String(q.t), false, null, openT); });
+    if (purse && typeof purse === 'object') { const pts = (+purse.B || 0) + (+purse.M || 0) + (+purse.H || 0) + (+purse.S || 0), earned = pts + (+purse.openP || 0);
+      purses.push({ from: src, n: Math.max(0, earned - (+purse.spentP || 0)), earned, points: pts }); } });
+  if (purses.length) { const best = purses.sort((a, b) => b.n - a.n)[0]; store('inkling.gems', Object.assign({ at: nowIso() }, best)); }
   store('inkling.brought', got);
-  if (added) { save(); log({ who: 'k', what: 'brought home', text: added + ' things from the other glasses' }); }
+  if (added || purses.length) { save(); log({ who: 'k', what: 'brought home', text: added + ' things from the other glasses' }); }
   return added;
 }
 if (!/#k=/.test(location.hash)) bringHome();
