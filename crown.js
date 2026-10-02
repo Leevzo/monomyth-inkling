@@ -24,7 +24,9 @@
   'use strict';
   const KNOBS = {
     stepMs: 30,          // a trailing gem takes a step this often: the click
-    lagPerPx: 0,         // his word: "the pixels of the crown need to follow immediately, not after a delay" (no waiting; was 1.4)
+    lagPerPx: 0.35,      // his words: "follow immediately, not after a delay", then "slightly more delay and scatter" (was 1.4, then 0)
+    scatter: 3,          // each gem waits up to this many more clicks of its own before it sets off
+    fling: 0.45,         // and is thrown up to this much farther than the push (the far gems the most): the scatter
     stride: 3,           // a gem this many crown pixels away walks home in 2-pixel clicks, twice this in 3, and so on
     boxLag: 14,          // without the overlay, a gem never trails further than its canvas allows (min of this and pad)
     secondMs: 1000,      // the colours step this often
@@ -69,7 +71,8 @@
     const heart = { r0: hr[0], c0: hr[1], rows: 5, cols: 3 }, cy = heart.r0 + 2, cx = heart.c0 + 1;
     const gems = data.cells.map(([r, c, hex]) => {
       const dy = r - cy, dx = c - cx, ang = (Math.atan2(-dx, -dy) + Math.PI * 2) % (Math.PI * 2);
-      return { r, c, base: Math.max(0, KNOBS.cycle.indexOf(hex.toUpperCase())), d: Math.hypot(dx, dy), ang, ox: 0, oy: 0, wait: 0 };
+      const h = ((r * 73856093) ^ (c * 19349663)) >>> 0, j = (h % 1000) / 1000;   // each gem's own temper, the same every open
+      return { r, c, base: Math.max(0, KNOBS.cycle.indexOf(hex.toUpperCase())), d: Math.hypot(dx, dy), ang, ox: 0, oy: 0, wait: 0, j, fx: 0, fy: 0 };
     }).sort((a, b) => a.d - b.d || a.ang - b.ang);
     const st = { count: opts.count == null ? gems.length : opts.count, shown: null, step: 0, sec: null, last: null, acc: [0, 0], raf: 0, t: 0, alive: true };
     /* THE ARMS: grey pixels out from the heart along the cross, part of the crown (they lag like gems) */
@@ -113,8 +116,10 @@
       st.acc[0] += dx / S; st.acc[1] += dy / S;
       const mx = Math.trunc(st.acc[0]), my = Math.trunc(st.acc[1]); if (!mx && !my) return;
       st.acc[0] -= mx; st.acc[1] -= my;
-      gems.concat(ARMS).forEach(g => { g.ox = Math.max(-LAG, Math.min(LAG, g.ox - mx)); g.oy = Math.max(-LAG, Math.min(LAG, g.oy - my));
-        g.wait = Math.max(g.wait, Math.round(g.d * KNOBS.lagPerPx)); });
+      gems.concat(ARMS).forEach(g => { const j = g.j || 0, f = 1 + KNOBS.fling * j * Math.min(1, g.d / 9);   // the far gems, and the restless ones, fly wider
+        g.fx += mx * f; g.fy += my * f; const ix = Math.trunc(g.fx), iy = Math.trunc(g.fy); g.fx -= ix; g.fy -= iy;
+        g.ox = Math.max(-LAG, Math.min(LAG, g.ox - ix)); g.oy = Math.max(-LAG, Math.min(LAG, g.oy - iy));
+        g.wait = Math.max(g.wait, Math.round(g.d * KNOBS.lagPerPx + j * KNOBS.scatter)); });
     }
     const home = v => v === 0 ? 0 : v - Math.sign(v) * Math.min(Math.abs(v), 1 + Math.floor(Math.abs(v) / KNOBS.stride));
     function frame(ts) {

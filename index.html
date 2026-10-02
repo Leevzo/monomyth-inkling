@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790912396';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790912396"></script>
-<script src="./share.js?v=1790912396"></script>
-<script src="./sky.js?v=1790912396"></script>
+<script>window.INK_V = '1790912657';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790912657"></script>
+<script src="./share.js?v=1790912657"></script>
+<script src="./sky.js?v=1790912657"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790912396">
+<link rel="stylesheet" href="./fonts.css?v=1790912657">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -210,7 +210,7 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
   <div id="meterWords"><span id="mwStory">story</span><span id="mwFocus">focus</span></div><div id="meterSays"></div></div>
 <div id="hear" hidden aria-live="polite"></div>
 <button id="keep" aria-label="keep a copy of the list">keep</button>
-<input id="restore" type="file" accept="application/json,.json" hidden>
+<input id="restore" type="file" accept=".inkling,application/json,.json,text/plain" hidden>
 <div id="flash"></div>
 <canvas id="salmon" role="button" tabindex="0" aria-label="settings (the salmon of knowledge)"></canvas>
 <canvas id="cig" role="button" tabindex="0" aria-label="settings (Squatch's cigarette)" hidden></canvas>
@@ -297,7 +297,7 @@ async function kingdomLink() {
   return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }
 async function openShare() { try { if (!window.INKSHARE) throw new Error('no share'); const c = $('crown').getBoundingClientRect();
-  await INKSHARE.show(await kingdomLink(), { from: [c.left + c.width / 2, c.top + c.height / 2] }); } catch (e) { say('(The code would not draw.)', true); } }
+  await INKSHARE.show(await kingdomLink(), { from: [c.left + c.width / 2, c.top + c.height / 2], onOpen: () => $('restore').click() }); } catch (e) { say('(The code would not draw.)', true); } }
 /* #new: a new kingdom. Whatever was here is set aside (kept under orv.archive.<time>, never deleted). */
 if (location.hash === '#new') {
   const was = load('inkling.state', null);
@@ -752,8 +752,10 @@ function listenStop() {
     const file = new File([blob], name, { type: 'application/json' });
     try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; } } catch (e) { return; }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); });
-  $('restore').addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return;
-    try { const o = JSON.parse(await f.text()); if (o && o.state && Array.isArray(o.state.tasks)) { ST = o.state; save(); log({ who: 'k', what: 'restored', text: f.name }); render(); say('Restored from ' + f.name + '.', true); } }
+  $('restore').addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return; e.target.value = '';
+    /* a .inkling file goes through the same safe door as a scanned code: the old kingdom set aside, the new one whole */
+    try { const code = window.INKSHARE && INKSHARE.readInkling(await f.text()); if (code) { log({ who: 'k', what: 'opened', text: f.name }); location.hash = '#k=' + code; return; } } catch (x) {}
+    try { const o = JSON.parse(await f.text()); if (o && o.state && Array.isArray(o.state.tasks)) { store('inkling.archive.' + Date.now(), { state: ST, log: load('inkling.log', []) }); ST = o.state; save(); log({ who: 'k', what: 'restored', text: f.name }); render(); say('Restored from ' + f.name + '.', true); } }
     catch (x) { say('(That file would not open.)', true); } });
 })();
 
@@ -912,9 +914,18 @@ let MODE = 'talk';
   const light = () => { clearTimeout(dark); STAR.classList.add('lit'); };
   const unlight = () => { clearTimeout(dark); dark = setTimeout(() => STAR.classList.remove('lit'), 900); };
   STAR.addEventListener('pointerdown', light); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => STAR.addEventListener(t, unlight));
-  const KD = { dflt: 0.58, left: 0.16, right: 0.86, min: 0.06, max: 0.94 };
-  const setD = (f, keep) => { f = Math.max(KD.min, Math.min(KD.max, f)); A.style.setProperty('--d', (f * 100).toFixed(2) + '%');
-    const was = MODE; MODE = f >= KD.right ? 'action' : 'talk'; A.classList.toggle('open', f <= KD.left); A.classList.toggle('action', MODE === 'action');
+  /* THE SIDES (his word, 2026-10-01: "the number is FLUSH agains the side when dragged up and down, when it gets very VERY
+     close it sticks and enters the different modes"): the crown runs right up to either side of the screen, the heart's number
+     touching it. Only when it comes within a hair (KD.stick) does it stick there, flush, and the mode changes: the left side
+     shows his own lines, the right side is action. Stuck, it still slides up and down; drag it away to come off. */
+  const KD = { dflt: 0.58, stick: 18, heart: 10.5 };   // px: the sticking distance; half the heart's width (3 crown pixels ×7)
+  let SIDE = null;
+  const setD = (f, keep) => { const r = M.getBoundingClientRect(), W = r.width || innerWidth, lo = (KD.heart - r.left) / W, hi = (innerWidth - r.left - KD.heart) / W;
+    f = Math.max(lo, Math.min(hi, f));
+    SIDE = (f - lo) * W <= KD.stick ? 'left' : (hi - f) * W <= KD.stick ? 'right' : null;
+    if (SIDE === 'left') f = lo; if (SIDE === 'right') f = hi;   // flush against the side
+    A.style.setProperty('--d', (f * 100).toFixed(2) + '%');
+    const was = MODE; MODE = SIDE === 'right' ? 'action' : 'talk'; A.classList.toggle('open', SIDE === 'left'); A.classList.toggle('action', MODE === 'action');
     $('mode').textContent = MODE === 'action' ? 'ACTION' : ''; if (A.classList.contains('open')) drawChat();
     if (typeof drawCross === 'function') drawCross(); if (keep) store('inkling.d', f); };
   let drag = false, x0 = 0, f0 = 0, lastTap = 0, y0 = 0, e0 = 0, E = 0.45;

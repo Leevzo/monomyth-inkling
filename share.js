@@ -26,6 +26,23 @@
     if (out.byteLength > 1e6) throw new Error('too big to be a kingdom');
     return JSON.parse(new TextDecoder().decode(out));
   }
+  /* THE .INKLING FILE (his word: "that's the endocer for the .inkling file"): the same kingdom the code carries, as a file.
+     Made by "save", read by "open" (index.html hands it to the same safe import as a scanned code). */
+  function inklingFile(link) {
+    const m = /#k=([A-Za-z0-9_-]+)/.exec(link), code = m ? m[1] : '', day = new Date().toLocaleDateString('en-CA');   // his own day, not the world's (YYYY-MM-DD)
+    const text = JSON.stringify({ inkling: 1, made: new Date().toISOString(), link, code }, null, 1) + '\n';
+    return new File([text], 'kingdom-' + day + '.inkling', { type: 'application/octet-stream' });
+  }
+  function readInkling(text) {   // a .inkling file (or any text holding a kingdom link) → its code, or null
+    try { const o = JSON.parse(text); if (o && typeof o.code === 'string' && /^[A-Za-z0-9_-]+$/.test(o.code)) return o.code; if (o && o.link) text = String(o.link); } catch (e) {}
+    const m = /#k=([A-Za-z0-9_-]+)/.exec(String(text)); return m ? m[1] : null;
+  }
+  async function saveFile(link) {
+    const f = inklingFile(link);
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f], title: f.name }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    const a = root.document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; root.document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  }
   let ORV = null;
   async function orv() { if (ORV) return ORV; try { ORV = await (await fetch('./orv/orv3.json?v=' + (root.INK_V || ''))).json(); } catch (e) { ORV = null; } return ORV; }
 
@@ -76,10 +93,12 @@
     const pic = root.document.createElement('div'); pic.className = 'pic';
     const img = root.document.createElement('img'); img.alt = 'a QR code with Orv in its centre: your .inkling';
     const tw = root.document.createElement('canvas'); pic.append(img, tw);
-    const cap = root.document.createElement('div'); cap.className = 'cap'; cap.textContent = o.cap || 'your .inkling · scan it to carry this kingdom · hold it to keep it · tap to close';
+    const cap = root.document.createElement('div'); cap.className = 'cap'; cap.textContent = o.cap || 'your .inkling · scan it to carry this kingdom · save it as a file · tap to close';
     const words = root.document.createElement('div'); words.className = 'words';
     const word = (t, fn) => { const b = root.document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = e => { e.stopPropagation(); fn(); }; words.appendChild(b); return b; };
     if (navigator.share) word('share', () => navigator.share({ title: 'my kingdom', url: link }).catch(() => {}));
+    word('save', () => saveFile(link));   // the .inkling file
+    if (o.onOpen) word('open', () => { v._close(); o.onOpen(); });   // read a .inkling file
     const cp = word('copy', async () => { try { await navigator.clipboard.writeText(link); cp.textContent = 'copied'; } catch (e) { prompt('the link', link); } });
     v.append(pic, cap, words);
     let timer = 0; const t0 = Date.now();
@@ -105,5 +124,5 @@
     } catch (e) { cap.textContent = (e && e.message) || 'the code would not draw'; }
     return v;
   }
-  root.INKSHARE = { encode, decode, draw, show, KNOBS };
+  root.INKSHARE = { encode, decode, draw, show, inklingFile, readInkling, saveFile, KNOBS };
 })(window);
