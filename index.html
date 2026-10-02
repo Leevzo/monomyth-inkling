@@ -10,11 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script src="./crown.js"></script>
-<script src="./share.js"></script>
-<script src="./sky.js"></script>
+<script>window.INK_V = '1790912335';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790912335"></script>
+<script src="./share.js?v=1790912335"></script>
+<script src="./sky.js?v=1790912335"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css">
+<link rel="stylesheet" href="./fonts.css?v=1790912335">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -656,7 +657,7 @@ function meterKey() { return WHEEL.front === 'squatch' ? 'inkling.meter.squatch'
 /* THE SCALE, CURVED (his word, 2026-10-01): "Orv has no seperation, his story and focus (every master gets one) appears as a
    curve semi circle around him. that opens on ONE tap." Pixels along an arc round the one in front: story at its lower left
    end, focus over his head; the gold pixel is where it stands. Drag along it; tap him again (or anywhere else) to close. */
-K.arc = { r: 104, from: 160, to: 280, px: 4, gap: 7, knob: 12 };   // degrees: 0 is to his right, 90 below him
+K.arc = { r: 76, from: 160, to: 285, px: 3, gap: 6, knob: 9 };   // his word: smaller, tighter, no explanation   // degrees: 0 is to his right, 90 below him
 const ARC = { open: false };
 function arcCentre() { const c = WHEEL.front === 'squatch' ? $('squatch') : $('orv'), r = c.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
 function arcDraw() {
@@ -673,7 +674,6 @@ function arcDraw() {
   mk('rect', { x: Math.round(kx - knob / 2), y: Math.round(ky - knob / 2), width: knob, height: knob, fill: gold, 'shape-rendering': 'crispEdges', 'pointer-events': 'none' });
   const word = (t, x, y, anchor, b) => { const e = mk('text', { x, y, 'text-anchor': anchor, 'font-family': "'Dogica', ui-monospace, monospace", 'font-size': 11, fill: b ? ink : dim, 'pointer-events': 'none' }); e.textContent = t; };
   word('story', p0[0] - 10, p0[1] + 4, 'end', v < 0.5); word('focus', p1[0] - 12, p1[1] - 2, 'end', v > 0.5);
-  const says = METER_WORDS[Math.round(v * 4)]; word(says, cx - r * 0.55, cy - r * 0.55, 'end', false);
 }
 function arcSet(e) { const [cx, cy] = arcCentre(), { from, to } = K.arc; let deg = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI; if (deg < 0) deg += 360;
   if (deg < from - 40) deg += 360; const v = Math.max(0, Math.min(1, (deg - from) / (to - from))); store(meterKey(), Math.round(v * 20) / 20); arcDraw(); }
@@ -760,7 +760,7 @@ function listenStop() {
 /* ═══ ORV, SUMMONED: his own idle rig (Summon.tsx via OrvSummon2), the one Orv, never redrawn ═══ */
 const ORV = { listening: false };
 (async function orvBoot() {
-  const cv = $('orv'); let O; try { O = await (await fetch('./orv/orv3.json')).json(); } catch (e) { return; }
+  const cv = $('orv'); let O; try { O = await (await fetch('./orv/orv3.json?v=' + window.INK_V)).json(); } catch (e) { return; }
   const w = O.w, h = O.h, S = K.orvScale, mx = 1, mxR = 2, my = 6;   // close to the side: one pixel of room on the left, two on the right (his word)
   const lowest = rows => { for (let y = rows.length - 1; y >= 0; y--) if (/[^.]/.test(rows[y])) return y; return rows.length - 1; };
   const floor = Math.max.apply(null, O.frames.map(lowest));
@@ -814,7 +814,7 @@ K.squatch = { scale: 5, stepMs: 240, ember: [9, 10], cols: [9, 10] };
 K.turn = { steps: 6, stepMs: 55, at: [-44, -70], tick: true };   // the front spot's centre, px from the corner; a click a step
 K.seedSquatch = 'You are Squatch, the sasquatch on the couch, stuck in one day, quitting cigarettes tomorrow. The King is the Hero, your roommate. Say the plain answer first, then help him see why. Never break the scene. The world\'s swear is fluck. Squatches don\'t smoke.';   // lifted from his harness   // ember = [x, y] in his own cells; the sparks' column
 (async function squatchBoot() {
-  const cv = $('squatch'); let O; try { O = await (await fetch('./squatch/squatch.json')).json(); } catch (e) { return; }
+  const cv = $('squatch'); let O; try { O = await (await fetch('./squatch/squatch.json?v=' + window.INK_V)).json(); } catch (e) { return; }
   const S = K.squatch.scale, w = O.w, h = O.h, rows = O.frames[0], [ex, ey] = K.squatch.ember;
   const isSpark = (x, y) => y < ey && K.squatch.cols.includes(x) && O.pal[rows[y][x]] && O.pal[rows[y][x]].toUpperCase() === '#FF0000';
   const sparks = []; rows.forEach((r, y) => Array.from(r).forEach((ch, x) => { if (isSpark(x, y)) sparks.push({ x, y, c: O.pal[ch] }); }));
@@ -906,7 +906,7 @@ let MODE = 'talk';
      follow with their clicky lag. Double-tap: the share/save (share.js). The word comes back only if the crown cannot load. */
   D.innerHTML = '<span id="star" class="crowned" aria-label="the crown: drag to move the divide, double-tap for your kingdom as a code"><canvas id="crown"></canvas></span>';
   const STAR = $('star');
-  (window.CROWN ? CROWN.load('./crown.json') : Promise.reject(new Error('no crown'))).then(data => { window._crown = CROWN.make($('crown'), data, { scale: 7, pad: 3, count: 0, overlay: true, bounds: () => { const m = $('main').getBoundingClientRect(); return { top: m.top, bottom: m.bottom, right: innerWidth }; } }); render(); })
+  (window.CROWN ? CROWN.load('./crown.json?v=' + window.INK_V) : Promise.reject(new Error('no crown'))).then(data => { window._crown = CROWN.make($('crown'), data, { scale: 7, pad: 3, count: 0, overlay: true, bounds: () => { const m = $('main').getBoundingClientRect(); return { top: m.top, bottom: m.bottom, right: innerWidth }; } }); render(); })
     .catch(() => { STAR.classList.remove('crowned'); STAR.textContent = 'INKLING'; });
   let dark = 0;
   const light = () => { clearTimeout(dark); STAR.classList.add('lit'); };
@@ -953,6 +953,16 @@ function bringHome() {
   return added;
 }
 if (!/#k=/.test(location.hash)) bringHome();
+
+/* ═══ THE FRESH OPEN (his word: "I am not seeing changes reflected on app, try again"). A phone keeps the site's files for a
+   while, and a Home Screen app longer. So on every open, and every return to it, the app asks version.json (never cached)
+   which build stands; if it is not this one, it opens that build's own address, so every file comes fresh. Once per build. ═══ */
+async function freshOpen() {
+  try { const j = await (await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' })).json(); if (!j || !j.v || j.v === window.INK_V) return;
+    const tried = sessionStorage.getItem('inkling.fresh'); if (tried === j.v) return; sessionStorage.setItem('inkling.fresh', j.v);
+    location.replace(location.pathname + '?v=' + j.v + location.hash); } catch (e) {}
+}
+freshOpen(); document.addEventListener('visibilitychange', () => { if (!document.hidden) freshOpen(); });
 
 /* ═══ BOOT: #say= from the Tell Orv Shortcut arrives as if typed ═══ */
 render();

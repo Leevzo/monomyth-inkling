@@ -27,7 +27,7 @@
     return JSON.parse(new TextDecoder().decode(out));
   }
   let ORV = null;
-  async function orv() { if (ORV) return ORV; try { ORV = await (await fetch('./orv/orv3.json')).json(); } catch (e) { ORV = null; } return ORV; }
+  async function orv() { if (ORV) return ORV; try { ORV = await (await fetch('./orv/orv3.json?v=' + (root.INK_V || ''))).json(); } catch (e) { ORV = null; } return ORV; }
 
   /* the code, drawn: returns the still canvas and what the twinkle needs */
   async function draw(link) {

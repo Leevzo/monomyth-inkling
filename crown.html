@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#454545">
 <title>The Crown</title>
-<link rel="stylesheet" href="./fonts.css">
-<script src="./crown.js"></script>
-<script src="./share.js"></script>
+<link rel="stylesheet" href="./fonts.css?v=1790912335">
+<script>window.INK_V = '1790912335';</script>
+<script src="./crown.js?v=1790912335"></script>
+<script src="./share.js?v=1790912335"></script>
 <!--
   THE CROWN — what it would look like (his word, 2026-10-01): the crown is the adjuster, up and down, and the brand.
   The number in the middle is the total of gems; the pixels are the gems, growing from the middle; move it and the gems
@@ -32,7 +33,7 @@
 <script>
 (async function () {
   const cv = document.getElementById('crown'), track = document.getElementById('track'), say = document.getElementById('say');
-  const data = await CROWN.load('./crown.json');
+  const data = await CROWN.load('./crown.json?v=' + window.INK_V);
   const S = Math.max(6, Math.min(16, Math.floor(Math.min(innerWidth * 0.5, innerHeight * 0.32) / 15)));   // about half the screen's width
   const crown = CROWN.make(cv, data, { scale: S, pad: 8, count: 0, overlay: true });   // the gems may fly anywhere on the screen
   const N = crown.gems;
