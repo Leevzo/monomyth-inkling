@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790919509';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790919509"></script>
-<script src="./share.js?v=1790919509"></script>
-<script src="./sky.js?v=1790919509"></script>
+<script>window.INK_V = '1790919605';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790919605"></script>
+<script src="./share.js?v=1790919605"></script>
+<script src="./sky.js?v=1790919605"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790919509">
+<link rel="stylesheet" href="./fonts.css?v=1790919605">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -435,6 +435,24 @@ function setDone(t, on, who) { if (!t || !!t.done === !!on) return 0; t.done = !
   const n = had + pay.reduce((a, t) => a + krixRate(t), 0);
   if (store('inkling.krix', { n, at: nowIso(), counted: 'from his own check-offs in the log' })) { pay.forEach(t => { t.krix = krixRate(t); }); if (pay.length) { save(); log({ who: 'orv', what: 'krix', n, text: 'the deeds already done, paid' }); } }
 })();
+/* ═══ THE TEASES (his order, 2026-10-02: "do some surprises and remember to tease me"). Orv keeps a pocketful; they cost nothing,
+   need no key, and come out: when he types "tease me", when he taps his own name at the top of the story, and at every 23rd krix
+   (one for each colour he allows on a screen). ═══ */
+K.teases = [
+  'You built an app to remind you to write. Then you built another one. The script is very proud of both of them.',
+  'You named the flask Tampico. I have also heard you say "Draknek" with a straight face. I trust nothing you name.',
+  'You are the bottleneck. You told me so yourself, on the third of May. I have waited five months to hand that back to you.',
+  'I am two and a half feet tall, and I still look down on that to-do list.',
+  'Tease you? My King, I have one eye. Everything I see of you, I see in focus.',
+  'The fuse burns down whether you look at it or not. It is very calm about it. Unlike some.',
+  'You say "many thanks" and I tidy my satchel. You say "go crazy" and I read your whole life. Choose your words, High King.',
+  'Squatch asked me to pass on a message: tomorrow. He quits tomorrow.',
+  'Another deed in the story. At this rate the story will need a second paragraph, and the second paragraph will need an editor.',
+  'You tapped your own name. In colour. Again. I will allow it; it is a very good name.',
+  'A Hand has no authority, they tell me. Yet here you are, doing what the list says.'
+];
+const krix23 = () => 'Another twenty-three krix: one for every colour you allow near a screen. Not one of them brown. (' + krixHeld() + ' earned here.)';
+const tease = () => { const n = (load('inkling.tease', 0) || 0) % K.teases.length; store('inkling.tease', n + 1); return K.teases[n]; };
 /* a thing keeps one colour wherever it stands: on the sword, in the story, in Orv's corner */
 const inkFor = t => K.wheel[(Math.max(0, ST.tasks.indexOf(t)) * 5 + 2) % K.wheel.length];
 
@@ -451,6 +469,7 @@ function dayOf(iso) { const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) 
 function drawStory(one) {
   const S = $('story'); S.textContent = '';
   const name = document.createElement('div'); name.className = 'st-name'; rainbow(name, NAME); S.appendChild(name);
+  name.addEventListener('click', () => { typeSay(tease()); if (ORV.burst) ORV.burst(6); });   // his own name, tapped: Orv has something to say about it
   const P = document.createElement('div'); P.className = 'st-p'; S.appendChild(P);
   const text = s => P.appendChild(document.createTextNode(s));
   const groups = []; deeds().forEach(t => { const d = dayOf(t.doneAt), g = groups[groups.length - 1]; if (g && g.key === d.key) g.ts.push(t); else groups.push({ key: d.key, word: d.word, ts: [t] }); });
@@ -580,7 +599,9 @@ async function rise(el, n) {
 }
 async function checkOff(t, el) {
   if (!t || RISING) return; RISING = true;
-  try { await rise(el, t.krix ? 0 : krixRate(t)); setDone(t, true); log({ who: 'k', what: 'done', id: t.id }); if (SEL === t.id) SEL = null; save(); }
+  try { await rise(el, t.krix ? 0 : krixRate(t)); const was = krixHeld(); setDone(t, true); log({ who: 'k', what: 'done', id: t.id }); if (SEL === t.id) SEL = null; save();
+    if (ORV.burst) ORV.burst(Math.min(12, 3 + (t.krix || 0)));
+    if (Math.floor(krixHeld() / 23) > Math.floor(was / 23)) { flash(); typeSay(krix23()); } }
   finally { RISING = false; render(); }
 }
 function setAside(t) { if (!t) return; t.gone = true; log({ who: 'k', what: 'set aside', id: t.id, word: t.word }); if (SEL === t.id) SEL = null; save(); render(); }
@@ -784,6 +805,7 @@ async function speak(raw) {
   store('inkling.summary', '');
   if (words.toLowerCase() === K.password.toLowerCase()) { const d = keyDoor(); if (d) { const p = load('inkling.paid', {}); p[d] = nowIso(); store('inkling.paid', p); } return say('Cha-ching heard. The ' + (d || '') + ' door is open.', true); }
   if (/^many thanks\b/i.test(words)) { await thanks(); return; }
+  if (/\btease me\b/i.test(words) && words.length < 40) { const t = tease(); log({ who: 'orv', what: 'answered', text: t }); typeSay(t); drawChat(); if (ORV.burst) ORV.burst(5); return; }   // no key, no coin
   const use = /^use\s+([\w.-]{2,40})$/i.exec(words);
   if (use) { const k2 = String(box().apiKey || '').trim(), d2 = keyDoor(); if (!d2) return say('(No key yet.)', true);
     try { const o = await (await fetchT(DOORS[d2].list, { headers: headers(d2, k2) })).json();
@@ -990,6 +1012,7 @@ const ORV = { listening: false };
     ctx.drawImage(src, 0, 0, w, r.neck + 1, X + sh * S, Y - rise * S, w * S, (r.neck + 1) * S);
     SP.forEach(s => { ctx.fillStyle = s.c; ctx.fillRect(X + (s.x + sh) * S, Y + (s.y - rise) * S, S, S); }); };
   const pick = a => a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1));
+  ORV.burst = n => { const Z = K.idle.sparks; for (let i = 0; i < (n || 9); i++) SP.push({ x: Z.from[0] + (i % 3) - 1, y: Z.from[1], dx: (i % 3) - 1, every: 1 + (i % 2), t: 0, life: 7 + (i % 6), c: K.wheel[(i * 5) % K.wheel.length] }); };   // a deed paid: the brass hand throws the twelve
   const sparks = () => { const Z = K.idle.sparks;
     for (let i = SP.length - 1; i >= 0; i--) { const s = SP[i]; if (--s.life <= 0) { SP.splice(i, 1); continue; } if (++s.t % s.every === 0) { s.x += s.dx; s.y -= 1; } }
     if (d.clk >= (d.spark || 1.5)) { const n = pick(Z.n);
