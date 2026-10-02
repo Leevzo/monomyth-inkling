@@ -132,9 +132,9 @@
       });
       row += KNOBS.rowStep;
     }
-    band('where', W.places, 'place');
+    band(W.capL || 'where', W.places, 'place');
     row += KNOBS.bandGap - KNOBS.rowStep + 1;
-    band('who', W.people, 'person');
+    band(W.capC || 'who', W.people, 'person');
     const height = Math.ceil(row * V_STEP + OY + 6);
     return { width, height, ox: OX, oy: OY, minX, maxX, items, caps };
   }
@@ -245,19 +245,18 @@
   }
 
   /* ═══ the drawing ═══ */
-  const STATE = { book: null, ix: null, W: null, sel: null, host: null, ro: null, lastW: 0 };
   function partnersOf(W, it) { return it.kind === 'place' ? (W.who[it.name] || []).map(n => 'person:' + n) : (W.where[it.name] || []).map(n => 'place:' + n); }
   function factsOf(W, it) {
     const beats = (W.beats || []).filter(b => it.kind === 'place' ? b.place === it.name : b.who.includes(it.name)).map(b => b.text);
     const head = it.kind === 'place' ? it.name + ((W.who[it.name] || []).length ? ' · ' + W.who[it.name].join(', ') : '')
                                      : it.name + ((W.where[it.name] || []).length ? ' · ' + W.where[it.name].join(', ') : '');
-    return [head].concat(beats);
+    return [head].concat(beats, (W.f && W.f[it.name]) || []);
   }
-  function render() {
+  function render(STATE) {
     const host = STATE.host, W = STATE.W;
     if (!host || !W) return;
-    const width = Math.max(200, Math.floor(host.clientWidth - 4));
-    STATE.lastW = width;
+    const hs = root.getComputedStyle(host), width = Math.max(120, Math.floor(host.clientWidth - (parseFloat(hs.paddingLeft) || 0) - (parseFloat(hs.paddingRight) || 0) - 4));   // inside its padding
+    STATE.lastW = width; STATE.lastCW = host.clientWidth;
     const L = layout(W, width), G = greys();
     host.textContent = '';
     const wrap = root.document.createElement('div'); wrap.className = 'sky';
@@ -289,7 +288,7 @@
       el('path', { d: bracketPath(it.cx, it.cy, HEXR), fill: 'none', stroke: on ? G.ink : G.dim, 'stroke-width': on ? KNOBS.mark.wSel : KNOBS.mark.w,
                    'stroke-opacity': on || (sel && touched.has(it.id)) ? 1 : KNOBS.mark.opacity, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'shape-rendering': 'crispEdges' }, g);
       el('text', { x: it.x, y: it.y, 'font-size': it.px, fill: (sel && touched.has(it.id)) ? colourOf(it.name) : G.ink, 'pointer-events': 'none' }, g).textContent = it.word;
-      const flip = () => { STATE.sel = on ? null : it.id; render(); };
+      const flip = () => { STATE.sel = on ? null : it.id; render(STATE); };
       g.addEventListener('click', flip);
       g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
     });
@@ -307,19 +306,19 @@
     (sq.s || []).forEach(([li, ci, text]) => { const l = places[li]; if (l == null) return; const ws = (ci || []).map(i => people[i]).filter(Boolean);
       ws.forEach(p => { if (!where[p].includes(l)) where[p].push(l); if (!who[l].includes(p)) who[l].push(p); });
       beats.push({ place: l, who: ws, text: String(text || '') }); });
-    return { title: String(sq.title || ''), places, people, where, who, beats, chars: {}, sceneCount: l => beats.filter(b => b.place === l).length };
+    return { title: String(sq.title || ''), capL: sq.capL, capC: sq.capC, f: sq.f || null, places, people, where, who, beats, chars: {}, sceneCount: l => beats.filter(b => b.place === l).length };
   }
   /* draw(host, sq): the constellation into host */
   async function draw(host, sq) {
-    STATE.host = host;
+    const STATE = host._sky || (host._sky = { book: null, W: null, sel: null, host, ro: null, lastW: 0 });
     if (!sq || !Array.isArray(sq.c)) { host.textContent = ''; const p = root.document.createElement('p'); p.className = 'sky-facts'; p.textContent = 'his constellation comes with your link'; host.appendChild(p); return; }
-    if (STATE.book !== sq) { STATE.book = sq; STATE.sel = null; STATE.W = fromSq(sq); }
+    const key = JSON.stringify(sq); if (STATE.book !== key) { STATE.book = key; STATE.sel = null; STATE.W = fromSq(sq); }
     if (root.document.fonts && root.document.fonts.load) { try { await root.document.fonts.load(KNOBS.px + 'px ' + KNOBS.font, 'A'); INKC.clear(); } catch (e) {} }
-    render();
+    render(STATE);
     if (!STATE.ro && root.ResizeObserver) {
       let t = 0;
       STATE.ro = new root.ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => {
-        if (STATE.host && STATE.host.querySelector('.sky') && Math.abs(STATE.host.clientWidth - 4 - STATE.lastW) > 2) render(); }, 120); });
+        if (STATE.host && STATE.host.querySelector('.sky') && Math.abs(STATE.host.clientWidth - (STATE.lastCW || 0)) > 2) render(STATE); }, 120); });
       STATE.ro.observe(host);
     }
   }

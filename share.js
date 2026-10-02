@@ -29,7 +29,7 @@
   let ORV = null;
   async function orv() { if (ORV) return ORV; try { ORV = await (await fetch('./orv/orv3.json')).json(); } catch (e) { ORV = null; } return ORV; }
 
-  /* the code, drawn: returns a canvas */
+  /* the code, drawn: returns the still canvas and what the twinkle needs */
   async function draw(link) {
     const QR = (await import('./vendor/qrcode.js')).default;
     let q = null, level = null;
@@ -42,44 +42,67 @@
     const cv = root.document.createElement('canvas'); cv.width = cv.height = total * m;
     const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
     g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = '#000000';
-    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.modules.get(r, c)) g.fillRect((c + Z) * m, (r + Z) * m, m, m);
-    const O = await orv();
-    if (O) {
-      const k = q.version >= KNOBS.orvBig ? 2 : 1, rows = O.frames[0], w = O.w * k, h = O.h * k;
-      const c0 = Z + Math.floor((n - w) / 2), r0 = Z + Math.floor((n - h) / 2);
-      g.fillStyle = '#FFFFFF'; g.fillRect((c0 - 1) * m, (r0 - 1) * m, (w + 2) * m, (h + 2) * m);   // one module of white round him
-      rows.forEach((row, y) => Array.from(row).forEach((ch, x) => { const hx = O.pal[ch]; if (!hx) return; g.fillStyle = hx; g.fillRect((c0 + x * k) * m, (r0 + y * k) * m, k * m, k * m); }));
-    }
-    return { canvas: cv, version: q.version, level, size: n };
+    const dark = [];
+    const O = await orv(), k = O && q.version >= KNOBS.orvBig ? 2 : 1;
+    const fw = O ? O.w * k + 2 : 0, fh = O ? O.h * k + 2 : 0, fc = Z + Math.floor((n - (fw - 2)) / 2) - 1, fr = Z + Math.floor((n - (fh - 2)) / 2) - 1;
+    const inField = (r, c) => O && c + Z >= fc && c + Z < fc + fw && r + Z >= fr && r + Z < fr + fh;
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.modules.get(r, c)) { g.fillRect((c + Z) * m, (r + Z) * m, m, m); if (!inField(r, c)) dark.push([r + Z, c + Z]); }
+    const orvAt = (gg, lift) => { if (!O) return; gg.fillStyle = '#FFFFFF'; gg.fillRect(fc * m, fr * m, fw * m, fh * m);   // one module of white round him
+      O.frames[0].forEach((row, y) => Array.from(row).forEach((ch, x) => { const hx = O.pal[ch]; if (!hx) return; gg.fillStyle = hx; gg.fillRect((fc + 1 + x * k) * m, (fr + 1 - lift + y * k) * m, k * m, k * m); })); };
+    orvAt(g, 0);
+    return { canvas: cv, version: q.version, level, size: n, m, dark, orvAt };
   }
 
   function css() {
     if (root.document.getElementById('inkShareCss')) return;
     const s = root.document.createElement('style'); s.id = 'inkShareCss';
     s.textContent = '#inkShare{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;' +
-      'background:rgba(40,40,40,.96);padding:24px 18px calc(env(safe-area-inset-bottom) + 24px)}' +
-      '#inkShare img{width:min(90vw,72vh);height:auto;image-rendering:pixelated;-webkit-touch-callout:default}' +   /* as big as the screen allows: a phone camera reads it off a Mac too */
-      '#inkShare .cap{font-family:"W95FA",ui-monospace,monospace;font-size:13px;color:var(--dim,#a9a9a9);text-align:center;max-width:86vw}' +
-      '#inkShare .words{display:flex;gap:26px}#inkShare .words button{all:unset;cursor:pointer;font-family:"Dogica",ui-monospace,monospace;font-size:14px;color:var(--ink,#f2f2f2)}';
+      'background:rgba(20,20,20,.38);-webkit-backdrop-filter:blur(9px) brightness(.55);backdrop-filter:blur(9px) brightness(.55);padding:24px 18px calc(env(safe-area-inset-bottom) + 24px)}' +
+      '#inkShare .pic{position:relative;width:min(90vw,72vh);line-height:0;box-shadow:0 10px 34px rgba(0,0,0,.55)}' +   /* a picture, opened */
+      '#inkShare .pic img,#inkShare .pic canvas{width:100%;height:auto;image-rendering:pixelated}' +
+      '#inkShare .pic img{-webkit-touch-callout:default}#inkShare .pic canvas{position:absolute;left:0;top:0;pointer-events:none}' +
+      '#inkShare .cap{font-family:"W95FA",ui-monospace,monospace;font-size:13px;color:#d0d0d0;text-align:center;max-width:86vw}' +
+      '#inkShare .words{display:flex;gap:26px}#inkShare .words button{all:unset;cursor:pointer;font-family:"Dogica",ui-monospace,monospace;font-size:14px;color:#f2f2f2}';
     root.document.head.appendChild(s);
   }
-  /* show(link, {cap}): the share/save sheet */
+  const TWINKLE = ['#FF0000', '#FF8000', '#70B300', '#2D8686', '#00A0FF', '#A640BF'];   // the crown's six
+  /* show(link, {cap, from: [x, y]}): the share/save. It opens out of the crown (from) like a picture; everything under it blurs
+     and dims; its dark pixels twinkle in the crown's colours while Orv breathes in its heart; one tap closes it. A still copy
+     lies under the twinkle, so a long press keeps the code (the encoder of the .inkling). */
   async function show(link, o) {
     o = o || {}; css();
-    let v = root.document.getElementById('inkShare'); if (v) v.remove();
-    v = root.document.createElement('div'); v.id = 'inkShare'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-label', 'your kingdom as a code');
-    const img = root.document.createElement('img'); img.alt = 'a QR code with Orv in its centre: this kingdom';
-    const cap = root.document.createElement('div'); cap.className = 'cap'; cap.textContent = o.cap || 'scan it to carry this kingdom · hold it to keep it';
+    let v = root.document.getElementById('inkShare'); if (v) { v._close && v._close(); }
+    v = root.document.createElement('div'); v.id = 'inkShare'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-label', 'your kingdom as a code; tap to close');
+    const pic = root.document.createElement('div'); pic.className = 'pic';
+    const img = root.document.createElement('img'); img.alt = 'a QR code with Orv in its centre: your .inkling';
+    const tw = root.document.createElement('canvas'); pic.append(img, tw);
+    const cap = root.document.createElement('div'); cap.className = 'cap'; cap.textContent = o.cap || 'your .inkling · scan it to carry this kingdom · hold it to keep it · tap to close';
     const words = root.document.createElement('div'); words.className = 'words';
     const word = (t, fn) => { const b = root.document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = e => { e.stopPropagation(); fn(); }; words.appendChild(b); return b; };
     if (navigator.share) word('share', () => navigator.share({ title: 'my kingdom', url: link }).catch(() => {}));
     const cp = word('copy', async () => { try { await navigator.clipboard.writeText(link); cp.textContent = 'copied'; } catch (e) { prompt('the link', link); } });
-    word('close', () => v.remove());
-    v.append(img, cap, words);
-    const t0 = Date.now(); v.addEventListener('click', e => { if (e.target === v && Date.now() - t0 > 450) v.remove(); });   // the double-tap's own click never closes it
+    v.append(pic, cap, words);
+    let timer = 0; const t0 = Date.now();
+    v._close = () => { clearInterval(timer); v.remove(); };
+    v.addEventListener('click', () => { if (Date.now() - t0 > 450) v._close(); });   // tap again to close (the double-tap's own click never does)
     root.document.body.appendChild(v);
-    try { const d = await draw(link); img.src = d.canvas.toDataURL('image/png'); img.dataset.version = d.version; img.dataset.level = d.level; }
-    catch (e) { cap.textContent = (e && e.message) || 'the code would not draw'; }
+    try {
+      const d = await draw(link); img.src = d.canvas.toDataURL('image/png'); img.dataset.version = d.version; img.dataset.level = d.level;
+      tw.width = d.canvas.width; tw.height = d.canvas.height; const g = tw.getContext('2d'); g.imageSmoothingEnabled = false;
+      if (o.from && pic.animate) { const r = pic.getBoundingClientRect(), dx = o.from[0] - (r.left + r.width / 2), dy = o.from[1] - (r.top + r.height / 2);
+        pic.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.1)', opacity: 0.3 }, { transform: 'none', opacity: 1 }], { duration: 300, easing: 'steps(6)' }); }   // it opens out of the crown, a click at a time
+      const lit = []; let step = 0;
+      const paint = () => { g.drawImage(d.canvas, 0, 0);
+        for (let i = lit.length - 1; i >= 0; i--) { const L = lit[i]; if (--L.life <= 0) { lit.splice(i, 1); continue; } g.fillStyle = L.c; g.fillRect(L.x * d.m, L.y * d.m, d.m, d.m); }
+        const t = Date.now() / 1000, lift = Math.sin(t * Math.PI * 2 / 3.6) > 0.35 ? 1 : 0;   // Orv's breath, one module
+        d.orvAt(g, lift); };
+      const reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      paint();
+      if (!reduce) timer = setInterval(() => { step++;
+        const add = Math.max(1, Math.round(d.dark.length * 0.012));
+        for (let i = 0; i < add; i++) { const p = d.dark[(Math.random() * d.dark.length) | 0]; lit.push({ y: p[0], x: p[1], c: TWINKLE[(step + i) % TWINKLE.length], life: 3 + ((Math.random() * 5) | 0) }); }
+        paint(); }, 110);
+    } catch (e) { cap.textContent = (e && e.message) || 'the code would not draw'; }
     return v;
   }
   root.INKSHARE = { encode, decode, draw, show, KNOBS };

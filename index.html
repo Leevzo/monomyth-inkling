@@ -9,11 +9,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
-<link rel="manifest" href="./inkling.webmanifest?v=1">
+<link rel="manifest" href="./inkling.webmanifest?v=2">
 <script src="./crown.js"></script>
 <script src="./share.js"></script>
 <script src="./sky.js"></script>
-<link rel="apple-touch-icon" href="./icon.png?v=true1">
+<link rel="apple-touch-icon" href="./icon.png?v=orv3">
 <link rel="stylesheet" href="./fonts.css">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
@@ -133,12 +133,35 @@ html, body { margin: 0; height: 100%; background: var(--ground); color: var(--in
 #wheel { position: fixed; right: 0; bottom: 0; width: 0; height: 0; z-index: 4; transform-origin: 0 0; }
 #wheel canvas { position: absolute; right: auto; bottom: auto; image-rendering: pixelated; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 body.setting #wheel { visibility: hidden; }
-/* the two swords share one place: Orv's list, Squatch's constellation */
-#left { position: relative; }
-#sky { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 0 8px 2px; }
-#sky .sky-facts p { margin: 6px 0 0; font-size: var(--small); color: var(--dim); line-height: 1.4; }
-#sky .sky-facts p.h { color: var(--ink); }
-#main { margin-top: calc(14px + var(--mt, 0px)); }
+/* THE CROSS (his word, 2026-10-01): "the middle divider is still there vertically, and now there is one horizontally but only
+   on the right half, but the crown can move that cross anywhere on screen." The blueprint's three sections: the SWORD on the
+   left, the CONSTELLATION upper right, Orv and the talk lower right; the crown is the node where the lines meet. --d is the
+   vertical line (share of the width), --e the horizontal one (share of the height; it may rise above, all the way up). */
+#main { position: relative; display: block; margin-top: 14px; }
+#left { position: absolute; left: 0; top: 0; bottom: 0; width: var(--d, 58%); display: flex; flex-direction: column; }
+#list2 { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding-bottom: 8px; }
+#div { position: absolute; left: var(--d, 58%); top: 0; bottom: 0; width: 0; z-index: 6; }
+#star.crowned { top: var(--e, 45%); }
+.skyp { position: absolute; left: var(--d, 58%); right: 0; top: 0; height: max(0px, var(--e, 45%)); overflow-y: auto; overflow-x: hidden; padding: 2px 0 6px 12px; }
+.skyp .sky-facts p { margin: 6px 0 0; font-size: var(--small); color: var(--dim); line-height: 1.4; }
+.skyp .sky-facts p.h { color: var(--ink); }
+#right { position: absolute; left: var(--d, 58%); right: 0; top: max(0px, var(--e, 45%)); bottom: 0; padding-left: 10px; }
+#cross { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 0; }
+#keep { display: none !important; }   /* his word: take the small keep word away (the crown's double-tap is the save) */
+#sparks { font-size: var(--small); color: var(--dim); margin-top: 2px; }
+#sparks:empty { display: none; }
+/* THE SCALE, CURVED ROUND HIM (story ↔ focus; every master keeps his own) */
+#arc { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 13; pointer-events: none; overflow: visible; }
+#arc[hidden] { display: none; }
+#arc .hit { pointer-events: stroke; cursor: pointer; }
+body.setting #arc { display: none; }
+#cig { position: fixed; z-index: 20; top: calc(env(safe-area-inset-top) + 10px); right: calc(var(--pad) - 4px); image-rendering: pixelated; cursor: pointer; padding: 6px; }
+#cig[hidden], #salmon[hidden] { display: none; }
+/* what he says and what he types: one box, one place, the transcription's size; it grows to show it all */
+#bottom { position: relative; }
+#line { display: block; resize: none; overflow: hidden; font-size: clamp(20px, 6vw, 28px) !important; line-height: 1.3; max-height: 40vh; }
+body.holding #bottom::before { content: '●'; position: absolute; left: -6px; top: 12px; color: var(--late); font-size: 10px; }
+#hear { display: none !important; }
 #star.crowned { cursor: move; }
 #orv { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
 body.holding, body.holding * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
@@ -171,13 +194,15 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
 </head>
 <body>
 <div id="app">
-  <div id="one"><div id="oneWord"></div><div id="oneLine"></div><div id="clock"></div></div>
+  <div id="one"><div id="oneWord"></div><div id="oneLine"></div><div id="sparks"></div><div id="clock"></div></div>
   <div id="main">
-    <div id="left"><div id="list" aria-label="your list, in order of priority"></div><div id="sky" hidden aria-label="Squatch's constellation"></div></div>
+    <canvas id="cross" aria-hidden="true"></canvas>
+    <div id="left"><div id="list" aria-label="your list, in order of priority"></div><div id="list2" hidden aria-label="Squatch's sword: his day"></div></div>
+    <div id="skyO" class="skyp" aria-label="Orv's constellation: your kingdom"></div><div id="skyS" class="skyp" hidden aria-label="Squatch's constellation"></div>
     <div id="div" role="separator" aria-label="drag: far left shows your words, far right is action mode"></div>
     <div id="right"><div id="talk" aria-label="the whole talk"><div id="chatLog"></div></div><div id="say"></div><div id="mode"></div></div>
   </div>
-  <div id="bottom"><input id="line" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></div>
+  <div id="bottom"><textarea id="line" rows="1" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></textarea></div>
 </div>
 <div id="wheel" aria-label="Orv and Squatch on the wheel. Tap to send, double-tap to turn the wheel, hold to talk."><canvas id="orv"></canvas><canvas id="squatch"></canvas></div>
 <div id="meter" hidden><div id="meterTrack" role="slider" aria-label="story or focus" aria-valuemin="0" aria-valuemax="100"><div id="meterKnob"></div></div>
@@ -187,6 +212,8 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
 <input id="restore" type="file" accept="application/json,.json" hidden>
 <div id="flash"></div>
 <canvas id="salmon" role="button" tabindex="0" aria-label="settings (the salmon of knowledge)"></canvas>
+<canvas id="cig" role="button" tabindex="0" aria-label="settings (Squatch's cigarette)" hidden></canvas>
+<svg id="arc" hidden aria-label="story or focus"></svg>
 <div id="set" hidden role="dialog" aria-label="settings">
   <h2>settings</h2>
   <div id="setBody">
@@ -268,7 +295,8 @@ async function kingdomLink() {
   const sq = load('inkling.squatch', null), o = { v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t }; if (sq) o.sq = sq;
   return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }
-async function openShare() { try { if (!window.INKSHARE) throw new Error('no share'); await INKSHARE.show(await kingdomLink()); } catch (e) { say('(The code would not draw.)', true); } }
+async function openShare() { try { if (!window.INKSHARE) throw new Error('no share'); const c = $('crown').getBoundingClientRect();
+  await INKSHARE.show(await kingdomLink(), { from: [c.left + c.width / 2, c.top + c.height / 2] }); } catch (e) { say('(The code would not draw.)', true); } }
 /* #new: a new kingdom. Whatever was here is set aside (kept under orv.archive.<time>, never deleted). */
 if (location.hash === '#new') {
   const was = load('inkling.state', null);
@@ -337,6 +365,8 @@ function render() {
   });
   tick();
   if (window._crown) { const gems = live().filter(t => t.done).length; window._crown.set(Math.min(window._crown.gems, gems), gems); }   // a gem for each deed done
+  const sp = load('inkling.sparks', null); $('sparks').textContent = sp && typeof sp.lifetime === 'number' ? sp.lifetime.toLocaleString() + ' sparks' + (sp.today ? ' · ' + sp.today + ' today' : '') : '';
+  try { drawSkyO(); } catch (e) {}
 }
 /* the clock: a countdown to THE ONE THING if it is timed, else to the next timed task; the digits wheel through colour */
 function span(ms) { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
@@ -546,8 +576,8 @@ let BUSY = false;
 let FIRST = !load('inkling.log', []).some(e => e.who === 'k' && e.what === 'said');
 async function speak(raw) {
   const words = String(raw || '').trim(); if (!words || BUSY) return;
-  const km = /#k=[A-Za-z0-9_-]+/.exec(words); if (km) { $('line').value = ''; location.hash = km[0]; return; }   // a kingdom link pasted here: the Home Screen app takes it in
-  $('line').value = '';
+  const km = /#k=[A-Za-z0-9_-]+/.exec(words); if (km) { setLine(''); location.hash = km[0]; return; }   // a kingdom link pasted here: the Home Screen app takes it in
+  setLine('');
   if (looksLikeKey(words)) { setOpen(); $('setKey').value = words.replace(/\s+/g, ''); grow($('setKey')); return setTest(); }
   log({ who: 'k', what: 'said', text: words });               // his words first, verbatim, always
   if (FIRST) { const B = load('inkling.breath', []); B.push({ at: nowIso(), text: words, first: true }); store('inkling.breath', B); }
@@ -563,8 +593,8 @@ async function speak(raw) {
       const kept = load('inkling.model', {}); kept[d2] = hit; store('inkling.model', kept); const b = box(); if (b.models && b.models[d2]) { delete b.models[d2]; store(BOX, b); }
       return say('Now thinking with ' + hit + '.', true); } catch (e) { return say('(The door would not list its models.)', true); } }
   const key = String(box().apiKey || '').trim(), d = keyDoor();
-  if (!key || !d) { $('line').value = words; setOpen('Your key goes here, High King. Paste it and tap test.'); return; }
-  if (!paidOpen(d)) { $('line').value = words; setOpen('The ' + d + ' key costs money. Type ' + K.password + ' on the coin line.'); return; }
+  if (!key || !d) { setLine(words); setOpen('Your key goes here, High King. Paste it and tap test.'); return; }
+  if (!paidOpen(d)) { setLine(words); setOpen('The ' + d + ' key costs money. Type ' + K.password + ' on the coin line.'); return; }
   lastLine(words); BUSY = true; ORV.listening = true; loading();
   const chat = load('inkling.chat', []).slice(-K.memory * 2), turns = chat.concat([{ role: 'user', content: words }]);
   try {
@@ -576,7 +606,7 @@ async function speak(raw) {
       else typeSay(String(reply.say || '').slice(0, 900) || '(Orv nods.)', !reply.say);
       if (r.done) FIRST = false; }
     store('inkling.chat', turns.concat([{ role: 'assistant', content: text }]).slice(-K.memory * 2));
-  } catch (e) { log({ who: 'ai:' + d, what: 'error', text: String(e.message || e) }); if (e.status === 401 || e.status === 403) { BUSY = false; ORV.listening = false; $('line').value = words; return setOpen('The ' + d + ' door turned the key away: ' + String(e.message || e).slice(0, 140), true); } say('(Orv could not get through: ' + plainWhy(e) + '. Your words are kept; tap me to try again.)', true); $('line').value = words; }
+  } catch (e) { log({ who: 'ai:' + d, what: 'error', text: String(e.message || e) }); if (e.status === 401 || e.status === 403) { BUSY = false; ORV.listening = false; setLine(words); return setOpen('The ' + d + ' door turned the key away: ' + String(e.message || e).slice(0, 140), true); } say('(Orv could not get through: ' + plainWhy(e) + '. Your words are kept; tap me to try again.)', true); setLine(words); }
   BUSY = false; ORV.listening = false; render(); drawChat();
 }
 /* "many thanks": Orv sums up the talk in a line or two; the summary stays in the window until he types again */
@@ -595,11 +625,14 @@ async function thanks() {
   log({ who: 'orv', what: 'summary', text: sum }); store('inkling.chat', []); store('inkling.summary', sum);
   flash(); lastLine(''); say(sum); render(); drawChat();
 }
-$('line').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); speak($('line').value); } });
+function growLine() { const l = $('line'); l.style.height = 'auto'; l.style.height = Math.min(l.scrollHeight + 2, innerHeight * 0.4) + 'px'; }
+function setLine(v) { $('line').value = v; growLine(); }
+$('line').addEventListener('input', growLine);
+$('line').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); speak($('line').value); } });
 /* ═══ ORV'S HANDS: tap = send (or open the line) · double-tap = the meter, story ↔ focus · hold = he listens, live ═══
    (the double-tap is also where the other masters will turn, later) */
 const METER_WORDS = ['all story: full myth, the whole immersion', 'mostly story', 'story and focus, even', 'mostly focus', 'all focus: one line, no lore'];
-const meterVal = () => { const v = load('inkling.meter', 0.5); return typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0.5; };
+const meterVal = () => { const v = load(meterKey(), 0.5); return typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0.5; };
 function meterLine() { const v = meterVal();
   if (v <= 0.2) return '\nTHE METER IS ON STORY: speak fully in your voice, in the myth, with the world around him; still short enough to read on a phone.';
   if (v >= 0.8) return '\nTHE METER IS ON FOCUS: "say" is ONE plain line, no lore, no flourish; just the fact or the next move.';
@@ -616,16 +649,48 @@ function meterDraw() { const v = meterVal(), k = $('meterKnob');
   T.addEventListener('pointerup', () => { drag = false; log({ who: 'k', what: 'meter', v: meterVal() }); });
   document.addEventListener('pointerdown', e => { if (!$('meter').hidden && !e.target.closest('#meter') && e.target.id !== 'orv') $('meter').hidden = true; }, true);
 })();
-function meterToggle() { const m = $('meter'); m.hidden = !m.hidden; if (!m.hidden) meterDraw(); }
+function meterKey() { return WHEEL.front === 'squatch' ? 'inkling.meter.squatch' : 'inkling.meter'; }   // every master gets one
+/* THE SCALE, CURVED (his word, 2026-10-01): "Orv has no seperation, his story and focus (every master gets one) appears as a
+   curve semi circle around him. that opens on ONE tap." Pixels along an arc round the one in front: story at its lower left
+   end, focus over his head; the gold pixel is where it stands. Drag along it; tap him again (or anywhere else) to close. */
+K.arc = { r: 104, from: 160, to: 280, px: 4, gap: 7, knob: 12 };   // degrees: 0 is to his right, 90 below him
+const ARC = { open: false };
+function arcCentre() { const c = WHEEL.front === 'squatch' ? $('squatch') : $('orv'), r = c.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }
+function arcDraw() {
+  const A = $('arc'), [cx, cy] = arcCentre(), { r, from, to, px, gap, knob } = K.arc, v = meterVal(), NS = 'http://www.w3.org/2000/svg';
+  const at = deg => [cx + r * Math.cos(deg * Math.PI / 180), cy + r * Math.sin(deg * Math.PI / 180)];
+  const mk = (n, a) => { const e = document.createElementNS(NS, n); Object.keys(a).forEach(k => e.setAttribute(k, a[k])); A.appendChild(e); return e; };
+  A.textContent = '';
+  const cs = getComputedStyle(document.documentElement), dim = cs.getPropertyValue('--dim').trim(), gold = cs.getPropertyValue('--gold').trim(), ink = cs.getPropertyValue('--ink').trim();
+  const steps = Math.max(2, Math.round((to - from) * Math.PI / 180 * r / gap));
+  for (let i = 0; i <= steps; i++) { const [x, y] = at(from + (to - from) * i / steps); mk('rect', { x: Math.round(x - px / 2), y: Math.round(y - px / 2), width: px, height: px, fill: dim, 'shape-rendering': 'crispEdges' }); }
+  const p0 = at(from), p1 = at(to);
+  mk('path', { class: 'hit', d: 'M' + p0[0] + ' ' + p0[1] + ' A' + r + ' ' + r + ' 0 0 1 ' + p1[0] + ' ' + p1[1], fill: 'none', stroke: 'transparent', 'stroke-width': 44 });
+  const [kx, ky] = at(from + (to - from) * v);
+  mk('rect', { x: Math.round(kx - knob / 2), y: Math.round(ky - knob / 2), width: knob, height: knob, fill: gold, 'shape-rendering': 'crispEdges', 'pointer-events': 'none' });
+  const word = (t, x, y, anchor, b) => { const e = mk('text', { x, y, 'text-anchor': anchor, 'font-family': "'Dogica', ui-monospace, monospace", 'font-size': 11, fill: b ? ink : dim, 'pointer-events': 'none' }); e.textContent = t; };
+  word('story', p0[0] - 10, p0[1] + 4, 'end', v < 0.5); word('focus', p1[0] - 12, p1[1] - 2, 'end', v > 0.5);
+  const says = METER_WORDS[Math.round(v * 4)]; word(says, cx - r * 0.55, cy - r * 0.55, 'end', false);
+}
+function arcSet(e) { const [cx, cy] = arcCentre(), { from, to } = K.arc; let deg = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI; if (deg < 0) deg += 360;
+  if (deg < from - 40) deg += 360; const v = Math.max(0, Math.min(1, (deg - from) / (to - from))); store(meterKey(), Math.round(v * 20) / 20); arcDraw(); }
+function meterToggle() { ARC.open = !ARC.open; $('arc').toggleAttribute('hidden', !ARC.open); if (ARC.open) arcDraw(); }   // an svg's hidden is an attribute
+function arcClose() { if (!ARC.open) return; ARC.open = false; $('arc').setAttribute('hidden', ''); }
+(function arcHands() {
+  const A = $('arc'); let drag = false;
+  A.addEventListener('pointerdown', e => { if (!e.target.classList.contains('hit')) return; drag = true; try { A.setPointerCapture(e.pointerId); } catch (x) {} arcSet(e); e.stopPropagation(); });
+  A.addEventListener('pointermove', e => { if (drag) arcSet(e); });
+  A.addEventListener('pointerup', () => { if (drag) { drag = false; log({ who: 'k', what: 'meter', of: WHEEL.front, v: meterVal() }); } });
+  document.addEventListener('pointerdown', e => { if (ARC.open && !A.contains(e.target) && !$('wheel').contains(e.target)) arcClose(); }, true);
+  addEventListener('resize', () => { if (ARC.open) arcDraw(); });
+})();
 
 /* HOLD: Safari's own speech recognition (no Jev, no key); the words show live; letting go sends them to Orv */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 /* ONE ear for the whole sitting: it is started once (one permission ask) and kept awake while the app is open,
    so a hold does not ask again. Only words heard WHILE HELD are taken. It rests after 3 quiet minutes. */
 const EAR = { rec: null, on: false, held: false, base: 0, n: 0, fin: '', live: '', rest: 0, last: [] };
-function hearShow() { const h = $('hear'); h.hidden = false; h.textContent = '';
-  const dot = document.createElement('span'); dot.className = 'dot'; dot.textContent = '● '; h.appendChild(dot);
-  h.appendChild(document.createTextNode(EAR.fin)); const i = document.createElement('i'); i.textContent = (EAR.fin ? ' ' : '') + EAR.live; h.appendChild(i); }
+function hearShow() { setLine([EAR.pre, EAR.fin, EAR.live].filter(Boolean).join(' ')); }   // his voice, live, in the very box he types in
 function earWake() {
   if (EAR.on) return true;
   if (!SR) { say('(Orv cups an ear.) This phone will not let a page listen. Tap the line and use the keyboard\'s mic.', true); return false; }
@@ -646,16 +711,17 @@ function earRest() { EAR.on = false; try { EAR.rec && EAR.rec.stop(); } catch (e
 document.addEventListener('visibilitychange', () => { if (document.hidden) earRest(); });
 function listenStart() {
   if (!earWake()) return false;
-  clearTimeout(EAR.rest); EAR.held = true; EAR.base = EAR.n; EAR.fin = ''; EAR.live = ''; ORV.listening = true;
+  clearTimeout(EAR.rest); EAR.held = true; EAR.base = EAR.n; EAR.pre = $('line').value.trim(); EAR.fin = ''; EAR.live = ''; ORV.listening = true;
   document.body.classList.add('holding'); hearShow(); return true;
 }
 function listenStop() {
   if (!EAR.held) return;
   setTimeout(() => {                                           // a breath for the last words to land
     EAR.held = false; ORV.listening = false; document.body.classList.remove('holding');
-    const words = (EAR.fin + ' ' + EAR.live).replace(/\s+/g, ' ').trim(); $('hear').hidden = true;
+    const heard = (EAR.fin + ' ' + EAR.live).replace(/\s+/g, ' ').trim(), words = $('line').value.replace(/\s+/g, ' ').trim();
     EAR.base = EAR.n; EAR.rest = setTimeout(earRest, 180000);
-    if (words) { log({ who: 'k', what: 'voice', text: words }); speak(words); }
+    if (heard) log({ who: 'k', what: 'voice', text: heard });
+    if (words) speak(words);   // letting go of him sends what is in the box
   }, 700);
 }
 (function hands() {
@@ -668,9 +734,9 @@ function listenStop() {
   const up = () => { clearTimeout(holdT);
     if (held) { held = false; listenStop(); return; }
     const now = Date.now();
-    if (now - lastTap < 320) { clearTimeout(tapT); lastTap = 0; turnWheel(); meterToggle(); return; }   // double-tap: the wheel turns, and the scale for story
+    if (now - lastTap < 320) { clearTimeout(tapT); lastTap = 0; turnWheel(); return; }   // double-tap: the wheel turns
     lastTap = now;
-    tapT = setTimeout(() => { lastTap = 0; if ($('line').value.trim()) speak($('line').value); else $('line').focus(); }, 320); };
+    tapT = setTimeout(() => { lastTap = 0; meterToggle(); }, 320); };   // one tap: his scale, curved round him (sending is Enter, or letting go)
   O.addEventListener('pointerup', up); O.addEventListener('pointercancel', () => { clearTimeout(holdT); if (held) { held = false; listenStop(); } });
 })();
 
@@ -772,25 +838,49 @@ function click() { if (!K.turn.tick) return; try { const A = click.a || (click.a
   const o = A.createOscillator(), g = A.createGain(); o.type = 'square'; o.frequency.value = 1700; g.gain.value = 0.025; o.connect(g); g.connect(A.destination);
   o.start(); o.stop(A.currentTime + 0.006); } catch (e) {} }
 function frontWords() { const sq = WHEEL.front === 'squatch'; $('line').placeholder = sq ? 'tell squatch' : 'tell orv'; $('line').setAttribute('aria-label', sq ? 'tell Squatch' : 'tell Orv'); }
-function drawSky() { if (window.SKY) SKY.draw($('sky'), load('inkling.squatch', null)); }
+function drawSky() { if (!window.SKY) return; SKY.draw($('skyS'), load('inkling.squatch', null)); drawSkyO(); drawList2(); }
+/* Orv's constellation: the kingdom's open things, white on their brackets; a tap shows its line */
+function drawSkyO() { if (!window.SKY) return; const f = {}, c = [];
+  open().forEach(t => { if (!f[t.word]) { f[t.word] = []; c.push(t.word); } if (t.text) f[t.word].push(t.text); });
+  SKY.draw($('skyO'), { title: '', capC: 'your kingdom', c, l: [], s: [], f }); }
+/* Squatch's own wooden sword: his day, in the tape's order */
+function drawList2() { const sq = load('inkling.squatch', null), L = $('list2'); L.textContent = '';
+  if (!sq || !Array.isArray(sq.s)) { const p = document.createElement('div'); p.className = 'line'; p.style.display = 'block'; p.textContent = 'his sword comes with your link'; L.appendChild(p); return; }
+  sq.s.forEach((b, i) => { const r = document.createElement('div'); r.className = 'row'; const w = document.createElement('span'); w.className = 'word'; w.textContent = (sq.l || [])[b[0]] || '·';
+    const ink = inkOf(w.textContent); w.style.setProperty('--il', ink.l + 'px'); w.style.setProperty('--ib', ink.b + 'px');
+    const l = document.createElement('div'); l.className = 'line'; l.textContent = b[2] || ''; r.append(w, l);
+    r.addEventListener('click', () => { const on = !r.classList.contains('sel'); [...L.children].forEach(x => { x.classList.remove('sel'); x.querySelector('.word').style.color = ''; });
+      if (on) { r.classList.add('sel'); w.style.color = K.wheel[(i * 5 + 2) % K.wheel.length]; } });
+    L.appendChild(r); }); }
 /* the swords swing about the lower LEFT corner, the opposite way to the wheel: the one going leaves to the left (for Squatch)
    or back to the right (for Orv), the one coming swings in from the other side, step for step with the wheel's clicks */
-async function swapSwords(to) {
-  const n = K.turn.steps, dir = to === 'squatch' ? -1 : 1, out = to === 'squatch' ? $('list') : $('sky'), inn = to === 'squatch' ? $('sky') : $('list');
-  if (to === 'squatch') drawSky();
+/* one pair swings about a corner of the screen: the one going turns away, the one coming turns in from the other side */
+async function swing(out, inn, corner, dir) {
+  const n = K.turn.steps, cx = corner[0] === 'r' ? innerWidth : 0, cy = corner[1] === 'b' ? innerHeight : 0;
   inn.hidden = false;
-  [out, inn].forEach(el => { const r = el.getBoundingClientRect(); el.style.transformOrigin = (-r.left) + 'px ' + (innerHeight - r.top) + 'px'; });
+  [out, inn].forEach(el => { const r = el.getBoundingClientRect(); el.style.transformOrigin = (cx - r.left) + 'px ' + (cy - r.top) + 'px'; });
   for (let i = 0; i <= n; i++) { const t = i / n; out.style.transform = 'rotate(' + (90 * dir * t) + 'deg)'; inn.style.transform = 'rotate(' + (-90 * dir * (1 - t)) + 'deg)'; await sleep(K.turn.stepMs); }
   out.hidden = true; out.style.transform = ''; inn.style.transform = '';
 }
+function swapSwords(to) {
+  const sq = to === 'squatch', d = sq ? -1 : 1;   // to Squatch the wheel turns clockwise; the swords and skies turn the other way
+  drawSky();
+  return Promise.all([
+    swing(sq ? $('list') : $('list2'), sq ? $('list2') : $('list'), 'lb', d),     // the sword leaves to the left
+    swing(sq ? $('skyO') : $('skyS'), sq ? $('skyS') : $('skyO'), 'rb', d),     // the constellation, the opposite way to the wheel
+    swing(sq ? $('salmon') : $('cig'), sq ? $('cig') : $('salmon'), 'rt', -d)   // his own settings icon turns with the wheel
+  ]);
+}
 async function turnWheel() {
-  if (WHEEL.busy) return; WHEEL.busy = true;
+  if (WHEEL.busy) return; WHEEL.busy = true; arcClose();
   const to = WHEEL.front === 'orv' ? 'squatch' : 'orv', from = WHEEL.phi, dest = to === 'squatch' ? 90 : 0, n = K.turn.steps;
   const swing = swapSwords(to);
   for (let i = 1; i <= n; i++) { WHEEL.phi = from + (dest - from) * i / n; wheelPlace(); click(); await sleep(K.turn.stepMs); }
   await swing; WHEEL.front = to; store('inkling.front', to); frontWords(); WHEEL.busy = false;
 }
-(function wheelBoot() { frontWords(); if (WHEEL.front === 'squatch') { $('list').hidden = true; $('sky').hidden = false; setTimeout(drawSky, 0); } wheelPlace(); })();
+(function wheelBoot() { frontWords(); const sq = WHEEL.front === 'squatch';
+  $('list').hidden = sq; $('list2').hidden = !sq; $('skyO').hidden = sq; $('skyS').hidden = !sq; $('salmon').hidden = sq; $('cig').hidden = !sq;
+  setTimeout(drawSky, 0); wheelPlace(); })();
 
 /* ═══ THE DIVIDER: his name, vertical. It follows the hand 1:1 and holds where let go.
    All the way left: his own lines appear and scroll. All the way right: action mode, Orv acts and does not answer.
@@ -802,7 +892,7 @@ let MODE = 'talk';
      follow with their clicky lag. Double-tap: the share/save (share.js). The word comes back only if the crown cannot load. */
   D.innerHTML = '<span id="star" class="crowned" aria-label="the crown: drag to move the divide, double-tap for your kingdom as a code"><canvas id="crown"></canvas></span>';
   const STAR = $('star');
-  (window.CROWN ? CROWN.load('./crown.json') : Promise.reject(new Error('no crown'))).then(data => { window._crown = CROWN.make($('crown'), data, { scale: 5, pad: 3, count: 0 }); render(); })
+  (window.CROWN ? CROWN.load('./crown.json') : Promise.reject(new Error('no crown'))).then(data => { window._crown = CROWN.make($('crown'), data, { scale: 7, pad: 3, count: 0, overlay: true }); render(); })
     .catch(() => { STAR.classList.remove('crowned'); STAR.textContent = 'INKLING'; });
   let dark = 0;
   const light = () => { clearTimeout(dark); STAR.classList.add('lit'); };
@@ -812,17 +902,52 @@ let MODE = 'talk';
   const setD = (f, keep) => { f = Math.max(KD.min, Math.min(KD.max, f)); A.style.setProperty('--d', (f * 100).toFixed(2) + '%');
     const was = MODE; MODE = f >= KD.right ? 'action' : 'talk'; A.classList.toggle('open', f <= KD.left); A.classList.toggle('action', MODE === 'action');
     $('mode').textContent = MODE === 'action' ? 'ACTION' : ''; if (A.classList.contains('open')) drawChat();
-    if (keep) store('inkling.d', f); };
-  setD(load('inkling.d', KD.dflt), false);
-  let drag = false, x0 = 0, f0 = 0, lastTap = 0, y0 = 0, mt0 = 0;
-  const setMT = (v, keep) => { const M = $('main'), room = M.getBoundingClientRect().bottom - (M.getBoundingClientRect().top - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mt')) || 0));
-    v = Math.max(0, Math.min(room * 0.62, v)); document.documentElement.style.setProperty('--mt', v + 'px'); if (keep) store('inkling.mt', v); };
-  setMT(load('inkling.mt', 0), false);
-  STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; y0 = e.clientY; mt0 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mt')) || 0; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; try { STAR.setPointerCapture(e.pointerId); } catch (x) {} });
-  STAR.addEventListener('pointermove', e => { if (!drag) return; const r = M.getBoundingClientRect(); setD(f0 + (e.clientX - x0) / r.width, false); setMT(mt0 + 2 * (e.clientY - y0), false); });   // free moving
+    if (typeof drawCross === 'function') drawCross(); if (keep) store('inkling.d', f); };
+  let drag = false, x0 = 0, f0 = 0, lastTap = 0, y0 = 0, e0 = 0, E = 0.45;
+  /* the horizontal line: a share of the main area's height; it may rise all the way up the screen */
+  const setE = (e, keep) => { const r = M.getBoundingClientRect(), lo = (8 - r.top) / Math.max(1, r.height); E = Math.max(lo, Math.min(1 - 24 / Math.max(1, r.height), e));
+    A.style.setProperty('--e', (E * 100).toFixed(2) + '%'); drawCross(); if (keep) store('inkling.e', E); };
+  /* THE CROSS, drawn: grey pixels along both lines, solid by the crown, falling away to intermittent and paler the farther they go */
+  function drawCross() { const c = $('cross'), r = M.getBoundingClientRect(), dpr = devicePixelRatio || 1, w = r.width, h = r.height;
+    if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); c.style.width = w + 'px'; c.style.height = h + 'px'; }
+    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const x = Math.round(D.getBoundingClientRect().left - r.left), y = Math.round(E * h), P = 3, dim = getComputedStyle(document.documentElement).getPropertyValue('--dim').trim() || '#a9a9a9';
+    const run = (len, put) => { for (let k = 0; k * P < len; k++) { const d = k * P, gap = 1 + Math.floor(d / 34); if (k % gap) continue;
+      g.globalAlpha = Math.max(0.14, 0.8 - d / 520); put(d); } };
+    g.fillStyle = dim;
+    run(Math.max(0, y), d => g.fillRect(x - 1, y - d - P, P, P));                 // up from the crown
+    run(Math.max(0, h - y), d => g.fillRect(x - 1, y + d, P, P));                 // down from the crown
+    if (y >= 0 && y <= h) run(Math.max(0, w - x), d => g.fillRect(x + d, y - 1, P, P));   // right, the right half only
+    g.globalAlpha = 1; }
+  addEventListener('resize', () => setE(E, false));
+  setD(load('inkling.d', KD.dflt), false); setE(load('inkling.e', 0.45), false);
+  STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; y0 = e.clientY; e0 = E; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; try { STAR.setPointerCapture(e.pointerId); } catch (x) {} });
+  STAR.addEventListener('pointermove', e => { if (!drag) return; const r = M.getBoundingClientRect(); setD(f0 + (e.clientX - x0) / r.width, false); setE(e0 + (e.clientY - y0) / r.height, false); });   // free moving: the cross goes where the crown goes
   STAR.addEventListener('pointerup', e => { if (!drag) return; drag = false; const r = M.getBoundingClientRect(), f = f0 + (e.clientX - x0) / r.width;
-    const t = Date.now(); if (Math.abs(e.clientX - x0) < 4 && Math.abs(e.clientY - y0) < 4 && t - lastTap < 350) { lastTap = 0; openShare(); return; } lastTap = t; setD(f, true); setMT(mt0 + 2 * (e.clientY - y0), true); });   // double-tap: the share/save
+    const t = Date.now(); if (Math.abs(e.clientX - x0) < 4 && Math.abs(e.clientY - y0) < 4 && t - lastTap < 350) { lastTap = 0; openShare(); return; } lastTap = t; setD(f, true); setE(e0 + (e.clientY - y0) / r.height, true); });   // double-tap: the share/save
 })();
+
+/* ═══ BRING HOME (his word, 2026-10-01: "load my current kingdom and sparks into here"). The other glasses on this same site
+   keep their own drawers on this phone: Orv's list (orv.state) and the Monomyth journey (monomyth.journey.v1, its quests and
+   its SPARKS: the altimeter, lifetime, that only rises). They are only READ here, never changed. A thing not already in
+   Inkling comes in once (its source is remembered, so a thing set aside here stays aside); the sparks are read on every open. ═══ */
+function bringHome() {
+  const got = load('inkling.brought', {}) || {}, have = new Set(live().map(t => (t.word + '|' + (t.text || '')).toLowerCase())); let added = 0;
+  const add = (src, id, word, text, done, at) => { const key = src + ':' + id; if (got[key]) return; got[key] = 1;
+    const w = String(word || '').trim().split(/\s+/)[0].slice(0, 24), x = String(text || '').slice(0, 600); if (!w) return;
+    const sig = (w + '|' + x).toLowerCase(); if (have.has(sig)) return; have.add(sig);
+    ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: w, text: x, at: at && !isNaN(new Date(at)) ? new Date(at).toISOString() : null, done: !!done, doneAt: done ? nowIso() : null, from: src }); added++; };
+  try { const o = JSON.parse(localStorage.getItem('orv.state') || 'null');
+    if (o && Array.isArray(o.tasks)) o.tasks.filter(t => t && !t.gone).forEach(t => add('orv', t.id, t.word, t.text, t.done, t.at)); } catch (e) {}
+  try { const j = JSON.parse(localStorage.getItem('monomyth.journey.v1') || 'null'), s = j && (j.state || j);
+    if (s && Array.isArray(s.quests)) s.quests.forEach(q => { if (q && q.name) add('monomyth', q.id, String(q.name).trim(), q.kind === 'one-thing' ? 'the one thing, in Monomyth' : '', !!q.doneAt, null); });
+    if (s && typeof s.altimeter === 'number') { const today = new Date().toISOString().slice(0, 10);
+      store('inkling.sparks', { lifetime: s.altimeter, today: String(s.sparksTodayDate || '').slice(0, 10) === today ? (s.sparksToday || 0) : 0, at: nowIso() }); } } catch (e) {}
+  store('inkling.brought', got);
+  if (added) { save(); log({ who: 'k', what: 'brought home', text: added + ' things from the other glasses' }); }
+  return added;
+}
+if (!/#k=/.test(location.hash)) bringHome();
 
 /* ═══ BOOT: #say= from the Tell Orv Shortcut arrives as if typed ═══ */
 render();
@@ -938,6 +1063,15 @@ $('setModel').addEventListener('change', async () => {
   MAP.forEach((row, y) => Array.from(row).forEach((ch, i) => { if (PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(i * S, y * S, S, S); } }));
   const tog = () => $('set').hidden ? setOpen() : setClose();
   c.addEventListener('click', tog);
+  /* SQUATCH'S OWN SETTINGS ICON (his word, 2026-10-01): a cigarette, in Squatch's own colours (bead-pattern 3: the grey of his
+     cigarette, his muted orange, the red of the ember), its sparks climbing like his */
+  const CIG = ['ffgggggggggR', 'ffgggggggggR'], CPAL = { f: '#BF6A40', g: '#888888', R: '#FF0000' }, cg = $('cig'), cx = cg.getContext('2d'), CS = 4, top = 5;
+  cg.width = (CIG[0].length + 2) * CS; cg.height = (CIG.length + top) * CS; cg.style.width = cg.width + 'px'; cg.style.height = cg.height + 'px';
+  let sp = 0; const cig = () => { cx.clearRect(0, 0, cg.width, cg.height);
+    CIG.forEach((row, y) => Array.from(row).forEach((ch, i) => { if (CPAL[ch]) { cx.fillStyle = CPAL[ch]; cx.fillRect(i * CS, (y + top) * CS, CS, CS); } }));
+    cx.fillStyle = '#FF0000'; [[11, 4], [12, 2], [11, 0]].forEach(([x, y]) => { const yy = (y + top * 10 - sp) % top; cx.fillRect((x + (yy % 2)) * CS, yy * CS, CS, CS); }); };
+  cig(); if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(() => { if (!cg.hidden) { sp = (sp + 1) % top; cig(); } }, 260);
+  cg.addEventListener('click', tog);
   c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
 })();
 

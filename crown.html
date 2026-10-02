@@ -34,7 +34,7 @@
   const cv = document.getElementById('crown'), track = document.getElementById('track'), say = document.getElementById('say');
   const data = await CROWN.load('./crown.json');
   const S = Math.max(6, Math.min(16, Math.floor(Math.min(innerWidth * 0.5, innerHeight * 0.32) / 15)));   // about half the screen's width
-  const crown = CROWN.make(cv, data, { scale: S, pad: 8, count: 0 });
+  const crown = CROWN.make(cv, data, { scale: S, pad: 8, count: 0, overlay: true });   // the gems may fly anywhere on the screen
   const N = crown.gems;
   let lo = 0, hi = 0, y = 0;
   const bounds = () => { const r = track.getBoundingClientRect(); lo = Math.max(r.top - cv.height / 2, -S * 8 + 4); hi = Math.min(r.bottom - cv.height / 2, innerHeight - cv.height + S * 8 - 4); };   // the crown itself stays on the screen
@@ -58,7 +58,7 @@
       if (st && Array.isArray(st.tasks) && st.tasks.some(t => !t.gone)) { const rows = st.tasks.filter(t => !t.gone);
         link = app + '#k=' + await INKSHARE.encode({ v: 1, from: 'the crown', one: rows.findIndex(t => t.id === st.one), t: rows.map(t => { const a = [t.word, t.text || '']; if (t.at || t.done) a.push(t.at || 0); if (t.done) a.push(1); return a; }) }); } } catch (e) {} }
     if (!link) { say.textContent = 'no kingdom on this phone yet: open the app with your link first'; return; }
-    INKSHARE.show(link);
+    const r = cv.getBoundingClientRect(); INKSHARE.show(link, { from: [r.left + r.width / 2, r.top + r.height / 2] });
   }
 })();
 </script>
