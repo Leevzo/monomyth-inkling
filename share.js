@@ -54,7 +54,7 @@
      beats in any order until it holds them all, then checks the whole (crc16) before anything is taken in. ═══ */
   const FOUR = ['#FF0000', '#70B300', '#00A0FF', '#A640BF'];          // red · green · blue · magenta: the crown's four farthest apart
   const HUES = [0, 82, 202, 285];                                     // their hues, for the camera's eye
-  const CK = { beatMs: 200, chunk: 15, ground: '#1c1c1c', minSat: 0.32, minVal: 0.22, tilts: [0, 2, -2, 4, -4, 6, -6] };   // a beat: which · how many · 15 bytes · a two-byte check
+  const CK = { beatMs: 180, group: 8, chunk: 15, ground: '#1c1c1c', minSat: 0.32, minVal: 0.22, tilts: [0, 2, -2, 4, -4, 6, -6] };   // a beat: which · how many · 15 bytes · a two-byte check
   let CC = null;
   async function crownCells() { if (CC) return CC; const d = await (await fetch('./crown.json?v=' + (root.INK_V || ''))).json();
     CC = { w: d.w, h: d.h, cells: d.cells.map(x => [x[0], x[1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]) }; return CC; }
@@ -65,10 +65,10 @@
     const m = /#k=([A-Za-z0-9_-]+)/.exec(link); if (!m) throw new Error('no kingdom in the link');
     const body = unb64u(m[1]), crc = crc16(body), all = new Uint8Array(6 + body.length);
     all.set([0x49, 0x4B, body.length >> 8, body.length & 255, crc >> 8, crc & 255]); all.set(body, 6);
-    const total = Math.ceil(all.length / CK.chunk); if (total > 255) throw new Error('the kingdom is too big for the crown');
-    const out = [];
-    for (let k = 0; k < total; k++) { const f = new Uint8Array(19); f[0] = k; f[1] = total; f.set(all.subarray(k * CK.chunk, (k + 1) * CK.chunk), 2); const c = crc16(f.subarray(0, 17)); f[17] = c >> 8; f[18] = c & 255; out.push(f); }
-    return out;
+    const N = Math.ceil(all.length / CK.chunk), P = Math.ceil(N / CK.group); if (N + P > 255) throw new Error('the kingdom is too big for the crown');
+    const pay = []; for (let k = 0; k < N; k++) { const x = new Uint8Array(CK.chunk); x.set(all.subarray(k * CK.chunk, (k + 1) * CK.chunk)); pay.push(x); }
+    for (let g = 0; g < P; g++) { const x = new Uint8Array(CK.chunk); for (let k = g * CK.group; k < Math.min(N, (g + 1) * CK.group); k++) for (let i = 0; i < CK.chunk; i++) x[i] ^= pay[k][i]; pay.push(x); }   // a spare for every eight
+    return pay.map((x, k) => { const f = new Uint8Array(19); f[0] = k; f[1] = N; f.set(x, 2); const c = crc16(f.subarray(0, 17)); f[17] = c >> 8; f[18] = c & 255; return f; });
   }
   const colourAt = (f, cell) => { const bit = cell * 2, b = f[bit >> 3]; return (b >> (6 - (bit & 7))) & 3; };   // two bits a pixel, high first
   /* one beat of the crown, drawn at (X, Y), S px a pixel */
@@ -103,7 +103,7 @@
       const v = hsv(R / k, G / k, B / k); if (v[1] < CK.minSat * 0.7) return null;   // a pixel not lit: caught between beats
       let best = 0, bd = 999; HUES.forEach((h, q) => { const dd = Math.min(Math.abs(v[0] - h), 360 - Math.abs(v[0] - h)); if (dd < bd) { bd = dd; best = q; } });
       const bit = n * 2; f[bit >> 3] |= best << (6 - (bit & 7)); }
-    if (crc16(f.subarray(0, 17)) !== ((f[17] << 8) | f[18]) || !f[1] || f[0] >= f[1]) return null;
+    if (crc16(f.subarray(0, 17)) !== ((f[17] << 8) | f[18]) || !f[1] || f[0] >= f[1] + Math.ceil(f[1] / CK.group)) return null;
     return f;
   }
   /* one look through the camera: the middle of the view, taken down to a small picture, read */
@@ -120,11 +120,18 @@
   }
   /* beats gathered → the kingdom code, once all are held and the whole checks */
   function gather() {
-    const got = {}; let total = 0;
-    return { add(f) { total = f[1]; const k = f[0], key = Array.from(f.subarray(2, 17)).join(','); const g = got[k] || (got[k] = {}); g[key] = (g[key] || 0) + 1; },
-      have() { return Object.keys(got).length; }, total() { return total; },
-      code() { if (!total || Object.keys(got).length < total) return null; const all = new Uint8Array(total * CK.chunk);
-        for (let k = 0; k < total; k++) { const g = got[k]; if (!g) return null; const best = Object.keys(g).sort((a, b) => g[b] - g[a])[0]; all.set(best.split(',').map(Number), k * CK.chunk); }
+    const got = {}; let N = 0;
+    const best = k => { const g = got[k]; if (!g) return null; return Object.keys(g).sort((a, b) => g[b] - g[a])[0].split(',').map(Number); };
+    const data = () => { const out = []; for (let k = 0; k < N; k++) out[k] = best(k);
+      for (let g = 0; g < Math.ceil(N / CK.group); g++) { const lo = g * CK.group, hi = Math.min(N, lo + CK.group), miss = [];
+        for (let k = lo; k < hi; k++) if (!out[k]) miss.push(k);
+        const sp = miss.length === 1 ? best(N + g) : null;
+        if (sp) { const x = sp.slice(); for (let k = lo; k < hi; k++) if (k !== miss[0]) for (let i = 0; i < CK.chunk; i++) x[i] ^= out[k][i]; out[miss[0]] = x; } }   // rebuilt, never seen
+      return out; };
+    return { add(f) { N = f[1]; const k = f[0], key = Array.from(f.subarray(2, 17)).join(','); const g = got[k] || (got[k] = {}); g[key] = (g[key] || 0) + 1; },
+      have() { return N ? data().filter(Boolean).length : 0; }, total() { return N; },
+      code() { if (!N) return null; const d = data(); for (let k = 0; k < N; k++) if (!d[k]) return null;
+        const all = new Uint8Array(N * CK.chunk); d.forEach((x, k) => all.set(x, k * CK.chunk));
         if (all[0] !== 0x49 || all[1] !== 0x4B) return null; const len = (all[2] << 8) | all[3], body = all.slice(6, 6 + len);
         return crc16(body) === ((all[4] << 8) | all[5]) ? b64u(body) : null; } };
   }
@@ -133,8 +140,8 @@
     if (root.document.getElementById('inkShareCss')) return;
     const s = root.document.createElement('style'); s.id = 'inkShareCss';
     s.textContent = '#inkShare{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;' +
-      'background:rgba(20,20,20,.38);-webkit-backdrop-filter:blur(9px) brightness(.55);backdrop-filter:blur(9px) brightness(.55);padding:24px 18px calc(env(safe-area-inset-bottom) + 24px)}' +
-      '#inkShare canvas{image-rendering:pixelated}' +
+      'background:rgba(20,20,20,.45);-webkit-backdrop-filter:blur(9px) brightness(.4);backdrop-filter:blur(9px) brightness(.4);padding:24px 18px calc(env(safe-area-inset-bottom) + 24px)}' +
+      '#inkShare canvas{image-rendering:pixelated}#inkShare .card{box-shadow:0 10px 34px rgba(0,0,0,.6)}' +   /* a picture, opened */
       '#inkShare .cap{font-family:"W95FA",ui-monospace,monospace;font-size:13px;color:#d0d0d0;text-align:center;max-width:86vw}' +
       '#inkShare .words{display:flex;gap:26px}#inkShare .words button{all:unset;cursor:pointer;font-family:"Dogica",ui-monospace,monospace;font-size:14px;color:#f2f2f2}' +
       '#inkEye{position:fixed;inset:0;z-index:61;background:#000;display:flex;align-items:center;justify-content:center}#inkEye video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}' +
@@ -148,27 +155,30 @@
     o = o || {}; css();
     let v = root.document.getElementById('inkShare'); if (v) { v._close && v._close(); }
     v = root.document.createElement('div'); v.id = 'inkShare'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-label', 'your kingdom, sent by the crown; tap to close');
-    const cv = root.document.createElement('canvas'), cap = root.document.createElement('div'); cap.className = 'cap';
+    const cv = root.document.createElement('canvas'), oc = root.document.createElement('canvas'), cap = root.document.createElement('div'); cap.className = 'cap'; cv.className = 'card';
     cap.textContent = o.cap || 'your kingdom, sent by the crown · on the other phone: double-tap its crown, then read · tap to close';
     const words = root.document.createElement('div'); words.className = 'words';
     const word = (t, fn) => { const b = root.document.createElement('button'); b.type = 'button'; b.textContent = t; b.onclick = e => { e.stopPropagation(); fn(); }; words.appendChild(b); return b; };
     if (o.onRead) word('read', () => { v._close(); read(o.onRead); });
-    v.append(cv, cap, words);
+    v.append(cv, oc, cap, words);
     let timer = 0; const t0 = Date.now();
-    v._close = () => { clearInterval(timer); v.remove(); };
+    const under = root.document.getElementById('crownSky'); if (under) under.style.visibility = 'hidden';   // the app's own crown never shows through to a camera
+    v._close = () => { clearInterval(timer); v.remove(); if (under) under.style.visibility = ''; };
     v.addEventListener('click', () => { if (Date.now() - t0 > 450) v._close(); });
     root.document.body.appendChild(v);
     try {
       const K = await crownCells(), F = beats(link), O = await orv();
-      const S = Math.max(6, Math.floor(Math.min(root.innerWidth * 0.78 / K.w, root.innerHeight * 0.5 / K.h)));   // big: a camera reads it from a step away
-      const os = Math.max(2, Math.floor(S * 0.45)), gapB = S * 5, oh = O ? O.h * os + gapB : 0, pad = S;   // Orv a good way beneath, out of the camera's crown
-      cv.width = K.w * S + pad * 2; cv.height = K.h * S + pad * 2 + oh; cv.style.width = cv.width / (root.devicePixelRatio > 1 ? 1 : 1) + 'px';
+      const S = Math.max(5, Math.floor(Math.min(root.innerWidth * 0.46 / K.w, root.innerHeight * 0.3 / K.h))), pad = S * 2;   // a picture's size; a dark margin the camera can tell from the world
+      cv.width = K.w * S + pad * 2; cv.height = K.h * S + pad * 2;
       const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-      let n = 0;
-      const paint = () => { g.fillStyle = CK.ground; g.fillRect(0, 0, cv.width, cv.height);
-        paintBeat(g, K, F[n % F.length], pad, pad, S);
-        if (O) { const lift = Math.sin(Date.now() / 1000 * Math.PI * 2 / 3.6) > 0.35 ? 1 : 0, ox = Math.round((cv.width - O.w * os) / 2), oy = K.h * S + pad + gapB - lift * os;   // Orv idles beneath
-          O.frames[0].forEach((row, y) => Array.from(row).forEach((ch, x) => { const hx = O.pal[ch]; if (!hx) return; g.fillStyle = hx; g.fillRect(ox + x * os, oy + y * os, os, os); })); } };
+      const os = Math.max(2, Math.floor(S * 0.4)); if (O) { oc.width = O.w * os; oc.height = (O.h + 1) * os; }   // Orv, outside the picture
+      const og = oc.getContext('2d'); og.imageSmoothingEnabled = false;
+      let order = [], n = 0;
+      const shuffle = () => { order = F.map((_, i) => i); for (let i = order.length - 1; i > 0; i--) { const k = (Math.random() * (i + 1)) | 0; const t = order[i]; order[i] = order[k]; order[k] = t; } };
+      const paint = () => { if (n % F.length === 0) shuffle();   // a new order every round: no beat hides in the same blind spot twice
+        g.fillStyle = CK.ground; g.fillRect(0, 0, cv.width, cv.height); paintBeat(g, K, F[order[n % F.length]], pad, pad, S);
+        if (O) { const lift = Math.sin(Date.now() / 1000 * Math.PI * 2 / 3.6) > 0.35 ? 1 : 0; og.clearRect(0, 0, oc.width, oc.height);
+          O.frames[0].forEach((row, y) => Array.from(row).forEach((ch, x) => { const hx = O.pal[ch]; if (!hx) return; og.fillStyle = hx; og.fillRect(x * os, (y + 1 - lift) * os, os, os); })); } };
       paint();
       if (o.from && cv.animate) { const r = cv.getBoundingClientRect(), dx = o.from[0] - (r.left + r.width / 2), dy = o.from[1] - (r.top + r.height / 2);
         cv.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.1)', opacity: 0.3 }, { transform: 'none', opacity: 1 }], { duration: 300, easing: 'steps(6)' }); }
@@ -192,13 +202,14 @@
     catch (e) { say.textContent = 'the camera would not open (' + ((e && e.name) || 'refused') + ')'; setTimeout(stop, 2600); return; }
     video.srcObject = stream; try { await video.play(); } catch (e) {}
     const G = gather();
+    const next = () => { if (done) return; if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(step); else raf = requestAnimationFrame(step); };   // each camera frame, once
     const step = () => { if (done) return;
       if (video.videoWidth) {
         const f = look(video, video.videoWidth, video.videoHeight, K);
         if (f) { G.add(f); say.textContent = 'reading the crown: ' + G.have() + ' / ' + G.total();
           const code = G.code(); if (code) { say.textContent = 'the kingdom is in'; setTimeout(() => { stop(); onCode(code); }, 500); return; } } }
-      raf = requestAnimationFrame(step); };
-    raf = requestAnimationFrame(step);
+      next(); };
+    next();
   }
 
   root.INKSHARE = { encode, decode, show, read, beats, paintBeat, seeBeat, look, gather, crownCells, inklingFile, readInkling, saveFile, KNOBS, CK };

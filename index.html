@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790916398';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790916398"></script>
-<script src="./share.js?v=1790916398"></script>
-<script src="./sky.js?v=1790916398"></script>
+<script>window.INK_V = '1790916680';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790916680"></script>
+<script src="./share.js?v=1790916680"></script>
+<script src="./sky.js?v=1790916680"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790916398">
+<link rel="stylesheet" href="./fonts.css?v=1790916680">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -951,11 +951,21 @@ function swingWords(to, d) {
   clearInterval(TYPING); const w = wordsOf(to); S.textContent = w.text; S.classList.toggle('stage', !!w.stage);
   return swing(ghost, S, 'rb', d, true).then(() => ghost.remove());
 }
+/* THE SWORD'S POP (his word: "when I double tap orv, the sword pops out of screen left and comes back on from there"):
+   the old sword slides off the left edge in clicks, the new one slides back in from the same edge */
+async function popSword(out, inn) {
+  const n = K.turn.steps, half = Math.ceil(n / 2), off = el => -(el.getBoundingClientRect().right + 12);
+  const gone = off(out);
+  for (let i = 1; i <= half; i++) { out.style.transform = 'translateX(' + Math.round(gone * i / half) + 'px)'; await sleep(K.turn.stepMs); }
+  out.hidden = true; out.style.transform = '';
+  inn.hidden = false; const back = off(inn);
+  for (let i = half; i >= 0; i--) { inn.style.transform = i ? 'translateX(' + Math.round(back * i / half) + 'px)' : ''; await sleep(K.turn.stepMs); }
+}
 function swapSwords(to) {
   const sq = to === 'squatch', d = sq ? -1 : 1;   // to Squatch the wheel turns clockwise; the swords and skies turn the other way
   drawSky();
   return Promise.all([
-    swing(sq ? $('list') : $('list2'), sq ? $('list2') : $('list'), 'lb', d),     // the sword leaves to the left
+    popSword(sq ? $('list') : $('list2'), sq ? $('list2') : $('list')),            // the sword pops out to the left and the new one comes back from there
     swing(sq ? $('skyO') : $('skyS'), sq ? $('skyS') : $('skyO'), 'rb', d),     // the constellation, the opposite way to the wheel
     swingWords(to, d),                                                          // and his words with it
     swing(sq ? $('salmon') : $('cig'), sq ? $('cig') : $('salmon'), 'rt', -d)   // his own settings icon turns with the wheel
