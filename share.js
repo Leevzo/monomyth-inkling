@@ -37,7 +37,7 @@
       if (q) break; }
     if (!q) throw new Error('the kingdom is too big for one code');
     const n = q.modules.size, Z = KNOBS.quiet, total = n + Z * 2;
-    const m = Math.max(2, Math.floor(KNOBS.side * (root.devicePixelRatio || 1) / total));
+    const m = Math.max(3, Math.ceil(900 / total));   // drawn large; the page scales it down crisp
     const cv = root.document.createElement('canvas'); cv.width = cv.height = total * m;
     const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
     g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = '#000000';
@@ -57,7 +57,7 @@
     const s = root.document.createElement('style'); s.id = 'inkShareCss';
     s.textContent = '#inkShare{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;' +
       'background:rgba(40,40,40,.96);padding:24px 18px calc(env(safe-area-inset-bottom) + 24px)}' +
-      '#inkShare img{width:min(86vw,' + KNOBS.side + 'px);height:auto;image-rendering:pixelated;-webkit-touch-callout:default}' +
+      '#inkShare img{width:min(90vw,72vh);height:auto;image-rendering:pixelated;-webkit-touch-callout:default}' +   /* as big as the screen allows: a phone camera reads it off a Mac too */
       '#inkShare .cap{font-family:"W95FA",ui-monospace,monospace;font-size:13px;color:var(--dim,#a9a9a9);text-align:center;max-width:86vw}' +
       '#inkShare .words{display:flex;gap:26px}#inkShare .words button{all:unset;cursor:pointer;font-family:"Dogica",ui-monospace,monospace;font-size:14px;color:var(--ink,#f2f2f2)}';
     root.document.head.appendChild(s);
