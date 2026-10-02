@@ -10,6 +10,10 @@
       second they burst out of the heart to new places among the crown's own cells.
      "the [number] flash on one second off another second and if it's more than one digit, it will flash the first one for
       a second the second one for a second and the third one will be a space" — one digit at a time, filling the heart.
+     "I want the movement on the actual app to look like the movement that's going on in what you have in the preview window
+      like just movement within the established parameters" — so the gems keep their places in the crown's own shape (lit
+      from the heart outward) and only their colours move: every beat each takes one of the crown code's four colours, the
+      very look of the crown when it sends. No more bursts.
    · THE PATTERN is his, cell for cell (crown.json): its cells are the only places a gem may land; its heart is "heart".
    · Every tunable number is in KNOBS. Read only: it never writes anything.
    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -22,7 +26,8 @@
     fling: 0.45,         // and is thrown up to this much farther than the push, the far ones most
     stride: 3,           // a gem this many crown pixels away travels in 2-pixel clicks, twice this in 3 …
     secondMs: 1000,      // the gems take new places, and the number its next digit, this often
-    burst: 4,            // on each second's burst a gem leaves the heart up to this many clicks after the first
+    beatMs: 200,         // the colours switch this often, as the sending crown's beats do
+    four: ['#FF0000', '#70B300', '#00A0FF', '#A640BF'],   // the crown code's four (share.js FOUR)
     cycle: ['#FF0000', '#FF8000', '#70B300', '#2D8686', '#00A0FF', '#A640BF'],   // the crown's six
     armGap: 5, armFade: 70, armMin: 0.16, armMax: 0.85, armGrey: null   // THE ARMS (armGrey: the page's --faint when null)
   };
@@ -59,8 +64,8 @@
     const heart = { r0: hr[0], c0: hr[1], rows: 5, cols: 3 }, cy = heart.r0 + 2, cx = heart.c0 + 1;
     const CELLS = data.cells.map(([r, c, hex]) => ({ r, c, base: Math.max(0, KNOBS.cycle.indexOf(hex.toUpperCase())), d: Math.hypot(r - cy, c - cx) }));
     /* the gems: one per lit cell, each with its own colour and temper; they move between the crown's cells */
-    const GEMS = CELLS.map((cell, i) => ({ r: cell.r, c: cell.c, base: cell.base, d: cell.d, ox: 0, oy: 0, wait: 0, fx: 0, fy: 0,
-      j: (((i + 1) * 2654435761) >>> 0) % 1000 / 1000 }));
+    const GEMS = CELLS.slice().sort((a, b) => a.d - b.d).map((cell, i) => ({ r: cell.r, c: cell.c, base: cell.base, d: cell.d, ox: 0, oy: 0, wait: 0, fx: 0, fy: 0,
+      j: (((i + 1) * 2654435761) >>> 0) % 1000 / 1000, col: (Math.random() * 4) | 0 }));   // in their places, lit from the heart outward
     const st = { count: opts.count == null ? GEMS.length : opts.count, shown: null, step: 0, sec: null, last: null, acc: [0, 0], raf: 0, t: 0, alive: true };
 
     /* THE ARMS */
@@ -75,14 +80,8 @@
       const b = opts.bounds(), hx = rect.left + (PAD + cx + 0.5) * S, hy = rect.top + (PAD + cy + 0.5) * S;
       return { u: Math.max(0, Math.floor((hy - b.top) / S) - (cy + 1)), d: Math.max(0, Math.floor((b.bottom - hy) / S) - (H - cy)), r: Math.max(0, Math.floor((b.right - hx) / S) - (W - cx)) }; };
 
-    /* each second: the lit gems burst out of the heart to new cells, at random, a beat apart */
-    function burst() {
-      const n = Math.min(st.count, GEMS.length), order = CELLS.map((_, i) => i);
-      for (let i = order.length - 1; i > 0; i--) { const k = (Math.random() * (i + 1)) | 0; const t = order[i]; order[i] = order[k]; order[k] = t; }
-      for (let i = 0; i < n; i++) { const g = GEMS[i], to = CELLS[order[i]];
-        g.r = to.r; g.c = to.c; g.d = to.d; g.oy = cy - to.r; g.ox = cx - to.c;   // it sets out from the heart
-        g.wait = (Math.random() * (KNOBS.burst + 1)) | 0; }
-    }
+    /* each beat: every gem takes one of the four colours, in its own place (the sending crown's look) */
+    function beat() { GEMS.forEach(g => { g.col = (Math.random() * 4) | 0; }); }
     /* the number in the heart: one digit at a time, a second each, then a space */
     function digit(g, X, Y) {
       const s = String(Math.max(0, Math.floor(st.shown == null ? st.count : st.shown))), seq = s.split('').concat([' ']);
@@ -101,7 +100,7 @@
           g.globalAlpha = a.alpha; g.fillRect(X + (PAD + a.c + a.ox) * S, Y + (PAD + a.r + a.oy) * S, S, S); } });
         g.globalAlpha = 1; }
       const n = Math.min(st.count, GEMS.length);
-      for (let i = 0; i < n; i++) { const gm = GEMS[i]; g.fillStyle = KNOBS.cycle[(gm.base + st.step) % KNOBS.cycle.length];
+      for (let i = 0; i < n; i++) { const gm = GEMS[i]; g.fillStyle = KNOBS.four[gm.col];
         g.fillRect(X + (PAD + gm.c + gm.ox) * S, Y + (PAD + gm.r + gm.oy) * S, S, S); }
       digit(g, X, Y);
     }
@@ -120,7 +119,7 @@
       const r = canvas.getBoundingClientRect();
       if (st.last && r.width) moved(r.left - st.last[0], r.top - st.last[1]);
       if (r.width) st.last = [r.left, r.top];
-      const sec = Math.floor(Date.now() / KNOBS.secondMs); if (sec !== st.sec) { st.sec = sec; st.step = (st.step + 1) % KNOBS.cycle.length; burst(); }
+      const b = Math.floor(Date.now() / KNOBS.beatMs); if (b !== st.sec) { st.sec = b; beat(); }
       const tick = Math.floor(ts / KNOBS.stepMs);
       if (tick !== st.t) { st.t = tick;
         GEMS.concat(ARMS).forEach(g => { if (!g.ox && !g.oy) return; if (g.wait > 0) { g.wait--; return; } g.ox = home(g.ox); g.oy = home(g.oy); }); }
