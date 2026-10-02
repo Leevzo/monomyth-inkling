@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790919026';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790919026"></script>
-<script src="./share.js?v=1790919026"></script>
-<script src="./sky.js?v=1790919026"></script>
+<script>window.INK_V = '1790919509';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790919509"></script>
+<script src="./share.js?v=1790919509"></script>
+<script src="./sky.js?v=1790919509"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790919026">
+<link rel="stylesheet" href="./fonts.css?v=1790919509">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -209,6 +209,8 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
    sequential things." One scroll, top to bottom: THE STORY (his name, then his deeds) · THE ONE THING · what is ahead. It rests
    on the one thing; pull down to read the story back to his name. ═══ */
 #app { padding-left: calc(var(--fuse, 5px) + 7px); }
+#left { width: max(0px, var(--d, 58%)); }   /* flush left the crown's line sits just inside the fuse; the sword never goes below nothing */
+#clock, #sparks { pointer-events: none; }   /* the clock is redrawn every second: a touch must land on the one thing itself */
 .skyp { padding-top: 44px; }   /* the corners now reach the top of the screen: their words stand clear of the salmon and the cigarette */
 #main { margin-top: 0; }
 #list { overflow-anchor: none; overscroll-behavior: contain; }
@@ -306,10 +308,14 @@ const SPARE = { db: null, t: 0,
   open() { return this.db || (this.db = new Promise((ok, no) => { try { const r = indexedDB.open('inkling-spare', 1);
     r.onupgradeneeded = () => r.result.createObjectStore('s'); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); } catch (e) { no(e); } })); },
   snap() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k === BOX || k.startsWith('inkling.')) o[k] = localStorage.getItem(k); } } catch (e) {} return o; },
-  save() { clearTimeout(this.t); this.t = setTimeout(async () => { try { const db = await this.open(), o = this.snap();
+  save() { if (this.hold) return; clearTimeout(this.t); this.t = setTimeout(async () => { if (this.hold) return; try { const db = await this.open(), o = this.snap();
     if (!Object.keys(o).length) return; db.transaction('s', 'readwrite').objectStore('s').put(o, 'all'); } catch (e) {} }, 300); },
   async get() { try { const db = await this.open(); return await new Promise(ok => { const r = db.transaction('s').objectStore('s').get('all'); r.onsuccess = () => ok(r.result || null); r.onerror = () => ok(null); }); } catch (e) { return null; } }
 };
+/* how this open began, read before anything writes: a kingdom arriving, a new kingdom asked for, or a phone that has forgotten.
+   A forgetting phone writes nothing to the spare until the spare has been asked (else the blank would bury the kingdom). */
+const BOOT = { arriving: /#k=/.test(location.hash), fresh: location.hash === '#new', wiped: (() => { try { return localStorage.getItem('inkling.state') == null; } catch (e) { return true; } })() };
+SPARE.hold = BOOT.wiped;
 const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); SPARE.save(); return true; } catch (e) { try { say('(This phone would not keep that. Tap keep to save a copy.)', true); } catch (x) {} return false; } };
 function blank() { return { v: 1, tasks: [], one: null, n: 0 }; }
 /* #k= : a kingdom arrives INSIDE the link (share.js — the crown's double-tap; or the Mac's own code). What is after the #
@@ -321,7 +327,9 @@ function fromKingdom() { const m = /#k=([A-Za-z0-9_-]+)/.exec(location.hash); if
   INKSHARE.decode(m[1]).then(o => {
     if (!o || o.v !== 1 || !Array.isArray(o.t)) throw new Error('not a kingdom');
     const tasks = o.t.filter(Array.isArray).slice(0, 200).map((x, i) => ({ id: 't' + (i + 1).toString(36), word: String(x[0] || '').trim().split(/\s+/)[0].slice(0, 24) || 'thing',
-      text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3], doneAt: x[3] ? nowIso() : null,
+      text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3],
+      doneAt: x[3] && x[5] && !isNaN(Date.parse(x[5])) ? new Date(x[5]).toISOString() : null,   // the day it was done travels with it; unknown stays unknown ("earlier")
+      krix: x[3] && +x[6] > 0 ? Math.min(99, Math.round(+x[6])) : undefined, archived: x[3] && x[7] ? nowIso() : undefined,
       sub: Array.isArray(x[4]) ? x[4].slice(0, 60).map(y => String(y).slice(0, 300)) : undefined }));   // what hangs under it, read in Orv's upper right
     const sq = o.sq && Array.isArray(o.sq.c) && Array.isArray(o.sq.l) && Array.isArray(o.sq.s) ? o.sq : null;   // Squatch's constellation, his own sword
     /* only now, with the new kingdom whole: the old one is set aside first, and if the phone will not keep it aside, nothing changes */
@@ -329,6 +337,7 @@ function fromKingdom() { const m = /#k=([A-Za-z0-9_-]+)/.exec(location.hash); if
     if ((was && Array.isArray(was.tasks) && was.tasks.length) || wasSq)
       if (!store('inkling.archive.' + Date.now(), { state: was, squatch: wasSq, log: load('inkling.log', []) })) throw new Error('this phone would not keep the old kingdom aside');
     if (sq) store('inkling.squatch', sq);
+    if (+o.kx > krixHeld()) store('inkling.krix', { n: Math.round(+o.kx), at: nowIso(), from: 'a kingdom arrived carrying it' });   // the purse travels; the larger stands, so nothing is paid twice by a round trip
     try { localStorage.removeItem('inkling.brought'); } catch (e) {}   // the other glasses are read in again on the new kingdom (the same words never double)
     ST = { v: 1, tasks, one: Number.isInteger(o.one) && tasks[o.one] ? tasks[o.one].id : null, n: tasks.length }; save();   // in memory too, so nothing writes the old one back
     const L = load('inkling.log', []); L.push({ at: nowIso(), who: 'k', what: 'a kingdom arrived', text: (o.from || 'a link') + ' · ' + tasks.length + ' things' }); store('inkling.log', L);
@@ -338,10 +347,13 @@ function fromKingdom() { const m = /#k=([A-Za-z0-9_-]+)/.exec(location.hash); if
 fromKingdom(); window.addEventListener('hashchange', fromKingdom);   // a fresh open, or a link tapped while the app is open
 /* the kingdom as a link: the share/save carries this */
 async function kingdomLink() {
-  const rows = live(), one = theOne();
-  const t = rows.map(x => { const a = [x.word, x.text || ''], sub = x.sub && x.sub.length ? x.sub : null;
-    if (x.at || x.done || sub) a.push(x.at || 0); if (x.done || sub) a.push(x.done ? 1 : 0); if (sub) a.push(sub); return a; });
-  const sq = load('inkling.squatch', null), o = { v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t }; if (sq) o.sq = sq;
+  const rank = x => x.done ? (x.archived ? 2 : 1) : 0, one = theOne();
+  const rows = live().map((x, i) => [x, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(p => p[0]);   // what is ahead first, then the story, then the archived: a cap never cuts the living
+  const t = rows.map(x => { const sub = x.sub && x.sub.length ? x.sub : 0;
+    const a = [x.word, x.text || '', x.at || 0, x.done ? 1 : 0, sub].concat(x.done ? [x.doneAt || 0, x.krix || 0, x.archived ? 1 : 0] : []);
+    while (a.length > 2 && !a[a.length - 1]) a.pop();   // trailing nothings left off: an older reader reads the same row
+    return a; });
+  const sq = load('inkling.squatch', null), o = { v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t, kx: krixHeld() }; if (sq) o.sq = sq;
   return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }
 async function openShare() { try { if (!window.INKSHARE) throw new Error('no share'); const c = $('crown').getBoundingClientRect();
@@ -418,8 +430,10 @@ function setDone(t, on, who) { if (!t || !!t.done === !!on) return 0; t.done = !
   const hit = new Set(); L.slice(from).forEach(e => { if (!e) return;
     if (e.who === 'k' && e.what === 'done') hit.add(e.id); if (e.who === 'k' && e.what === 'undone') hit.delete(e.id);
     if (e.what === 'answered' && Array.isArray(e.ops)) e.ops.forEach(o => { if (o && o.op === 'done') hit.add(String(o.id)); if (o && o.op === 'undone') hit.delete(String(o.id)); }); });
-  let n = 0; ST.tasks.forEach(t => { if (t.done && hit.has(t.id) && !t.krix) { t.krix = krixRate(t); n += t.krix; } });
-  if (store('inkling.krix', { n, at: nowIso(), counted: 'from his own check-offs in the log' }) && n) { save(); log({ who: 'orv', what: 'krix', n, text: 'the deeds already done, paid' }); }
+  if (!ST.tasks.length && !L.length) return;   // an empty boot (perhaps a forgetting phone): leave the purse's key free for the spare
+  const had = ST.tasks.reduce((a, t) => a + (t.krix > 0 ? t.krix : 0), 0), pay = ST.tasks.filter(t => t.done && hit.has(t.id) && !t.krix);
+  const n = had + pay.reduce((a, t) => a + krixRate(t), 0);
+  if (store('inkling.krix', { n, at: nowIso(), counted: 'from his own check-offs in the log' })) { pay.forEach(t => { t.krix = krixRate(t); }); if (pay.length) { save(); log({ who: 'orv', what: 'krix', n, text: 'the deeds already done, paid' }); } }
 })();
 /* a thing keeps one colour wherever it stands: on the sword, in the story, in Orv's corner */
 const inkFor = t => K.wheel[(Math.max(0, ST.tasks.indexOf(t)) * 5 + 2) % K.wheel.length];
@@ -430,7 +444,7 @@ const inkFor = t => K.wheel[(Math.max(0, ST.tasks.indexOf(t)) * 5 + 2) % K.wheel
    each deed is his own word for the thing, on the day he did it. ═══ */
 const NAME = 'High King Leevzo the Lucky';
 const deeds = () => live().filter(t => t.done && !t.archived).sort((a, b) => (Date.parse(a.doneAt) || 0) - (Date.parse(b.doneAt) || 0));
-function dayOf(iso) { const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) return { key: 'once', word: 'once' };   // a deed that came in done, its day unknown
+function dayOf(iso) { const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) return { key: 'earlier', word: 'earlier' };   // a deed that came in done, its day unknown
   const a = new Date(d.getFullYear(), d.getMonth(), d.getDate()), n = new Date(), b = new Date(n.getFullYear(), n.getMonth(), n.getDate()), k = Math.round((b - a) / 864e5);
   const word = k === 0 ? 'today' : k === 1 ? 'yesterday' : k > 1 && k < 7 ? 'on ' + d.toLocaleDateString('en-US', { weekday: 'long' }) : 'on ' + d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
   return { key: a.toDateString(), word }; }
@@ -453,7 +467,7 @@ function drawStory(one) {
     });
     const s = g.ts.find(t => t.id === SEL);   // the tapped deed's own line, spliced in right after its sentence
     if (s) { const d = document.createElement('span'); d.className = 'deed-line'; const say = String(s.text || '').trim();
-      d.appendChild(document.createTextNode((say ? say + (/[.!?]$/.test(say) ? '' : '.') + ' ' : '') + 'Done ' + fmtAt(s.doneAt) + (s.krix ? ', ' : '.')));
+      d.appendChild(document.createTextNode((say ? say + (/[.!?]$/.test(say) ? '' : '.') + ' ' : '') + (s.doneAt && !isNaN(Date.parse(s.doneAt)) ? 'Done ' + fmtAt(s.doneAt) : 'Done earlier') + (s.krix ? ', ' : '.')));
       if (s.krix) { const b = document.createElement('b'); b.textContent = '+' + s.krix + ' krix'; d.appendChild(b); d.appendChild(document.createTextNode('.')); }
       P.appendChild(d); text(' '); }
   });
@@ -488,10 +502,11 @@ let RUNREL = 0;
 function pinOne() { const L = $('list'); if (!L.offsetParent) return; L.scrollTop = Math.max(0, $('story').offsetHeight + RUNREL); RUNREL = L.scrollTop - $('story').offsetHeight; }
 $('list').addEventListener('scroll', () => { const L = $('list'); if (L.offsetParent) RUNREL = L.scrollTop - $('story').offsetHeight; }, { passive: true });
 addEventListener('resize', () => pinOne());
+if (window.ResizeObserver) new ResizeObserver(() => pinOne()).observe($('story'));   // the crown dragged: the story rewraps, the sword stays on the one thing
 function render(hold) {
   const L = $('list'), h0 = hold ? L.querySelector(hold) : null, y0 = h0 ? h0.getBoundingClientRect().top : 0;
   const one = theOne();
-  $('oneWord').textContent = one ? one.word : (ST.tasks.length ? 'clear' : 'tell orv'); $('oneWord').style.transform = '';
+  $('oneWord').textContent = one ? one.word : (ST.tasks.length ? 'clear' : 'tell orv'); $('oneWord').style.transform = ''; $('oneWord').style.opacity = '';
   $('oneLine').textContent = one ? one.text : (ST.tasks.length ? 'every task is done' : 'what does the day hold?');
   drawStory(one); drawRun(one);
   tick();
@@ -524,14 +539,16 @@ function tick() {
    the next timed thing, and burns back toward the top as that time comes; at the time it is gone, and the next one lights.
    Its pixels are Orv's own grain, in the twelve, stepping once a second. ═══ */
 K.fuse = { px: 5, from: 'top' };   // from: the end it hangs from ('top' or 'bottom')
+let FUSE = load('inkling.fuse', null);
 function fuseTarget() { const now = Date.now(); return open().filter(t => timedOf(t) && Date.parse(t.at) > now).sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0] || null; }
 function fuseDraw() {
   const c = $('fuse'); if (!c) return; const P = K.fuse.px, n = Math.max(1, Math.floor(innerHeight / P));
   if (c.width !== P || c.height !== n * P) { c.width = P; c.height = n * P; c.style.width = P + 'px'; c.style.height = n * P + 'px'; }
   const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height);
   const t = fuseTarget(); if (!t) return;
-  const now = Date.now(), at = Date.parse(t.at); let F = load('inkling.fuse', null);
-  if (!F || F.id !== t.id || F.at !== t.at) { F = { id: t.id, at: t.at, lit: now }; store('inkling.fuse', F); }
+  const now = Date.now(), at = Date.parse(t.at);
+  if (!FUSE || FUSE.id !== t.id || FUSE.at !== t.at) { FUSE = { id: t.id, at: t.at, lit: now }; store('inkling.fuse', FUSE); }
+  const F = FUSE;
   const m = Math.ceil(n * Math.max(0, Math.min(1, (at - now) / Math.max(1, at - F.lit)))), s = Math.floor(now / 1000);
   for (let i = 0; i < m; i++) { x.fillStyle = K.wheel[(i + s) % K.wheel.length]; x.fillRect(0, (K.fuse.from === 'bottom' ? n - 1 - i : i) * P, P, P); }
 }
@@ -927,7 +944,7 @@ function listenStop() {
   let t = 0, held = false;
   $('keep').addEventListener('pointerdown', () => { held = false; t = setTimeout(() => { held = true; $('restore').click(); }, 700); });
   $('keep').addEventListener('pointerup', async () => { clearTimeout(t); if (held) return;
-    const name = 'orv-' + new Date().toISOString().slice(0, 10) + '.json', blob = new Blob([JSON.stringify({ state: ST, log: load('inkling.log', []) })], { type: 'application/json' });
+    const name = 'orv-' + new Date().toISOString().slice(0, 10) + '.json', blob = new Blob([JSON.stringify({ state: ST, log: load('inkling.log', []), krix: load('inkling.krix', null) })], { type: 'application/json' });
     const file = new File([blob], name, { type: 'application/json' });
     try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; } } catch (e) { return; }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); });
@@ -937,7 +954,7 @@ function listenStop() {
       try { const code = window.INKSHARE && await INKSHARE.readThrone(f); if (code) { log({ who: 'k', what: 'opened', text: f.name }); location.hash = '#k=' + code; return; } } catch (x) {}
       say('(That picture holds no throne I can read.)', true); return; }
     try { const code = window.INKSHARE && INKSHARE.readInkling(await f.text()); if (code) { log({ who: 'k', what: 'opened', text: f.name }); location.hash = '#k=' + code; return; } } catch (x) {}
-    try { const o = JSON.parse(await f.text()); if (o && o.state && Array.isArray(o.state.tasks)) { store('inkling.archive.' + Date.now(), { state: ST, log: load('inkling.log', []) }); ST = o.state; save(); log({ who: 'k', what: 'restored', text: f.name }); render(); say('Restored from ' + f.name + '.', true); } }
+    try { const o = JSON.parse(await f.text()); if (o && o.state && Array.isArray(o.state.tasks)) { store('inkling.archive.' + Date.now(), { state: ST, log: load('inkling.log', []) }); ST = o.state; save(); if (o.krix && +o.krix.n > krixHeld()) store('inkling.krix', o.krix); log({ who: 'k', what: 'restored', text: f.name }); render(); say('Restored from ' + f.name + '.', true); } }
     catch (x) { say('(That file would not open.)', true); } });
 })();
 
@@ -1199,15 +1216,15 @@ let MODE = 'talk';
    Inkling comes in once (its source is remembered, so a thing set aside here stays aside); the sparks are read on every open. ═══ */
 function bringHome() {
   const got = load('inkling.brought', {}) || {}, have = new Set(live().map(t => (t.word + '|' + (t.text || '')).toLowerCase())); let added = 0;
-  const add = (src, id, word, text, done, at, sub) => { const key = src + ':' + id;
+  const add = (src, id, word, text, done, at, sub, dAt) => { const key = src + ':' + id;
     if (got[key]) { const t = ST.tasks.find(x => x.src === key); if (t && sub) { t.sub = sub.slice(0, 60); added += 0; } return; } got[key] = 1;
     const w = String(word || '').trim().split(/\s+/)[0].slice(0, 24), x = String(text || '').slice(0, 600); if (!w) return;
     const sig = (w + '|' + x).toLowerCase(); if (have.has(sig)) return; have.add(sig);
-    ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: w, text: x, at: at && !isNaN(new Date(at)) ? new Date(at).toISOString() : null, done: !!done, doneAt: done ? nowIso() : null, from: src, src: key, sub: sub ? sub.slice(0, 60) : undefined }); added++; };
+    ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: w, text: x, at: at && !isNaN(new Date(at)) ? new Date(at).toISOString() : null, done: !!done, doneAt: done && dAt && !isNaN(Date.parse(dAt)) ? new Date(dAt).toISOString() : null, from: src, src: key, sub: sub ? sub.slice(0, 60) : undefined }); added++; };
   try { const o = JSON.parse(localStorage.getItem('orv.state') || 'null');
-    if (o && Array.isArray(o.tasks)) o.tasks.filter(t => t && !t.gone).forEach(t => add('orv', t.id, t.word, t.text, t.done, t.at)); } catch (e) {}
+    if (o && Array.isArray(o.tasks)) o.tasks.filter(t => t && !t.gone).forEach(t => add('orv', t.id, t.word, t.text, t.done, t.at, undefined, t.doneAt)); } catch (e) {}
   try { const j = JSON.parse(localStorage.getItem('monomyth.journey.v1') || 'null'), s = j && (j.state || j);
-    if (s && Array.isArray(s.quests)) s.quests.forEach(q => { if (q && q.name) add('monomyth', q.id, String(q.name).trim(), q.kind === 'one-thing' ? 'the one thing, in Monomyth' : '', !!q.doneAt, null); });
+    if (s && Array.isArray(s.quests)) s.quests.forEach(q => { if (q && q.name) add('monomyth', q.id, String(q.name).trim(), q.kind === 'one-thing' ? 'the one thing, in Monomyth' : '', !!q.doneAt, null, undefined, q.doneAt); });
     if (s && typeof s.altimeter === 'number') { const today = new Date().toISOString().slice(0, 10);
       store('inkling.sparks', { lifetime: s.altimeter, today: String(s.sparksTodayDate || '').slice(0, 10) === today ? (s.sparksToday || 0) : 0, at: nowIso() }); } } catch (e) {}
   /* the Focus glass (monomyth.focus.v1) and the Kairos camp app before it: their quests come onto the sword (their open tasks
@@ -1365,15 +1382,27 @@ $('setModel').addEventListener('change', async () => {
 
 const HAD = box().apiKey, HAD_D = keyDoor();
 salmonCall();
-if (!HAD || !HAD_D) { (async () => {                   // the key is gone from localStorage: is it in the spare?
+/* THE POUR: a phone that forgot its kingdom (or its key) asks the spare. If the spare holds a kingdom and this phone woke empty,
+   the whole spare is poured back over the blanks this open wrote, and the page opens again on it. Never on a kingdom arriving or a
+   new kingdom asked for. Then the spare is let go to keep this phone's copy again. */
+(async function pour() {
+  const needKey = !HAD || !HAD_D;
+  if (!BOOT.wiped && !needKey) { SPARE.hold = false; return; }
   const sp = await SPARE.get(); let again = false; try { again = sessionStorage.getItem('inkling.poured') === '1'; } catch (e) {}
-  if (sp && sp[BOX] && !again) { try { Object.keys(sp).forEach(k => { if (localStorage.getItem(k) == null) localStorage.setItem(k, sp[k]); /* only what is missing */ }); sessionStorage.setItem('inkling.poured', '1'); } catch (e) { return; }
+  let spST = null; try { spST = sp && JSON.parse(sp['inkling.state'] || 'null'); } catch (e) {}
+  const richer = BOOT.wiped && !BOOT.arriving && !BOOT.fresh && spST && Array.isArray(spST.tasks) && spST.tasks.length > 0 && !ST.tasks.length;
+  if (sp && !again && (richer || (needKey && sp[BOX]))) {
+    try { Object.keys(sp).forEach(k => { if (richer || localStorage.getItem(k) == null) localStorage.setItem(k, sp[k]); }); sessionStorage.setItem('inkling.poured', '1'); }
+    catch (e) { SPARE.hold = false; return; }
     location.reload(); return; }
-  setOpen('Paste your key and tap test. A Groq or Gemini key is free.');
-})(); }
-else if (!paidOpen(HAD_D)) typeSay('(Orv points at the salmon.) The ' + HAD_D + ' key costs money. Type ' + K.password + ' on the coin line in there.', true);
-else if (FIRST && !open().length) typeSay('(Orv rubs his claws together.) Your first Breath, High King. Tell me everything that is alive in you today, every road you are on. I will make the list.', true);
-else if (load('inkling.summary', '')) say(load('inkling.summary', ''));
+  SPARE.hold = false; SPARE.save();
+  if (needKey) setOpen('Paste your key and tap test. A Groq or Gemini key is free.');
+})();
+if (HAD && HAD_D) {
+  if (!paidOpen(HAD_D)) typeSay('(Orv points at the salmon.) The ' + HAD_D + ' key costs money. Type ' + K.password + ' on the coin line in there.', true);
+  else if (FIRST && !open().length) typeSay('(Orv rubs his claws together.) Your first Breath, High King. Tell me everything that is alive in you today, every road you are on. I will make the list.', true);
+  else if (load('inkling.summary', '')) say(load('inkling.summary', ''));
+}
 </script>
 </body>
 </html>

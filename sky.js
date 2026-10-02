@@ -125,11 +125,14 @@
     const F = S.facts; F.textContent = ''; const sel = S.sel && S.ball.byId.get(S.sel);
     (sel ? factsOf(S.W, sel) : [S.W.title || '']).forEach((t, i) => { if (!t) return; const p = root.document.createElement('p'); p.textContent = t; if (i === 0 && sel) p.className = 'h'; F.appendChild(p); });
   }
+  /* the ball tugs in any direction while the sky fits; once the words below it run past the pane, an up-and-down drag scrolls them
+     instead (a sideways drag still tugs it) */
+  function fit(S) { if (S.cv) S.cv.style.touchAction = S.host.scrollHeight > S.host.clientHeight + 2 ? 'pan-y' : 'none'; }
   function choose(S, id) {
     S.sel = id; S.selAt = Date.now();
     const s = id && S.ball.byId.get(id); S.touched = new Set(s ? s.partners : []);
     S.cv.setAttribute('aria-label', s ? s.name + (s.partners.length ? ', touching ' + s.partners.map(p => p.split(':').slice(1).join(':')).join(', ') : '') : 'the constellation, a little ball: tap a star');
-    facts(S); kick(S);
+    facts(S); fit(S); kick(S);
   }
   function size(S) {
     const host = S.host, hs = root.getComputedStyle(host), w = Math.floor(host.clientWidth - (parseFloat(hs.paddingLeft) || 0) - (parseFloat(hs.paddingRight) || 0) - 2);
@@ -137,7 +140,7 @@
     const R = S.ball.R0, dpr = Math.min(3, root.devicePixelRatio || 1);
     S.w = w; S.h = KNOBS.top + 2 * (R + KNOBS.out * 1.4 + KNOBS.reach / 2) + 18; S.cx = Math.round(w / 2); S.cy = Math.round(KNOBS.top + R + KNOBS.out);
     S.dpr = dpr; S.cv.width = Math.round(w * dpr); S.cv.height = Math.round(S.h * dpr); S.cv.style.width = w + 'px'; S.cv.style.height = S.h + 'px';
-    paint(S);
+    paint(S); fit(S);
   }
 
   /* ═══ the hand: tap a star (or its word) · tap the sky beside the ball to let go · drag to tug the ball ═══ */
