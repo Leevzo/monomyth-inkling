@@ -12,6 +12,7 @@
 <link rel="manifest" href="./inkling.webmanifest?v=1">
 <script src="./crown.js"></script>
 <script src="./share.js"></script>
+<script src="./sky.js"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=true1">
 <link rel="stylesheet" href="./fonts.css">
 <!--
@@ -128,9 +129,17 @@ html, body { margin: 0; height: 100%; background: var(--ground); color: var(--in
 #hear[hidden] { display: none; }
 #hear i { color: var(--dim); font-style: normal; }
 #hear .dot { color: var(--late); }
-/* SQUATCH stands bottom-left, above the line: still, but for the sparks off his cigarette; he never takes a touch */
-#squatch { position: fixed; left: 10px; bottom: calc(env(safe-area-inset-bottom) + 46px); image-rendering: pixelated; pointer-events: none; }
-body.setting #squatch { visibility: hidden; }
+/* THE WHEEL: a point at the lower right corner of the screen; Orv and Squatch stand on it a quarter turn apart */
+#wheel { position: fixed; right: 0; bottom: 0; width: 0; height: 0; z-index: 4; transform-origin: 0 0; }
+#wheel canvas { position: absolute; right: auto; bottom: auto; image-rendering: pixelated; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body.setting #wheel { visibility: hidden; }
+/* the two swords share one place: Orv's list, Squatch's constellation */
+#left { position: relative; }
+#sky { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 4px 0 8px 2px; }
+#sky .sky-facts p { margin: 6px 0 0; font-size: var(--small); color: var(--dim); line-height: 1.4; }
+#sky .sky-facts p.h { color: var(--ink); }
+#main { margin-top: calc(14px + var(--mt, 0px)); }
+#star.crowned { cursor: move; }
 #orv { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
 body.holding, body.holding * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
 #app, #say, #hear, #meter { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -164,14 +173,13 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
 <div id="app">
   <div id="one"><div id="oneWord"></div><div id="oneLine"></div><div id="clock"></div></div>
   <div id="main">
-    <div id="left"><div id="list" aria-label="your list, in order of priority"></div></div>
+    <div id="left"><div id="list" aria-label="your list, in order of priority"></div><div id="sky" hidden aria-label="Squatch's constellation"></div></div>
     <div id="div" role="separator" aria-label="drag: far left shows your words, far right is action mode"></div>
     <div id="right"><div id="talk" aria-label="the whole talk"><div id="chatLog"></div></div><div id="say"></div><div id="mode"></div></div>
   </div>
   <div id="bottom"><input id="line" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></div>
 </div>
-<canvas id="squatch" aria-hidden="true"></canvas>
-<canvas id="orv" aria-label="Orv. Tap to send, double-tap for story or focus, hold to talk."></canvas>
+<div id="wheel" aria-label="Orv and Squatch on the wheel. Tap to send, double-tap to turn the wheel, hold to talk."><canvas id="orv"></canvas><canvas id="squatch"></canvas></div>
 <div id="meter" hidden><div id="meterTrack" role="slider" aria-label="story or focus" aria-valuemin="0" aria-valuemax="100"><div id="meterKnob"></div></div>
   <div id="meterWords"><span id="mwStory">story</span><span id="mwFocus">focus</span></div><div id="meterSays"></div></div>
 <div id="hear" hidden aria-live="polite"></div>
@@ -243,6 +251,7 @@ function fromKingdom() { if (!/^#k=[A-Za-z0-9_-]+$/.test(location.hash)) return;
     if (was && Array.isArray(was.tasks) && was.tasks.length) store('inkling.archive.' + Date.now(), { state: was, log: load('inkling.log', []) });
     const tasks = o.t.slice(0, 200).map((x, i) => ({ id: 't' + (i + 1).toString(36), word: String(x[0] || '').trim().split(/\s+/)[0].slice(0, 24) || 'thing',
       text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3], doneAt: x[3] ? nowIso() : null }));
+    if (o.sq && Array.isArray(o.sq.c)) store('inkling.squatch', o.sq);   // Squatch's constellation, his own sword
     store('inkling.state', { v: 1, tasks, one: Number.isInteger(o.one) && tasks[o.one] ? tasks[o.one].id : null, n: tasks.length });
     const L = load('inkling.log', []); L.push({ at: nowIso(), who: 'k', what: 'a kingdom arrived', text: (o.from || 'a link') + ' · ' + tasks.length + ' things' }); store('inkling.log', L);
     setTimeout(() => location.reload(), 350);
@@ -253,7 +262,8 @@ fromKingdom(); window.addEventListener('hashchange', fromKingdom);   // a fresh 
 async function kingdomLink() {
   const rows = live(), one = theOne();
   const t = rows.map(x => { const a = [x.word, x.text || '']; if (x.at || x.done) a.push(x.at || 0); if (x.done) a.push(1); return a; });
-  return location.origin + location.pathname + '#k=' + await INKSHARE.encode({ v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t });
+  const sq = load('inkling.squatch', null), o = { v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t }; if (sq) o.sq = sq;
+  return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }
 async function openShare() { try { await INKSHARE.show(await kingdomLink()); } catch (e) { say('(The code would not draw.)', true); } }
 /* #new: a new kingdom. Whatever was here is set aside (kept under orv.archive.<time>, never deleted). */
@@ -484,7 +494,7 @@ function system() {
   const now = new Date(), tz = -now.getTimezoneOffset(), off = (tz >= 0 ? '+' : '-') + String(Math.floor(Math.abs(tz) / 60)).padStart(2, '0') + ':' + String(Math.abs(tz) % 60).padStart(2, '0');
   const list = open().map((t, i) => (i + 1) + '. [' + t.id + '] ' + t.word + ' — ' + (t.text || '') + (t.at ? ' (at ' + t.at + ')' : '')).join('\n') || '(the list is empty)';
   const one = theOne();
-  return K.seed + '\n\nYou keep the King\'s list of pure tasks on his phone, and each day you sort it with him: merge duplicates, turn vague wishes into plain doable tasks, drop nothing he did not ask to drop, and order by what matters most (deadlines first, then what unblocks other things, then what he named as important). The order of the list IS its priority. Now is ' + now.toISOString() + ' (his local offset ' + off + ').' +
+  return (WHEEL.front === 'squatch' ? K.seedSquatch : K.seed) + '\n\nYou keep the King\'s list of pure tasks on his phone, and each day you sort it with him: merge duplicates, turn vague wishes into plain doable tasks, drop nothing he did not ask to drop, and order by what matters most (deadlines first, then what unblocks other things, then what he named as important). The order of the list IS its priority. Now is ' + now.toISOString() + ' (his local offset ' + off + ').' +
     '\nTHE ONE THING: ' + (one ? one.word + ' [' + one.id + ']' : 'none') + '\nOPEN TASKS, in priority order:\n' + list +
     '\nDone today: ' + live().filter(t => t.done).length + '.' +
     '\n\nAnswer ONLY with one JSON object: {"say": "...", "ops": [...]}' +
@@ -645,7 +655,7 @@ function listenStop() {
   }, 700);
 }
 (function hands() {
-  const O = $('orv'); let holdT = 0, held = false, lastTap = 0, tapT = 0, x0 = 0, y0 = 0;
+  const O = $('wheel'); let holdT = 0, held = false, lastTap = 0, tapT = 0, x0 = 0, y0 = 0;
   O.addEventListener('contextmenu', e => e.preventDefault());
   O.addEventListener('touchstart', e => e.preventDefault(), { passive: false });   // no magnifier, no selection, no callout
   O.addEventListener('pointerdown', e => { held = false; x0 = e.clientX; y0 = e.clientY; try { O.setPointerCapture(e.pointerId); } catch (x) {}
@@ -654,7 +664,7 @@ function listenStop() {
   const up = () => { clearTimeout(holdT);
     if (held) { held = false; listenStop(); return; }
     const now = Date.now();
-    if (now - lastTap < 320) { clearTimeout(tapT); lastTap = 0; meterToggle(); return; }   // double-tap
+    if (now - lastTap < 320) { clearTimeout(tapT); lastTap = 0; turnWheel(); meterToggle(); return; }   // double-tap: the wheel turns, and the scale for story
     lastTap = now;
     tapT = setTimeout(() => { lastTap = 0; if ($('line').value.trim()) speak($('line').value); else $('line').focus(); }, 320); };
   O.addEventListener('pointerup', up); O.addEventListener('pointercancel', () => { clearTimeout(holdT); if (held) { held = false; listenStop(); } });
@@ -692,7 +702,7 @@ const ORV = { listening: false };
     rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) { const hx = O.pal[row[x]]; if (!hx) continue; const v = parseInt(hx.slice(1), 16), o = (y * w + x) * 4;
       img.data[o] = (v >> 16) & 255; img.data[o + 1] = (v >> 8) & 255; img.data[o + 2] = v & 255; img.data[o + 3] = 255; } });
     sx.putImageData(img, 0, 0); return { src, r: rig(rows) }; });
-  cv.width = (w + mx + mxR) * S; cv.height = (h + my) * S; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
+  cv.width = (w + mx + mxR) * S; cv.height = (h + my) * S; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px'; wheelPlace();
   const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
   const d = { sx: 0, vx: 0, clk: 0, next: 2 }; let f = 0, last = 0, timer = 0;
   const cl = (v, m) => Math.max(-m, Math.min(m, v));
@@ -724,19 +734,59 @@ const ORV = { listening: false };
 /* ═══ SQUATCH (bead-pattern(3).png, 2026-10-01 20:42), his word: "i made a squatch too. his animation can be the cigarette
    sparks going up." His body stands still, cell for cell. The sparks are his own red pixels in the column above the ember:
    they climb one row a step and come round to the ember again, in his own spacing. ═══ */
-K.squatch = { scale: 5, stepMs: 240, ember: [9, 10], cols: [9, 10] };   // ember = [x, y] in his own cells; the sparks' column
+K.squatch = { scale: 5, stepMs: 240, ember: [9, 10], cols: [9, 10] };
+/* THE WHEEL (his word, 2026-10-01): "imagine Squatch and Orv are on a wheel with the center at the lower right hand corner of
+   my screen, squatch is off screen until I rotate him in. the wooden sword dissapears left and gets replaced by the new one.
+   the constellation for squatch comes in rotating the opposite way to squatch and orv" */
+K.turn = { steps: 6, stepMs: 55, at: [-44, -70], tick: true };   // the front spot's centre, px from the corner; a click a step
+K.seedSquatch = 'You are Squatch, the sasquatch on the couch, stuck in one day, quitting cigarettes tomorrow. The King is the Hero, your roommate. Say the plain answer first, then help him see why. Never break the scene. The world\'s swear is fluck. Squatches don\'t smoke.';   // lifted from his harness   // ember = [x, y] in his own cells; the sparks' column
 (async function squatchBoot() {
   const cv = $('squatch'); let O; try { O = await (await fetch('./squatch/squatch.json')).json(); } catch (e) { return; }
   const S = K.squatch.scale, w = O.w, h = O.h, rows = O.frames[0], [ex, ey] = K.squatch.ember;
   const isSpark = (x, y) => y < ey && K.squatch.cols.includes(x) && O.pal[rows[y][x]] && O.pal[rows[y][x]].toUpperCase() === '#FF0000';
   const sparks = []; rows.forEach((r, y) => Array.from(r).forEach((ch, x) => { if (isSpark(x, y)) sparks.push({ x, y, c: O.pal[ch] }); }));
-  cv.width = w * S; cv.height = h * S; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
+  cv.width = w * S; cv.height = h * S; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px'; wheelPlace();
   const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
   const body = () => rows.forEach((r, y) => Array.from(r).forEach((ch, x) => { const c = O.pal[ch]; if (!c || isSpark(x, y)) return; ctx.fillStyle = c; ctx.fillRect(x * S, y * S, S, S); }));
   const draw = () => { ctx.clearRect(0, 0, cv.width, cv.height); body(); sparks.forEach(s => { if (s.y >= 0) { ctx.fillStyle = s.c; ctx.fillRect(s.x * S, s.y * S, S, S); } }); };
   draw(); if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   setInterval(() => { sparks.forEach(s => { s.y -= 1; if (s.y < 0) s.y = ey - 1; }); draw(); }, K.squatch.stepMs);   // up, and round again from the ember
 })();
+
+const WHEEL = { front: load('inkling.front', 'orv') === 'squatch' ? 'squatch' : 'orv', phi: 0, busy: false };
+WHEEL.phi = WHEEL.front === 'squatch' ? 90 : 0;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* each stands on the wheel at the same distance from the corner, a quarter turn apart, and upright when in front */
+function wheelPlace() {
+  const W = $('wheel'), [cx, cy] = K.turn.at, r = Math.hypot(cx, cy), a0 = Math.atan2(cx, -cy);
+  const put = (c, a, own) => { const w = parseFloat(c.style.width) || 0, h = parseFloat(c.style.height) || 0; if (!w) return;
+    c.style.left = (r * Math.sin(a) - w / 2) + 'px'; c.style.top = (-r * Math.cos(a) - h / 2) + 'px'; c.style.transform = 'rotate(' + own + 'deg)'; };
+  put($('orv'), a0, 0); put($('squatch'), a0 - Math.PI / 2, -90);
+  W.style.transform = 'rotate(' + WHEEL.phi + 'deg)';
+}
+function click() { if (!K.turn.tick) return; try { const A = click.a || (click.a = new (window.AudioContext || window.webkitAudioContext)());
+  const o = A.createOscillator(), g = A.createGain(); o.type = 'square'; o.frequency.value = 1700; g.gain.value = 0.025; o.connect(g); g.connect(A.destination);
+  o.start(); o.stop(A.currentTime + 0.006); } catch (e) {} }
+function frontWords() { const sq = WHEEL.front === 'squatch'; $('line').placeholder = sq ? 'tell squatch' : 'tell orv'; $('line').setAttribute('aria-label', sq ? 'tell Squatch' : 'tell Orv'); }
+function drawSky() { if (window.SKY) SKY.draw($('sky'), load('inkling.squatch', null)); }
+/* the swords swing about the lower LEFT corner, the opposite way to the wheel: the one going leaves to the left (for Squatch)
+   or back to the right (for Orv), the one coming swings in from the other side, step for step with the wheel's clicks */
+async function swapSwords(to) {
+  const n = K.turn.steps, dir = to === 'squatch' ? -1 : 1, out = to === 'squatch' ? $('list') : $('sky'), inn = to === 'squatch' ? $('sky') : $('list');
+  if (to === 'squatch') drawSky();
+  inn.hidden = false;
+  [out, inn].forEach(el => { const r = el.getBoundingClientRect(); el.style.transformOrigin = (-r.left) + 'px ' + (innerHeight - r.top) + 'px'; });
+  for (let i = 0; i <= n; i++) { const t = i / n; out.style.transform = 'rotate(' + (90 * dir * t) + 'deg)'; inn.style.transform = 'rotate(' + (-90 * dir * (1 - t)) + 'deg)'; await sleep(K.turn.stepMs); }
+  out.hidden = true; out.style.transform = ''; inn.style.transform = '';
+}
+async function turnWheel() {
+  if (WHEEL.busy) return; WHEEL.busy = true;
+  const to = WHEEL.front === 'orv' ? 'squatch' : 'orv', from = WHEEL.phi, dest = to === 'squatch' ? 90 : 0, n = K.turn.steps;
+  const swing = swapSwords(to);
+  for (let i = 1; i <= n; i++) { WHEEL.phi = from + (dest - from) * i / n; wheelPlace(); click(); await sleep(K.turn.stepMs); }
+  await swing; WHEEL.front = to; store('inkling.front', to); frontWords(); WHEEL.busy = false;
+}
+(function wheelBoot() { frontWords(); if (WHEEL.front === 'squatch') { $('list').hidden = true; $('sky').hidden = false; setTimeout(drawSky, 0); } wheelPlace(); })();
 
 /* ═══ THE DIVIDER: his name, vertical. It follows the hand 1:1 and holds where let go.
    All the way left: his own lines appear and scroll. All the way right: action mode, Orv acts and does not answer.
@@ -760,11 +810,14 @@ let MODE = 'talk';
     $('mode').textContent = MODE === 'action' ? 'ACTION' : ''; if (A.classList.contains('open')) drawChat();
     if (keep) store('inkling.d', f); };
   setD(load('inkling.d', KD.dflt), false);
-  let drag = false, x0 = 0, f0 = 0, lastTap = 0;
-  STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; STAR.setPointerCapture(e.pointerId); });
-  STAR.addEventListener('pointermove', e => { if (!drag) return; const r = M.getBoundingClientRect(); setD(f0 + (e.clientX - x0) / r.width, false); });
+  let drag = false, x0 = 0, f0 = 0, lastTap = 0, y0 = 0, mt0 = 0;
+  const setMT = (v, keep) => { const M = $('main'), room = M.getBoundingClientRect().bottom - (M.getBoundingClientRect().top - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mt')) || 0));
+    v = Math.max(0, Math.min(room * 0.62, v)); document.documentElement.style.setProperty('--mt', v + 'px'); if (keep) store('inkling.mt', v); };
+  setMT(load('inkling.mt', 0), false);
+  STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; y0 = e.clientY; mt0 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mt')) || 0; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; STAR.setPointerCapture(e.pointerId); });
+  STAR.addEventListener('pointermove', e => { if (!drag) return; const r = M.getBoundingClientRect(); setD(f0 + (e.clientX - x0) / r.width, false); setMT(mt0 + 2 * (e.clientY - y0), false); });   // free moving
   STAR.addEventListener('pointerup', e => { if (!drag) return; drag = false; const r = M.getBoundingClientRect(), f = f0 + (e.clientX - x0) / r.width;
-    const t = Date.now(); if (Math.abs(e.clientX - x0) < 4 && t - lastTap < 350) { lastTap = 0; openShare(); return; } lastTap = t; setD(f, true); });   // double-tap: the share/save
+    const t = Date.now(); if (Math.abs(e.clientX - x0) < 4 && Math.abs(e.clientY - y0) < 4 && t - lastTap < 350) { lastTap = 0; openShare(); return; } lastTap = t; setD(f, true); setMT(mt0 + 2 * (e.clientY - y0), true); });   // double-tap: the share/save
 })();
 
 /* ═══ BOOT: #say= from the Tell Orv Shortcut arrives as if typed ═══ */
