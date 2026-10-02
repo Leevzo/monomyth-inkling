@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790916680';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790916680"></script>
-<script src="./share.js?v=1790916680"></script>
-<script src="./sky.js?v=1790916680"></script>
+<script>window.INK_V = '1790919026';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790919026"></script>
+<script src="./share.js?v=1790919026"></script>
+<script src="./sky.js?v=1790919026"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790916680">
+<link rel="stylesheet" href="./fonts.css?v=1790919026">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -202,19 +202,54 @@ body.holding, body.holding * { -webkit-user-select: none !important; user-select
 body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
 .sl[hidden], #set[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .row.sel .word, .line { transform: none; } }
+/* ═══ THE SWORD'S NEW SHAPE (his word, 2026-10-02): "when you complete tasks on the wooden sword, they get archived up above
+   where they turn into a story ... up into the point of the one thing ... a long bar across the whole screen that gets shorter
+   as it gets closer to the thing going up vertically on the very left-hand side ... next to that magical bar ... timed things
+   ... anchored with the time and then everything slightly to the right of them are all stacked very closely of just
+   sequential things." One scroll, top to bottom: THE STORY (his name, then his deeds) · THE ONE THING · what is ahead. It rests
+   on the one thing; pull down to read the story back to his name. ═══ */
+#app { padding-left: calc(var(--fuse, 5px) + 7px); }
+.skyp { padding-top: 44px; }   /* the corners now reach the top of the screen: their words stand clear of the salmon and the cigarette */
+#main { margin-top: 0; }
+#list { overflow-anchor: none; overscroll-behavior: contain; }
+/* the story, in the Focus story's own law: his name the biggest thing, in THE 23 letter by letter; then one running paragraph,
+   every deed's word white until tapped; a tapped deed's own line is spliced in right after its sentence */
+#story { padding: 8px 2px 22px 4px; }
+.st-name { font-family: 'Dogica', ui-monospace, monospace; font-size: clamp(20px, 6.4vw, 26px); line-height: 1.3; word-break: break-word; }
+.st-p { font-size: 16px; line-height: 1.7; color: var(--ink); margin-top: 10px; }
+.dw { white-space: nowrap; }
+.deed { display: inline-block; font-family: 'Dogica', ui-monospace, monospace; font-weight: bold; font-size: 14px; color: var(--ink); cursor: pointer; touch-action: pan-y; }
+.deed-line { color: var(--dim); font-size: 14px; }
+.deed-line b { font-weight: normal; color: var(--gold); }
+/* the one thing: it sticks at the top while what is ahead scrolls under it; the story pushes it down when read */
+#one { position: sticky; top: 0; z-index: 2; background: var(--ground); min-height: 0; padding: 4px 0 12px 4px; touch-action: pan-y; }
+#oneWord { display: inline-block; }
+/* what is ahead: the timed things against the fuse, each on its time; the rest a little to the right, stacked close */
+#run { min-height: 100%; padding-bottom: 10px; }
+#run .row { display: flex; flex-wrap: wrap; align-items: flex-start; }
+#run .row.timed { min-height: 34px; padding: 6px 0 4px 0; }
+#run .row.timed .at { flex: 0 0 var(--gut, 46px); width: var(--gut, 46px); margin: 0; padding-top: 5px; font-size: 11px; line-height: 1.25; }
+#run .row.seq { min-height: 0; padding: 1px 0 1px var(--seq, 58px); }
+#run .row .line { flex: 0 0 100%; }
+#run .row.timed .line { padding-left: calc(var(--gut, 46px) + 8px); }
+#run .row.seq .line { padding-left: 8px; margin-top: 2px; }
+/* THE FUSE: the magical bar on the very left edge of the screen, its colours stepping once a second */
+#fuse { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; image-rendering: pixelated; }
+body.setting #fuse { visibility: hidden; }
+.krixPop { position: fixed; z-index: 30; pointer-events: none; font-family: 'Dogica', ui-monospace, monospace; font-size: 14px; color: var(--gold); }
 </style>
 </head>
 <body>
 <div id="app">
-  <div id="one"><div id="oneWord"></div><div id="oneLine"></div><div id="sparks"></div><div id="clock"></div></div>
   <div id="main">
-    <div id="left"><div id="list" aria-label="your list, in order of priority"></div><div id="list2" hidden aria-label="Squatch's sword: his day"></div></div>
+    <div id="left"><div id="list" aria-label="your sword: the story above, the one thing, then what is ahead"><div id="story" aria-label="the story so far"></div><div id="one" aria-label="the one thing: swipe right when it is done, left to set it aside"><span class="mark yes">✓</span><span class="mark no">✗</span><div id="oneWord"></div><div id="oneLine"></div><div id="sparks"></div><div id="clock"></div></div><div id="run" aria-label="what is ahead: the timed things by their times, then the rest in order"></div></div><div id="list2" hidden aria-label="Squatch's sword: his day"></div></div>
     <div id="skyO" class="skyp" aria-label="Orv's constellation: your kingdom"></div><div id="skyS" class="skyp" hidden aria-label="Squatch's constellation"></div>
     <div id="div" role="separator" aria-label="drag: far left shows your words, far right is action mode"></div>
     <div id="right"><div id="talk" aria-label="the whole talk"><div id="chatLog"></div></div><div id="say"></div><div id="mode"></div></div>
   </div>
   <div id="bottom"><textarea id="line" rows="1" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></textarea><button id="tapeBtn" type="button" hidden aria-label="give Squatch a voice note">tape</button><input id="tape" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.caf,.ogg" hidden></div>
 </div>
+<canvas id="fuse" aria-hidden="true"></canvas>
 <div id="wheel" aria-label="Orv and Squatch on the wheel. Tap to send, double-tap to turn the wheel, hold to talk."><canvas id="orv"></canvas><canvas id="squatch"></canvas></div>
 <div id="meter" hidden><div id="meterTrack" role="slider" aria-label="story or focus" aria-valuemin="0" aria-valuemax="100"><div id="meterKnob"></div></div>
   <div id="meterWords"><span id="mwStory">story</span><span id="mwFocus">focus</span></div><div id="meterSays"></div></div>
@@ -358,30 +393,114 @@ function inkOf(word) {
 if (document.fonts && document.fonts.load) document.fonts.load("bold 17px 'Dogica'").then(() => { INK.clear(); try { render(); } catch (e) {} }).catch(() => {});
 function rainbow(el, text) { el.textContent = ''; Array.from(text).forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch; s.style.color = K.wheel[i % K.wheel.length]; el.appendChild(s); }); }
 let SEL = null;
-function render() {
-  const one = theOne();
-  $('oneWord').textContent = one ? one.word : (ST.tasks.length ? 'clear' : 'tell orv');
-  $('oneLine').textContent = one ? one.text : (ST.tasks.length ? 'every task is done' : 'what does the day hold?');
-  const L = $('list'); L.textContent = '';
-  const rows = open().concat(live().filter(t => t.done));
-  rows.forEach((t, i) => {
-    const r = document.createElement('div'); r.className = 'row' + (t.done ? ' done' : '') + (one && t.id === one.id ? ' is-one' : '') + (t.id === SEL ? ' sel' : '');
-    r.dataset.id = t.id;
-    const a = document.createElement('span'); a.className = 'at'; a.textContent = t.at ? fmtAt(t.at) : '';
-    if (t.at && !t.done && new Date(t.at) < new Date()) a.classList.add('late');
-    const w = document.createElement('span'); w.className = 'word';
-    w.textContent = t.word; if (t.id === SEL && !(one && t.id === one.id)) w.style.color = K.wheel[(i * 5 + 2) % K.wheel.length];   // white until tapped (his word)
+/* ═══ KRIX (his word, 2026-10-02): "make sure that when you do check things off, it gives you krix and that if you decide to
+   remove them from the story to archive them, the krix stays." Inkling keeps its own purse, 'inkling.krix' {n}, outside the
+   kingdom, so a new kingdom arriving never empties it. A check-off pays at the CrowDraft's rate law (Focus store.ts questRate:
+   a strike pays 1, a side quest 8), and the deed remembers what it paid (t.krix). An undo takes back only what that deed paid;
+   setting aside and archiving never touch the purse. Every payment is written to the log. ═══ */
+K.krix = { per: 1, side: 8 };
+const krixHeld = () => { const k = load('inkling.krix', null); return k && typeof k.n === 'number' ? Math.max(0, k.n) : 0; };
+const krixRate = t => /side quest/i.test((t.word || '') + ' ' + (t.text || '')) ? K.krix.side : K.krix.per;
+function krixPay(t, sign, who) {
+  const k = load('inkling.krix', null) || { n: 0 }; let n = 0;
+  if (sign > 0 && !t.krix) { n = krixRate(t); t.krix = n; }
+  else if (sign < 0 && t.krix) { n = -t.krix; t.krix = 0; }
+  if (!n) return 0;
+  k.n = Math.max(0, (k.n || 0) + n); k.at = nowIso(); store('inkling.krix', k); log({ who: who || 'k', what: 'krix', n, id: t.id, word: t.word });
+  return n;
+}
+/* the one door for done and undone: the sword, the one thing, the story and Orv's own ops all come through here */
+function setDone(t, on, who) { if (!t || !!t.done === !!on) return 0; t.done = !!on; t.doneAt = on ? nowIso() : null; if (!on) delete t.archived; return krixPay(t, on ? 1 : -1, who); }
+/* once, on the first open of this build: the deeds he already checked off in Inkling are paid, counted from his own log (his
+   swipes, and Orv's done ops, since the last kingdom arrived), so nothing he did before tonight goes unpaid */
+(function krixOnce() { if (load('inkling.krix', null)) return;
+  const L = load('inkling.log', []); let from = 0; L.forEach((e, i) => { if (e && e.what === 'a kingdom arrived') from = i + 1; });
+  const hit = new Set(); L.slice(from).forEach(e => { if (!e) return;
+    if (e.who === 'k' && e.what === 'done') hit.add(e.id); if (e.who === 'k' && e.what === 'undone') hit.delete(e.id);
+    if (e.what === 'answered' && Array.isArray(e.ops)) e.ops.forEach(o => { if (o && o.op === 'done') hit.add(String(o.id)); if (o && o.op === 'undone') hit.delete(String(o.id)); }); });
+  let n = 0; ST.tasks.forEach(t => { if (t.done && hit.has(t.id) && !t.krix) { t.krix = krixRate(t); n += t.krix; } });
+  if (store('inkling.krix', { n, at: nowIso(), counted: 'from his own check-offs in the log' }) && n) { save(); log({ who: 'orv', what: 'krix', n, text: 'the deeds already done, paid' }); }
+})();
+/* a thing keeps one colour wherever it stands: on the sword, in the story, in Orv's corner */
+const inkFor = t => K.wheel[(Math.max(0, ST.tasks.indexOf(t)) * 5 + 2) % K.wheel.length];
+
+/* ═══ THE STORY: his deeds, told from his name down to the one thing (the Focus story's own law, 2026-09-13/15: his name the
+   biggest thing on the page, in THE 23 letter by letter; one running paragraph; every subject white until tapped, and a tapped
+   one's own line spliced into the same paragraph right after the sentence that named it). The Hand tells it; it never invents:
+   each deed is his own word for the thing, on the day he did it. ═══ */
+const NAME = 'High King Leevzo the Lucky';
+const deeds = () => live().filter(t => t.done && !t.archived).sort((a, b) => (Date.parse(a.doneAt) || 0) - (Date.parse(b.doneAt) || 0));
+function dayOf(iso) { const d = iso ? new Date(iso) : null; if (!d || isNaN(d)) return { key: 'once', word: 'once' };   // a deed that came in done, its day unknown
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate()), n = new Date(), b = new Date(n.getFullYear(), n.getMonth(), n.getDate()), k = Math.round((b - a) / 864e5);
+  const word = k === 0 ? 'today' : k === 1 ? 'yesterday' : k > 1 && k < 7 ? 'on ' + d.toLocaleDateString('en-US', { weekday: 'long' }) : 'on ' + d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+  return { key: a.toDateString(), word }; }
+function drawStory(one) {
+  const S = $('story'); S.textContent = '';
+  const name = document.createElement('div'); name.className = 'st-name'; rainbow(name, NAME); S.appendChild(name);
+  const P = document.createElement('div'); P.className = 'st-p'; S.appendChild(P);
+  const text = s => P.appendChild(document.createTextNode(s));
+  const groups = []; deeds().forEach(t => { const d = dayOf(t.doneAt), g = groups[groups.length - 1]; if (g && g.key === d.key) g.ts.push(t); else groups.push({ key: d.key, word: d.word, ts: [t] }); });
+  groups.forEach((g, gi) => {
+    text(gi === 0 ? 'did ' : g.word.charAt(0).toUpperCase() + g.word.slice(1) + ' he did ');   // "High King Leevzo the Lucky did this and that"
+    g.ts.forEach((t, i) => {
+      const last = i === g.ts.length - 1, w = document.createElement('span'), dw = document.createElement('span');
+      w.className = 'deed'; w.dataset.id = t.id; w.textContent = t.word; if (t.id === SEL) w.style.color = inkFor(t);
+      dw.className = 'dw'; dw.appendChild(w);
+      if (!last && i < g.ts.length - 2) dw.appendChild(document.createTextNode(','));   // the comma rides with its word: no line begins with one
+      if (last && gi > 0) dw.appendChild(document.createTextNode('.'));
+      P.appendChild(dw);
+      text(last ? (gi === 0 ? ' ' + g.word + '. ' : ' ') : i === g.ts.length - 2 ? ' and ' : ' ');
+    });
+    const s = g.ts.find(t => t.id === SEL);   // the tapped deed's own line, spliced in right after its sentence
+    if (s) { const d = document.createElement('span'); d.className = 'deed-line'; const say = String(s.text || '').trim();
+      d.appendChild(document.createTextNode((say ? say + (/[.!?]$/.test(say) ? '' : '.') + ' ' : '') + 'Done ' + fmtAt(s.doneAt) + (s.krix ? ', ' : '.')));
+      if (s.krix) { const b = document.createElement('b'); b.textContent = '+' + s.krix + ' krix'; d.appendChild(b); d.appendChild(document.createTextNode('.')); }
+      P.appendChild(d); text(' '); }
+  });
+  text(groups.length ? (one ? 'And now:' : 'And the sword is clear.') : (one ? 'and now:' : 'and the sword is clear.'));
+}
+
+/* ═══ WHAT IS AHEAD: the timed things first, each against the fuse on its own time; then the rest, a little to the right,
+   stacked close, in the order Orv keeps them (the order IS the priority) ═══ */
+K.run = { gut: 46, seq: 58 };   // px: the time column beside the fuse; where the sequential things stand
+const timedOf = t => !!(t.at && !isNaN(Date.parse(t.at)));
+function drawRun(one) {
+  const R = $('run'); R.textContent = '';
+  R.style.setProperty('--gut', K.run.gut + 'px'); R.style.setProperty('--seq', K.run.seq + 'px');
+  const rest = open().filter(t => !one || t.id !== one.id);
+  const timed = rest.filter(timedOf).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)), seq = rest.filter(t => !timedOf(t));
+  timed.concat(seq).forEach(t => {
+    const isT = timedOf(t), r = document.createElement('div'); r.className = 'row ' + (isT ? 'timed' : 'seq') + (t.id === SEL ? ' sel' : ''); r.dataset.id = t.id;
+    const yes = document.createElement('span'); yes.className = 'mark yes'; yes.textContent = '✓';
+    const no = document.createElement('span'); no.className = 'mark no'; no.textContent = '✗';
+    r.append(yes, no);
+    if (isT) { const a = document.createElement('span'); a.className = 'at'; a.textContent = fmtAt(t.at); if (Date.parse(t.at) < Date.now()) a.classList.add('late'); r.appendChild(a); }
+    const w = document.createElement('span'); w.className = 'word'; w.textContent = t.word; if (t.id === SEL) w.style.color = inkFor(t);   // white until tapped (his word)
     const ink = inkOf(t.word); w.style.setProperty('--il', ink.l + 'px'); w.style.setProperty('--ib', ink.b + 'px');   // the Anchor: its bottom-left ink pixel on the hex centre
     const l = document.createElement('div'); l.className = 'line'; l.textContent = t.text || '';
-    const yes = document.createElement('span'); yes.className = 'mark yes'; yes.textContent = t.done ? '↺' : '✓';
-    const no = document.createElement('span'); no.className = 'mark no'; no.textContent = '✗';
-    r.append(yes, no, a, w, l); L.appendChild(r);
+    r.append(w, l); R.appendChild(r);
   });
+}
+
+/* the sword rests on the one thing: RUNREL is where the reader stands, measured from it (0 resting on it, below 0 up in the
+   story). Every redraw puts him back where he stood, so a deed rising into the story never moves what he is looking at. */
+let RUNREL = 0;
+function pinOne() { const L = $('list'); if (!L.offsetParent) return; L.scrollTop = Math.max(0, $('story').offsetHeight + RUNREL); RUNREL = L.scrollTop - $('story').offsetHeight; }
+$('list').addEventListener('scroll', () => { const L = $('list'); if (L.offsetParent) RUNREL = L.scrollTop - $('story').offsetHeight; }, { passive: true });
+addEventListener('resize', () => pinOne());
+function render(hold) {
+  const L = $('list'), h0 = hold ? L.querySelector(hold) : null, y0 = h0 ? h0.getBoundingClientRect().top : 0;
+  const one = theOne();
+  $('oneWord').textContent = one ? one.word : (ST.tasks.length ? 'clear' : 'tell orv'); $('oneWord').style.transform = '';
+  $('oneLine').textContent = one ? one.text : (ST.tasks.length ? 'every task is done' : 'what does the day hold?');
+  drawStory(one); drawRun(one);
   tick();
-  if (window._crown) { const G = load('inkling.gems', null), gems = G && typeof G.n === 'number' ? G.n : live().filter(t => t.done).length;   // his crystals held; else a gem a deed
+  if (window._crown) { const G = load('inkling.gems', null), held = G && typeof G.n === 'number' ? G.n : 0, gems = held + krixHeld();   // his crystals held in the other glasses, and the krix earned here
     window._crown.set(Math.min(window._crown.gems, gems), gems); }
   const sp = load('inkling.sparks', null); $('sparks').textContent = sp && typeof sp.lifetime === 'number' ? sp.lifetime.toLocaleString() + ' sparks' + (sp.today ? ' · ' + sp.today + ' today' : '') : '';
   try { drawSkyO(); } catch (e) {}
+  if (L.offsetParent) { const h1 = hold ? L.querySelector(hold) : null;
+    if (h1) { L.scrollTop += h1.getBoundingClientRect().top - y0; RUNREL = L.scrollTop - $('story').offsetHeight; } else pinOne(); }
 }
 /* the clock: a countdown to THE ONE THING if it is timed, else to the next timed task; the digits wheel through colour */
 function span(ms) { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
@@ -391,6 +510,7 @@ function tick() {
   const timed = open().filter(t => t.at && !isNaN(new Date(t.at))).sort((a, b) => new Date(a.at) - new Date(b.at));
   const next = timed.find(x => new Date(x.at) > now);                       // the next thing scheduled
   const t = one && one.at && new Date(one.at) <= now ? one : next;          // the one thing gone late outranks it
+  fuseDraw();
   c.textContent = ''; if (!t) return;
   const ms = new Date(t.at) - now, late = ms < 0, txt = span(Math.abs(ms));
   const d = document.createElement('span'); d.className = 'digits';
@@ -400,27 +520,72 @@ function tick() {
   w.textContent = late ? (t === one ? 'late' : t.word + ' is late') : 'until ' + (t === one ? 'it starts' : t.word) + ' · ' + fmtAt(t.at);
   c.append(d, w);
 }
+/* ═══ THE FUSE: the magical bar on the very left edge of the whole screen. It is lit full length the moment a thing becomes
+   the next timed thing, and burns back toward the top as that time comes; at the time it is gone, and the next one lights.
+   Its pixels are Orv's own grain, in the twelve, stepping once a second. ═══ */
+K.fuse = { px: 5, from: 'top' };   // from: the end it hangs from ('top' or 'bottom')
+function fuseTarget() { const now = Date.now(); return open().filter(t => timedOf(t) && Date.parse(t.at) > now).sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0] || null; }
+function fuseDraw() {
+  const c = $('fuse'); if (!c) return; const P = K.fuse.px, n = Math.max(1, Math.floor(innerHeight / P));
+  if (c.width !== P || c.height !== n * P) { c.width = P; c.height = n * P; c.style.width = P + 'px'; c.style.height = n * P + 'px'; }
+  const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height);
+  const t = fuseTarget(); if (!t) return;
+  const now = Date.now(), at = Date.parse(t.at); let F = load('inkling.fuse', null);
+  if (!F || F.id !== t.id || F.at !== t.at) { F = { id: t.id, at: t.at, lit: now }; store('inkling.fuse', F); }
+  const m = Math.ceil(n * Math.max(0, Math.min(1, (at - now) / Math.max(1, at - F.lit)))), s = Math.floor(now / 1000);
+  for (let i = 0; i < m; i++) { x.fillStyle = K.wheel[(i + s) % K.wheel.length]; x.fillRect(0, (K.fuse.from === 'bottom' ? n - 1 - i : i) * P, P, P); }
+}
+addEventListener('resize', fuseDraw);
 setInterval(tick, 1000);
-$('one').addEventListener('click', () => $('one').classList.toggle('open'));
 
-/* ═══ TOUCH: tap = light it and float it right; swipe right = done; swipe left = set aside ═══ */
-(function touch() {
-  let row = null, x0 = 0, y0 = 0, dx = 0, lock = null;
-  const L = $('list');
-  L.addEventListener('pointerdown', e => { row = e.target.closest('.row'); if (!row) return; x0 = e.clientX; y0 = e.clientY; dx = 0; lock = null; });
-  L.addEventListener('pointermove', e => { if (!row) return; const mx = e.clientX - x0, my = e.clientY - y0;
+/* ═══ TOUCH: one hand for the sword, the one thing and the story. A tap lights it; a swipe means what that place means:
+   on the sword and the one thing, right = done (it rises into the story and pays its krix), left = set aside; in the story,
+   right = back onto the sword (its krix go back with it), left = archived (out of the story; the krix stay). ═══ */
+function swiper(host, pick, on) {
+  let el = null, x0 = 0, y0 = 0, dx = 0, lock = null;
+  host.addEventListener('pointerdown', e => { el = pick(e.target); if (!el) return; x0 = e.clientX; y0 = e.clientY; dx = 0; lock = null; });
+  host.addEventListener('pointermove', e => { if (!el) return; const mx = e.clientX - x0, my = e.clientY - y0;
     if (!lock && (Math.abs(mx) > 10 || Math.abs(my) > 10)) lock = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
-    if (lock === 'x') { dx = mx; row.querySelector('.word').style.transform = 'translateX(' + dx + 'px)';
-      const f = Math.min(1, Math.abs(dx) / K.swipe); row.querySelector('.mark.yes').style.opacity = dx > 0 ? f : 0; row.querySelector('.mark.no').style.opacity = dx < 0 ? f : 0; } });
-  const end = () => { if (!row) return; const t = byId(row.dataset.id), w = row.querySelector('.word'); w.style.transform = ''; row.querySelectorAll('.mark').forEach(m => { m.style.opacity = 0; });
-    if (lock === 'x' && t && Math.abs(dx) > K.swipe) {
-      if (dx > 0) { t.done = !t.done; t.doneAt = t.done ? nowIso() : null; log({ who: 'k', what: t.done ? 'done' : 'undone', id: t.id }); }
-      else { t.gone = true; log({ who: 'k', what: 'set aside', id: t.id, word: t.word }); }
-      save(); render();
-    } else if (!lock && t) { SEL = SEL === t.id ? null : t.id; render(); }
-    row = null; };
-  L.addEventListener('pointerup', end); L.addEventListener('pointercancel', () => { if (row) row.querySelector('.word').style.transform = ''; row = null; });
-})();
+    if (lock === 'x') { dx = mx; on.move(el, dx, Math.min(1, Math.abs(dx) / K.swipe)); } });
+  host.addEventListener('pointerup', () => { if (!el) return; const t = el, d = dx, l = lock; el = null; on.move(t, 0, 0);
+    if (l === 'x' && Math.abs(d) > K.swipe) on.swipe(t, d > 0 ? 'right' : 'left'); else if (!l) on.tap(t); });
+  host.addEventListener('pointercancel', () => { if (el) on.move(el, 0, 0); el = null; });
+}
+/* a deed going up: it lifts in clicks and fades, and its krix rise off it in gold */
+let RISING = false;
+async function rise(el, n) {
+  if (!el) return; const r = el.getBoundingClientRect(), pop = n ? document.createElement('div') : null;
+  if (pop) { pop.className = 'krixPop'; pop.textContent = '+' + n + ' krix'; pop.style.left = Math.round(r.left + 6) + 'px'; pop.style.top = Math.round(r.top) + 'px'; document.body.appendChild(pop); }
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for (let i = 1; i <= 4 && !still; i++) { el.style.transform = 'translateY(' + (-9 * i) + 'px)'; el.style.opacity = String(1 - i / 4);
+    if (pop) pop.style.transform = 'translateY(' + (-7 * i) + 'px)'; await sleep(K.turn.stepMs); }
+  if (pop) setTimeout(() => pop.remove(), still ? 900 : 350);
+}
+async function checkOff(t, el) {
+  if (!t || RISING) return; RISING = true;
+  try { await rise(el, t.krix ? 0 : krixRate(t)); setDone(t, true); log({ who: 'k', what: 'done', id: t.id }); if (SEL === t.id) SEL = null; save(); }
+  finally { RISING = false; render(); }
+}
+function setAside(t) { if (!t) return; t.gone = true; log({ who: 'k', what: 'set aside', id: t.id, word: t.word }); if (SEL === t.id) SEL = null; save(); render(); }
+const markMove = (host, dx, f) => { host.querySelector('.mark.yes').style.opacity = dx > 0 ? f : 0; host.querySelector('.mark.no').style.opacity = dx < 0 ? f : 0; };
+swiper($('run'), x => x.closest('.row'), {
+  move: (r, dx, f) => { r.querySelector('.word').style.transform = dx ? 'translateX(' + dx + 'px)' : ''; markMove(r, dx, f); },
+  swipe: (r, way) => { const t = byId(r.dataset.id); if (way === 'right') checkOff(t, r.querySelector('.word')); else setAside(t); },
+  tap: r => { const t = byId(r.dataset.id); if (!t) return; SEL = SEL === t.id ? null : t.id; render(); }
+});
+swiper($('one'), x => x.closest('#one'), {
+  move: (o, dx, f) => { $('oneWord').style.transform = dx ? 'translateX(' + dx + 'px)' : ''; markMove(o, dx, f); },
+  swipe: (o, way) => { const t = theOne(); if (!t) return; if (way === 'right') checkOff(t, $('oneWord')); else setAside(t); },
+  tap: o => { o.classList.toggle('open'); if (SEL) { SEL = null; render(); } }
+});
+swiper($('story'), x => x.closest('.deed'), {
+  move: (w, dx, f) => { w.style.transform = dx ? 'translateX(' + dx + 'px)' : ''; w.style.opacity = dx ? String(1 - f * 0.6) : ''; },
+  swipe: (w, way) => { const t = byId(w.dataset.id); if (!t) return; if (SEL === t.id) SEL = null;
+    if (way === 'right') { setDone(t, false); log({ who: 'k', what: 'undone', id: t.id }); }
+    else { t.archived = nowIso(); log({ who: 'k', what: 'archived', id: t.id, word: t.word, krix: t.krix || 0 }); }
+    save(); render(); },
+  tap: w => { const t = byId(w.dataset.id); if (!t) return; SEL = SEL === t.id ? null : t.id; render('.deed[data-id="' + t.id + '"]'); }
+});
 
 /* ═══ ORV'S WORDS on screen ═══ */
 let TYPING = 0;
@@ -547,7 +712,7 @@ function system() {
   const one = theOne();
   return (WHEEL.front === 'squatch' ? K.seedSquatch + tapeMind() : K.seed) + '\n\nYou keep the King\'s list of pure tasks on his phone, and each day you sort it with him: merge duplicates, turn vague wishes into plain doable tasks, drop nothing he did not ask to drop, and order by what matters most (deadlines first, then what unblocks other things, then what he named as important). The order of the list IS its priority. Now is ' + now.toISOString() + ' (his local offset ' + off + ').' +
     '\nTHE ONE THING: ' + (one ? one.word + ' [' + one.id + ']' : 'none') + '\nOPEN TASKS, in priority order:\n' + list +
-    '\nDone today: ' + live().filter(t => t.done).length + '.' +
+    '\nDone: ' + live().filter(t => t.done).length + '. Krix earned here: ' + krixHeld() + ' (a check-off pays 1, a side quest 8).' +
     '\n\nAnswer ONLY with one JSON object: {"say": "...", "ops": [...]}' +
     '\n"say": a conversational reply in your own voice, to the High King. Usually two or three sentences. When he brings a problem, give him the tactic: the first move and, if it helps, up to five short numbered steps. Run the numbers when they matter (how many, how long, what fits before what).' +
     '\n"ops": changes to the list, only when his words ask for them or plainly imply them. Allowed ops, nothing else:' +
@@ -573,7 +738,7 @@ function apply(ops) {
     if (o.op === 'add') {
       const word = String(o.word || '').trim().split(/\s+/)[0]; if (!word) return drop('no word'); if (!okAt(o.at)) return drop('bad time');
       ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: word.slice(0, 24), text: String(o.text || '').slice(0, 600), at: o.at ? new Date(o.at).toISOString() : null, done: false, doneAt: null });
-    } else if (o.op === 'done' || o.op === 'undone') { if (!t) return drop('no such task'); t.done = o.op === 'done'; t.doneAt = t.done ? nowIso() : null; }
+    } else if (o.op === 'done' || o.op === 'undone') { if (!t) return drop('no such task'); setDone(t, o.op === 'done', 'orv'); }
     else if (o.op === 'remove') { if (!t) return drop('no such task'); t.gone = true; }
     else if (o.op === 'edit') { if (!t) return drop('no such task'); if (!okAt(o.at)) return drop('bad time');
       if (o.word) t.word = String(o.word).trim().split(/\s+/)[0].slice(0, 24); if (o.text != null) t.text = String(o.text).slice(0, 600);
@@ -912,10 +1077,10 @@ function drawSky() { if (!window.SKY) return; SKY.draw($('skyS'), load('inkling.
 function drawSkyO() {
   const H = $('skyO'); H.textContent = ''; const t = byId(SEL) || theOne(), mk = (c, x) => { const e = document.createElement('div'); e.className = c; e.textContent = x; H.appendChild(e); return e; };
   if (!t) { mk('det-quiet', 'tap a word on the sword'); return; }
-  const one = theOne(), rows = open().concat(live().filter(x => x.done)), i = rows.findIndex(x => x.id === t.id);
-  const w = mk('det-word', t.word); w.style.color = one && t.id === one.id ? 'var(--gold)' : t.id === SEL ? K.wheel[(i * 5 + 2) % K.wheel.length] : 'var(--ink)';
+  const one = theOne();
+  const w = mk('det-word', t.word); w.style.color = one && t.id === one.id ? 'var(--gold)' : t.id === SEL ? inkFor(t) : 'var(--ink)';
   if (t.text) mk('det-text', t.text);
-  const meta = [one && t.id === one.id ? 'the one thing' : '', t.done ? 'done' + (t.doneAt ? ' · ' + fmtAt(t.doneAt) : '') : '', t.at ? fmtAt(t.at) : '',
+  const meta = [one && t.id === one.id ? 'the one thing' : '', t.done ? 'done' + (t.doneAt ? ' · ' + fmtAt(t.doneAt) : '') : '', t.krix ? '+' + t.krix + ' krix' : '', t.at ? fmtAt(t.at) : '',
     t.from ? 'from ' + ({ orv: 'Orv', monomyth: 'the Monomyth journey', focus: 'Monomyth Focus', kairos: 'Kairos' }[t.from] || t.from) : ''].filter(Boolean).join(' · ');
   if (meta) mk('det-meta', meta);
   (t.sub || []).slice(0, 40).forEach(x => mk('det-sub', x));
@@ -958,7 +1123,7 @@ async function popSword(out, inn) {
   const gone = off(out);
   for (let i = 1; i <= half; i++) { out.style.transform = 'translateX(' + Math.round(gone * i / half) + 'px)'; await sleep(K.turn.stepMs); }
   out.hidden = true; out.style.transform = '';
-  inn.hidden = false; const back = off(inn);
+  inn.hidden = false; if (inn.id === 'list') pinOne(); const back = off(inn);
   for (let i = half; i >= 0; i--) { inn.style.transform = i ? 'translateX(' + Math.round(back * i / half) + 'px)' : ''; await sleep(K.turn.stepMs); }
 }
 function swapSwords(to) {
