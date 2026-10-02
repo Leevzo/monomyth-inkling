@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790919605';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790919605"></script>
-<script src="./share.js?v=1790919605"></script>
-<script src="./sky.js?v=1790919605"></script>
+<script>window.INK_V = '1790920208';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790920208"></script>
+<script src="./share.js?v=1790920208"></script>
+<script src="./sky.js?v=1790920208"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790919605">
+<link rel="stylesheet" href="./fonts.css?v=1790920208">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -238,6 +238,8 @@ body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
 /* THE FUSE: the magical bar on the very left edge of the screen, its colours stepping once a second */
 #fuse { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; image-rendering: pixelated; }
 body.setting #fuse { visibility: hidden; }
+.price { font-family: 'Dogica', ui-monospace, monospace; font-size: 10px; color: var(--gold); margin: 5px 0 0 6px; }
+.chap { font-family: 'Dogica', ui-monospace, monospace; font-size: 12px; white-space: normal; }
 .krixPop { position: fixed; z-index: 30; pointer-events: none; font-family: 'Dogica', ui-monospace, monospace; font-size: 14px; color: var(--gold); }
 </style>
 </head>
@@ -252,7 +254,7 @@ body.setting #fuse { visibility: hidden; }
   <div id="bottom"><textarea id="line" rows="1" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></textarea><button id="tapeBtn" type="button" hidden aria-label="give Squatch a voice note">tape</button><input id="tape" type="file" accept="audio/*,.m4a,.mp3,.wav,.aac,.caf,.ogg" hidden></div>
 </div>
 <canvas id="fuse" aria-hidden="true"></canvas>
-<div id="wheel" aria-label="Orv and Squatch on the wheel. Tap to send, double-tap to turn the wheel, hold to talk."><canvas id="orv"></canvas><canvas id="squatch"></canvas></div>
+<div id="wheel" aria-label="Orv and Squatch on the wheel. Tap for story or focus, double-tap to turn the wheel, hold to talk."><canvas id="orv"></canvas><canvas id="squatch"></canvas></div>
 <div id="meter" hidden><div id="meterTrack" role="slider" aria-label="story or focus" aria-valuemin="0" aria-valuemax="100"><div id="meterKnob"></div></div>
   <div id="meterWords"><span id="mwStory">story</span><span id="mwFocus">focus</span></div><div id="meterSays"></div></div>
 <div id="hear" hidden aria-live="polite"></div>
@@ -356,7 +358,7 @@ async function kingdomLink() {
   const sq = load('inkling.squatch', null), o = { v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t, kx: krixHeld() }; if (sq) o.sq = sq;
   return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }
-async function openShare() { try { if (!window.INKSHARE) throw new Error('no share'); const c = $('crown').getBoundingClientRect();
+async function openShare() { teach.done('crown'); try { if (!window.INKSHARE) throw new Error('no share'); const c = $('crown').getBoundingClientRect();
   await INKSHARE.show(await kingdomLink(), { from: [c.left + c.width / 2, c.top + c.height / 2], onRead: code => { location.hash = '#k=' + code; } }); /* shown, and read with a camera: nothing else */ } catch (e) { say('(The code would not draw.)', true); } }
 /* #new: a new kingdom. Whatever was here is set aside (kept under orv.archive.<time>, never deleted). */
 if (location.hash === '#new') {
@@ -451,7 +453,6 @@ K.teases = [
   'You tapped your own name. In colour. Again. I will allow it; it is a very good name.',
   'A Hand has no authority, they tell me. Yet here you are, doing what the list says.'
 ];
-const krix23 = () => 'Another twenty-three krix: one for every colour you allow near a screen. Not one of them brown. (' + krixHeld() + ' earned here.)';
 const tease = () => { const n = (load('inkling.tease', 0) || 0) % K.teases.length; store('inkling.tease', n + 1); return K.teases[n]; };
 /* a thing keeps one colour wherever it stands: on the sword, in the story, in Orv's corner */
 const inkFor = t => K.wheel[(Math.max(0, ST.tasks.indexOf(t)) * 5 + 2) % K.wheel.length];
@@ -472,6 +473,7 @@ function drawStory(one) {
   name.addEventListener('click', () => { typeSay(tease()); if (ORV.burst) ORV.burst(6); });   // his own name, tapped: Orv has something to say about it
   const P = document.createElement('div'); P.className = 'st-p'; S.appendChild(P);
   const text = s => P.appendChild(document.createTextNode(s));
+  const CH = new Map(((load('inkling.legend', null) || {}).chapters || []).map(c => [c.id, c]));
   const groups = []; deeds().forEach(t => { const d = dayOf(t.doneAt), g = groups[groups.length - 1]; if (g && g.key === d.key) g.ts.push(t); else groups.push({ key: d.key, word: d.word, ts: [t] }); });
   groups.forEach((g, gi) => {
     text(gi === 0 ? 'did ' : g.word.charAt(0).toUpperCase() + g.word.slice(1) + ' he did ');   // "High King Leevzo the Lucky did this and that"
@@ -482,6 +484,7 @@ function drawStory(one) {
       if (!last && i < g.ts.length - 2) dw.appendChild(document.createTextNode(','));   // the comma rides with its word: no line begins with one
       if (last && gi > 0) dw.appendChild(document.createTextNode('.'));
       P.appendChild(dw);
+      const c = CH.get(legendKey(t)); if (c) { const m = document.createElement('span'); m.className = 'chap'; rainbow(m, ' ⟡ ' + (c.name || 'chapter ' + c.n) + ' ⟡ '); P.appendChild(m); }   // a chapter closed on this deed
       text(last ? (gi === 0 ? ' ' + g.word + '. ' : ' ') : i === g.ts.length - 2 ? ' and ' : ' ');
     });
     const s = g.ts.find(t => t.id === SEL);   // the tapped deed's own line, spliced in right after its sentence
@@ -502,6 +505,7 @@ function drawRun(one) {
   R.style.setProperty('--gut', K.run.gut + 'px'); R.style.setProperty('--seq', K.run.seq + 'px');
   const rest = open().filter(t => !one || t.id !== one.id);
   const timed = rest.filter(timedOf).sort((a, b) => Date.parse(a.at) - Date.parse(b.at)), seq = rest.filter(t => !timedOf(t));
+  const fresh = [];
   timed.concat(seq).forEach(t => {
     const isT = timedOf(t), r = document.createElement('div'); r.className = 'row ' + (isT ? 'timed' : 'seq') + (t.id === SEL ? ' sel' : ''); r.dataset.id = t.id;
     const yes = document.createElement('span'); yes.className = 'mark yes'; yes.textContent = '✓';
@@ -511,15 +515,22 @@ function drawRun(one) {
     const w = document.createElement('span'); w.className = 'word'; w.textContent = t.word; if (t.id === SEL) w.style.color = inkFor(t);   // white until tapped (his word)
     const ink = inkOf(t.word); w.style.setProperty('--il', ink.l + 'px'); w.style.setProperty('--ib', ink.b + 'px');   // the Anchor: its bottom-left ink pixel on the hex centre
     const l = document.createElement('div'); l.className = 'line'; l.textContent = t.text || '';
-    r.append(w, l); R.appendChild(r);
+    r.append(w); if (krixRate(t) > K.krix.per) { const pr = document.createElement('span'); pr.className = 'price'; pr.textContent = krixRate(t); r.append(pr); }   // what it will pay, seen before
+    r.append(l); R.appendChild(r);
+    if (FORGE.ready && !FORGE.seen.has(t.id)) fresh.push(r); FORGE.seen.add(t.id);
   });
+  fresh.forEach((r, k) => { r.style.opacity = '0'; setTimeout(() => { r.style.opacity = ''; }, (k + 1) * K.turn.stepMs * 2); });   // the forge: one by one
+  if (fresh.length) setTimeout(click, (fresh.length + 1) * K.turn.stepMs * 2);
+  FORGE.ready = true;
 }
+const FORGE = { seen: new Set(), ready: false };
 
 /* the sword rests on the one thing: RUNREL is where the reader stands, measured from it (0 resting on it, below 0 up in the
    story). Every redraw puts him back where he stood, so a deed rising into the story never moves what he is looking at. */
 let RUNREL = 0;
 function pinOne() { const L = $('list'); if (!L.offsetParent) return; L.scrollTop = Math.max(0, $('story').offsetHeight + RUNREL); RUNREL = L.scrollTop - $('story').offsetHeight; }
-$('list').addEventListener('scroll', () => { const L = $('list'); if (L.offsetParent) RUNREL = L.scrollTop - $('story').offsetHeight; }, { passive: true });
+$('list').addEventListener('scroll', () => { const L = $('list'); if (L.offsetParent) RUNREL = L.scrollTop - $('story').offsetHeight; if (RUNREL < -60 && PEEK_FREE()) teach.done('story'); }, { passive: true });
+const PEEK_FREE = () => typeof TAUGHT === 'object' && !TAUGHT.story;
 addEventListener('resize', () => pinOne());
 if (window.ResizeObserver) new ResizeObserver(() => pinOne()).observe($('story'));   // the crown dragged: the story rewraps, the sword stays on the one thing
 function render(hold) {
@@ -557,22 +568,32 @@ function tick() {
 /* ═══ THE FUSE: the magical bar on the very left edge of the whole screen. It is lit full length the moment a thing becomes
    the next timed thing, and burns back toward the top as that time comes; at the time it is gone, and the next one lights.
    Its pixels are Orv's own grain, in the twelve, stepping once a second. ═══ */
-K.fuse = { px: 5, from: 'top' };   // from: the end it hangs from ('top' or 'bottom')
+K.fuse = { px: 5, from: 'top', hotMs: 10 * 60000 };   // from: the end it hangs from ('top' or 'bottom')
 let FUSE = load('inkling.fuse', null);
 function fuseTarget() { const now = Date.now(); return open().filter(t => timedOf(t) && Date.parse(t.at) > now).sort((a, b) => Date.parse(a.at) - Date.parse(b.at))[0] || null; }
 function fuseDraw() {
   const c = $('fuse'); if (!c) return; const P = K.fuse.px, n = Math.max(1, Math.floor(innerHeight / P));
   if (c.width !== P || c.height !== n * P) { c.width = P; c.height = n * P; c.style.width = P + 'px'; c.style.height = n * P + 'px'; }
   const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height);
-  const t = fuseTarget(); if (!t) return;
-  const now = Date.now(), at = Date.parse(t.at);
+  const t = fuseTarget(), now = Date.now();
+  if (FUSE && !FUSE.popped && Date.parse(FUSE.at) <= now && now - Date.parse(FUSE.at) < 180000 && (!t || t.id !== FUSE.id)) { FUSE.popped = true; store('inkling.fuse', FUSE); fusePop(FUSE); }
+  if (!t || FUSEPOP) return;
+  const at = Date.parse(t.at);
   if (!FUSE || FUSE.id !== t.id || FUSE.at !== t.at) { FUSE = { id: t.id, at: t.at, lit: now }; store('inkling.fuse', FUSE); }
   const F = FUSE;
   const m = Math.ceil(n * Math.max(0, Math.min(1, (at - now) / Math.max(1, at - F.lit)))), s = Math.floor(now / 1000);
   for (let i = 0; i < m; i++) { x.fillStyle = K.wheel[(i + s) % K.wheel.length]; x.fillRect(0, (K.fuse.from === 'bottom' ? n - 1 - i : i) * P, P, P); }
+  if (at - now < K.fuse.hotMs && m > 0) { x.fillStyle = s % 2 ? css('--late') : css('--ink'); x.fillRect(0, (K.fuse.from === 'bottom' ? n - m : m - 1) * P, P, P); }   // the burning tip, its last minutes
 }
+const css = n => (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim();
+/* the time has come: three beats of the late colour down the whole bar, one click, and Orv says so (only if it is still undone) */
+let FUSEPOP = false;
+async function fusePop(F) { const t = ST.tasks.find(x => x.id === F.id); if (!t || t.done || t.gone) return;
+  FUSEPOP = true; const c = $('fuse'), x = c.getContext('2d'); click(); HAPT(2); say('(Orv covers his ears.) Now: ' + t.word + '.', true);
+  for (let k = 0; k < 3; k++) { x.fillStyle = css('--late'); x.fillRect(0, 0, c.width, c.height); await sleep(300); x.clearRect(0, 0, c.width, c.height); await sleep(200); }
+  FUSEPOP = false; fuseDraw(); }
 addEventListener('resize', fuseDraw);
-setInterval(tick, 1000);
+(function beat(first) { if (!first) tick(); setTimeout(beat, 1000 - Date.now() % 1000 + 4); })(true);   // one heartbeat: on the whole second, with the crown
 
 /* ═══ TOUCH: one hand for the sword, the one thing and the story. A tap lights it; a swipe means what that place means:
    on the sword and the one thing, right = done (it rises into the story and pays its krix), left = set aside; in the story,
@@ -597,14 +618,96 @@ async function rise(el, n) {
     if (pop) pop.style.transform = 'translateY(' + (-7 * i) + 'px)'; await sleep(K.turn.stepMs); }
   if (pop) setTimeout(() => pop.remove(), still ? 900 : 350);
 }
-async function checkOff(t, el) {
-  if (!t || RISING) return; RISING = true;
-  try { await rise(el, t.krix ? 0 : krixRate(t)); const was = krixHeld(); setDone(t, true); log({ who: 'k', what: 'done', id: t.id }); if (SEL === t.id) SEL = null; save();
-    if (ORV.burst) ORV.burst(Math.min(12, 3 + (t.krix || 0)));
-    if (Math.floor(krixHeld() / 23) > Math.floor(was / 23)) { flash(); typeSay(krix23()); } }
-  finally { RISING = false; render(); }
+/* ═══ THE FEEL OF A DEED (an outside game designer read the sword, 2026-10-02: "your best moment happens where you can't see it").
+   A deed is felt (a tick of the Taptic Engine, even on silent: iOS ticks when a switch is toggled), heard (a krix ching, one blip
+   a krix), seen rising; then the story leans down for a breath so he watches it land, in its colour, and goes back. The crown
+   wears its true colours for a beat. Orv answers with sparks in the deed's own colour; a side quest sends him under the table.
+   Every 23rd deed closes a chapter of his legend, and he names it. Any swipe can be taken back for six seconds. ═══ */
+K.feel = { peekMs: 1300, undoMs: 6000, duckPx: 14, chapter: 23 };
+const HAPT = (() => { try { const l = document.createElement('label'), i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); i.tabIndex = -1;
+  l.appendChild(i); l.setAttribute('aria-hidden', 'true'); l.style.cssText = 'position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+  document.body.appendChild(l); return n => { for (let k = 0; k < (n || 1); k++) setTimeout(() => { try { l.click(); } catch (e) {} }, k * 70); }; } catch (e) { return () => {}; } })();
+function ching(n) { if (!K.turn.tick) return; try { const A = click.a || (click.a = new (window.AudioContext || window.webkitAudioContext)()), f = [1320, 1480, 1760, 1980, 2220, 2640, 2960, 3520];
+  for (let i = 0; i < Math.min(n || 1, 8); i++) { const o = A.createOscillator(), g = A.createGain(); o.type = 'square'; o.frequency.value = f[i]; g.gain.value = 0.02; o.connect(g); g.connect(A.destination);
+    o.start(A.currentTime + i * 0.03); o.stop(A.currentTime + i * 0.03 + 0.008); } } catch (e) {} }
+
+/* the story leans down to show the deed landing, then goes back to the one thing; his finger takes the scroll back at once */
+let PEEK = 0;
+async function peekStory(id) {
+  const L = $('list'), me = ++PEEK, t = byId(id); if (!L.offsetParent || RUNREL < -4 || !t) return;   // already reading the story: he sees it land
+  const d = L.querySelector('.deed[data-id="' + id + '"]'); if (!d) return;
+  d.style.color = inkFor(t);
+  const h = Math.round(Math.min(L.clientHeight * 0.45, $('story').getBoundingClientRect().bottom - d.getBoundingClientRect().top + 14));
+  const go = async (a, b) => { for (let i = 1; i <= 4; i++) { if (me !== PEEK) return false; RUNREL = -Math.round(a + (b - a) * i / 4); pinOne(); await sleep(K.turn.stepMs); } return true; };
+  if (h > 0 && await go(0, h)) { await sleep(K.feel.peekMs); if (me === PEEK) await go(h, 0); }
+  setTimeout(() => { d.style.transition = 'color .4s steps(3)'; d.style.color = ''; }, 200);
 }
-function setAside(t) { if (!t) return; t.gone = true; log({ who: 'k', what: 'set aside', id: t.id, word: t.word }); if (SEL === t.id) SEL = null; save(); render(); }
+$('list').addEventListener('pointerdown', () => { PEEK++; }, true);
+
+/* THE LEGEND: every deed done here counts once (an undo and a redo never twice); every 23rd closes a chapter, and the chapter
+   takes the name he gives it, word for word. It never resets and never counts a streak: the return counts. */
+const legendKey = t => t.id + ':' + t.word + ':' + String(t.text || '').slice(0, 24);
+function legend() { const g = load('inkling.legend', null); if (g && Array.isArray(g.ids)) return g;
+  const done = ST.tasks.filter(t => t.done).sort((a, b) => (Date.parse(a.doneAt) || 0) - (Date.parse(b.doneAt) || 0)), ids = done.map(legendKey), chapters = [];
+  for (let k = K.feel.chapter; k <= ids.length; k += K.feel.chapter) chapters.push({ n: chapters.length + 1, at: nowIso(), id: ids[k - 1], name: null });
+  const g2 = { ids, chapters }; store('inkling.legend', g2); return g2; }
+function legendAdd(ts) { const g = legend(); let closed = null;
+  ts.forEach(t => { const k = legendKey(t); if (g.ids.includes(k)) return; g.ids.push(k);
+    if (g.ids.length % K.feel.chapter === 0) { closed = { n: g.chapters.length + 1, at: nowIso(), id: k, name: null }; g.chapters.push(closed); } });
+  store('inkling.legend', g); if (closed) store('inkling.naming', closed.n); return closed; }
+
+/* Orv, under the table, calculating recoil (his character bible: he hides under tables "to calculate recoil") */
+async function duck(n) { if (WHEEL.front !== 'orv') return; const o = $('orv'), P = K.feel.duckPx;
+  typeSay('(Orv, from under the table:) Calculating recoil. ' + n + ' krix.', true);
+  for (let i = 1; i <= 4; i++) { o.style.translate = '0 ' + (P * i) + 'px'; await sleep(K.turn.stepMs); }
+  await sleep(700);
+  for (let i = 3; i >= 0; i--) { o.style.translate = i ? '0 ' + (P * i) + 'px' : ''; await sleep(K.turn.stepMs); } }
+/* a quip: the free ones Orv left in his last answer, else (for the one thing) one from his pocket */
+function quip(one) { const Q = load('inkling.quips', []); if (Array.isArray(Q) && Q.length) { const q = String(Q.shift()); store('inkling.quips', Q); typeSay(q, true); return true; }
+  if (one) { typeSay(tease(), true); return true; } return false; }
+/* what follows a deed, however it was done (his swipe, or Orv's op): quiet when Orv has just answered */
+function afterDeeds(ts, one, quiet) {
+  ts = ts.filter(t => t && t.done); if (!ts.length) return; const last = ts[ts.length - 1], paid = ts.reduce((a, t) => a + (t.krix || 0), 0);
+  if (ORV.burst) ORV.burst(Math.min(12, 3 + paid), inkFor(last));
+  if (window._crown && window._crown.bloom) window._crown.bloom(one ? 2000 : 1000);
+  peekStory(last.id);
+  const closed = legendAdd(ts);
+  if (closed) { flash(); HAPT(3); if (window._crown && window._crown.bloom) window._crown.bloom(3000);
+    say('(Orv blots the page.) Chapter ' + closed.n + ' of your legend closes: ' + K.feel.chapter + ' deeds. What is it called? Tell me in a few words.', true); render(); return; }
+  if (quiet) return;
+  const side = ts.find(t => (t.krix || 0) >= K.krix.side);
+  if (side) { duck(side.krix); return; }
+  if (!teach('story')) quip(one);
+}
+
+/* six seconds to take any swipe back: Orv's own line says what happened; tap it */
+let UNDO = null;
+function restoreWords() { const w = wordsOf(window.WHEEL_FRONT || 'orv'), s = $('say'); s.textContent = w.text; s.classList.toggle('stage', !!w.stage); }
+function offerUndo(t, what, back) {
+  UNDO = { t, back, until: Date.now() + K.feel.undoMs }; const s = $('say'); clearInterval(TYPING); unload();
+  s.textContent = '(' + what + ': ' + t.word + '. Tap here to bring it back.)'; s.classList.add('stage');
+  clearTimeout(offerUndo.t); offerUndo.t = setTimeout(() => { if (UNDO && Date.now() >= UNDO.until) { UNDO = null; restoreWords(); } }, K.feel.undoMs + 30);
+}
+$('say').addEventListener('click', () => { if (!UNDO || Date.now() > UNDO.until) return; const u = UNDO; UNDO = null; clearTimeout(offerUndo.t);
+  u.back(u.t); log({ who: 'k', what: 'brought back', id: u.t.id, word: u.t.word }); save(); render(); restoreWords(); HAPT(1); });
+
+/* ORV TEACHES each verb once, in his own line, the first time it matters (nothing pops up); using a verb first marks it learned */
+K.teach = { swipe: '(Orv mimes it.) Swipe a thing right when it is done; left sets it aside.', story: '(Orv points up.) Pull down from the one thing: your legend is up there.',
+  crown: '(Orv taps his bare head.) Double-tap the crown to send your kingdom.', hold: 'Hold me and talk. Let go, and I have it.',
+  wheel: '(a cough from off-screen) Double-tap me. Someone on the couch is waiting.' };
+let TAUGHT = load('inkling.taught', {}) || {};
+function teach(k) { if (TAUGHT[k]) return false; TAUGHT[k] = nowIso(); store('inkling.taught', TAUGHT); say(K.teach[k], true); return true; }
+teach.done = k => { if (!TAUGHT[k]) { TAUGHT[k] = nowIso(); store('inkling.taught', TAUGHT); } };
+
+async function checkOff(t, el) {
+  if (!t || RISING) return; RISING = true; const n = t.krix ? 0 : krixRate(t), one = t === theOne();
+  HAPT(n >= K.krix.side ? 3 : 1); ching(n || 1); teach.done('swipe');
+  try { await rise(el, n); setDone(t, true); log({ who: 'k', what: 'done', id: t.id }); if (SEL === t.id) SEL = null; save(); }
+  finally { RISING = false; render(); }
+  afterDeeds([t], one);
+}
+function setAside(t) { if (!t) return; t.gone = true; teach.done('swipe'); log({ who: 'k', what: 'set aside', id: t.id, word: t.word }); if (SEL === t.id) SEL = null; save(); render();
+  offerUndo(t, 'set aside', x => { delete x.gone; }); }
 const markMove = (host, dx, f) => { host.querySelector('.mark.yes').style.opacity = dx > 0 ? f : 0; host.querySelector('.mark.no').style.opacity = dx < 0 ? f : 0; };
 swiper($('run'), x => x.closest('.row'), {
   move: (r, dx, f) => { r.querySelector('.word').style.transform = dx ? 'translateX(' + dx + 'px)' : ''; markMove(r, dx, f); },
@@ -618,10 +721,9 @@ swiper($('one'), x => x.closest('#one'), {
 });
 swiper($('story'), x => x.closest('.deed'), {
   move: (w, dx, f) => { w.style.transform = dx ? 'translateX(' + dx + 'px)' : ''; w.style.opacity = dx ? String(1 - f * 0.6) : ''; },
-  swipe: (w, way) => { const t = byId(w.dataset.id); if (!t) return; if (SEL === t.id) SEL = null;
-    if (way === 'right') { setDone(t, false); log({ who: 'k', what: 'undone', id: t.id }); }
-    else { t.archived = nowIso(); log({ who: 'k', what: 'archived', id: t.id, word: t.word, krix: t.krix || 0 }); }
-    save(); render(); },
+  swipe: (w, way) => { const t = byId(w.dataset.id); if (!t) return; if (SEL === t.id) SEL = null; HAPT(1);
+    if (way === 'right') { setDone(t, false); log({ who: 'k', what: 'undone', id: t.id }); save(); render(); offerUndo(t, 'back on the sword', x => { setDone(x, true); }); }
+    else { t.archived = nowIso(); log({ who: 'k', what: 'archived', id: t.id, word: t.word, krix: t.krix || 0 }); save(); render(); offerUndo(t, 'archived, its krix kept', x => { delete x.archived; }); } },
   tap: w => { const t = byId(w.dataset.id); if (!t) return; SEL = SEL === t.id ? null : t.id; render('.deed[data-id="' + t.id + '"]'); }
 });
 
@@ -752,6 +854,7 @@ function system() {
     '\nTHE ONE THING: ' + (one ? one.word + ' [' + one.id + ']' : 'none') + '\nOPEN TASKS, in priority order:\n' + list +
     '\nDone: ' + live().filter(t => t.done).length + '. Krix earned here: ' + krixHeld() + ' (a check-off pays 1, a side quest 8).' +
     '\n\nAnswer ONLY with one JSON object: {"say": "...", "ops": [...]}' +
+    '\n"quips" (optional): up to three one-line teases in your voice, for his next check-offs, about things on this list only. They wait in your pocket.' +
     '\n"say": a conversational reply in your own voice, to the High King. Usually two or three sentences. When he brings a problem, give him the tactic: the first move and, if it helps, up to five short numbered steps. Run the numbers when they matter (how many, how long, what fits before what).' +
     '\n"ops": changes to the list, only when his words ask for them or plainly imply them. Allowed ops, nothing else:' +
     '\n {"op":"add","word":"<one word>","text":"<a plain description: a sentence or two, what it is and why>","at":"<ISO time with offset, optional>"}' +
@@ -793,10 +896,10 @@ function apply(ops) {
 }
 
 /* ═══ HE SPEAKS ═══ */
-let BUSY = false;
+let BUSY = false, LASTFAIL = false;
 let FIRST = !load('inkling.log', []).some(e => e.who === 'k' && e.what === 'said');
 async function speak(raw) {
-  const words = String(raw || '').trim(); if (!words || BUSY) return;
+  const words = String(raw || '').trim(); if (!words || BUSY) return; LASTFAIL = false; let won = [], oneWas = null;
   const km = /#k=[A-Za-z0-9_-]+/.exec(words); if (km) { setLine(''); location.hash = km[0]; return; }   // a kingdom link pasted here: the Home Screen app takes it in
   setLine('');
   if (looksLikeKey(words)) { setOpen(); $('setKey').value = words.replace(/\s+/g, ''); grow($('setKey')); return setTest(); }
@@ -805,6 +908,10 @@ async function speak(raw) {
   store('inkling.summary', '');
   if (words.toLowerCase() === K.password.toLowerCase()) { const d = keyDoor(); if (d) { const p = load('inkling.paid', {}); p[d] = nowIso(); store('inkling.paid', p); } return say('Cha-ching heard. The ' + (d || '') + ' door is open.', true); }
   if (/^many thanks\b/i.test(words)) { await thanks(); return; }
+  const naming = load('inkling.naming', null);
+  if (naming) { try { localStorage.removeItem('inkling.naming'); } catch (e) {}
+    if (words.split(/\s+/).length <= 8) { const g = legend(), c = g.chapters.find(x => x.n === naming); if (c) { c.name = words; store('inkling.legend', g); }
+      log({ who: 'k', what: 'chapter named', n: naming, text: words }); typeSay('(Orv writes it in gold.) Chapter ' + naming + ': ' + words + '.', true); render(); if (ORV.burst) ORV.burst(12); return; } }   // his words, verbatim, in the story
   if (/\btease me\b/i.test(words) && words.length < 40) { const t = tease(); log({ who: 'orv', what: 'answered', text: t }); typeSay(t); drawChat(); if (ORV.burst) ORV.burst(5); return; }   // no key, no coin
   const use = /^use\s+([\w.-]{2,40})$/i.exec(words);
   if (use) { const k2 = String(box().apiKey || '').trim(), d2 = keyDoor(); if (!d2) return say('(No key yet.)', true);
@@ -815,7 +922,9 @@ async function speak(raw) {
       const kept = load('inkling.model', {}); kept[d2] = hit; store('inkling.model', kept); const b = box(); if (b.models && b.models[d2]) { delete b.models[d2]; store(BOX, b); }
       return say('Now thinking with ' + hit + '.', true); } catch (e) { return say('(The door would not list its models.)', true); } }
   const key = String(box().apiKey || '').trim(), d = keyDoor();
-  if (!key || !d) { setLine(words); setOpen('Your key goes here, High King. Paste it and tap test.'); return; }
+  if (!key || !d) { const w = words.split(/\s+/).map(x => x.replace(/[^\p{L}\p{N}'-]/gu, '')).find(x => x && !/^(i|to|the|a|an|my|need|have|should|want|gotta|must|go|and|or|of|for|do|get|it|is)$/i.test(x)) || words.split(/\s+/)[0];
+    apply([{ op: 'add', word: w, text: words }]); render(); salmonCall();
+    say('(Orv writes it on the sword himself, tongue out.) There. Feed the salmon a key, Groq or Gemini, both free, and I can talk back.', true); return; }
   if (!paidOpen(d)) { setLine(words); setOpen('The ' + d + ' key costs money. Type ' + K.password + ' on the coin line.'); return; }
   lastLine(words); BUSY = true; ORV.listening = true; loading();
   const chat = load('inkling.chat', []).slice(-K.memory * 2), turns = chat.concat([{ role: 'user', content: words }]);
@@ -823,13 +932,17 @@ async function speak(raw) {
     const { m, text } = await answer(d, key, system(), turns);
     let reply = null; try { reply = JSON.parse(text); } catch (e) { const j = /\{[\s\S]*\}/.exec(text); if (j) try { reply = JSON.parse(j[0]); } catch (e2) { reply = null; } }
     if (!reply || typeof reply !== 'object') { log({ who: 'ai:' + d + ':' + m, what: 'unparsed', text }); say(String(text).slice(0, 600)); }
-    else { const r = apply(reply.ops); log({ who: 'ai:' + d + ':' + m, what: 'answered', text: String(reply.say || ''), ops: reply.ops || [], dropped: r.dropped });
+    else { const wasOpen = open().map(t => t.id); oneWas = theOne(); const r = apply(reply.ops); won = wasOpen.map(id => byId(id)).filter(t => t && t.done);
+      if (Array.isArray(reply.quips)) store('inkling.quips', reply.quips.slice(0, 6).map(x => String(x).slice(0, 200)));
+      if (won.length) { HAPT(1); const paid = won.reduce((a, t) => a + (t.krix || 0), 0); ching(paid); await Promise.all(won.map((t, i) => rise(t === oneWas ? $('oneWord') : document.querySelector('#run .row[data-id="' + t.id + '"] .word'), i ? 0 : paid))); }
+      log({ who: 'ai:' + d + ':' + m, what: 'answered', text: String(reply.say || ''), ops: reply.ops || [], dropped: r.dropped });
       if (MODE === 'action') { say(''); $('mode').textContent = 'ACTION · ' + r.done + ' DONE'; }
       else typeSay(String(reply.say || '').slice(0, 900) || '(Orv nods.)', !reply.say);
       if (r.done) FIRST = false; }
     store('inkling.chat', turns.concat([{ role: 'assistant', content: text }]).slice(-K.memory * 2));
-  } catch (e) { log({ who: 'ai:' + d, what: 'error', text: String(e.message || e) }); if (e.status === 401 || e.status === 403) { BUSY = false; ORV.listening = false; setLine(words); return setOpen('The ' + d + ' door turned the key away: ' + String(e.message || e).slice(0, 140), true); } say('(Orv could not get through: ' + plainWhy(e) + '. Your words are kept; tap me to try again.)', true); setLine(words); }
+  } catch (e) { log({ who: 'ai:' + d, what: 'error', text: String(e.message || e) }); if (e.status === 401 || e.status === 403) { BUSY = false; ORV.listening = false; setLine(words); return setOpen('The ' + d + ' door turned the key away: ' + String(e.message || e).slice(0, 140), true); } say('(Orv could not get through: ' + plainWhy(e) + '. Your words are kept; tap me to try again.)', true); setLine(words); LASTFAIL = true; }
   BUSY = false; ORV.listening = false; render(); drawChat();
+  if (won.length) afterDeeds(won, won.includes(oneWas), true);
 }
 /* "many thanks": Orv sums up the talk in a line or two; the summary stays in the window until he types again */
 async function thanks() {
@@ -931,6 +1044,7 @@ function earWake() {
 function earRest() { EAR.on = false; try { EAR.rec && EAR.rec.stop(); } catch (e) {} }
 document.addEventListener('visibilitychange', () => { if (document.hidden) earRest(); });
 function listenStart() {
+  teach.done('hold');
   if (!earWake()) return false;
   clearTimeout(EAR.rest); EAR.held = true; EAR.base = EAR.n; EAR.pre = $('line').value.trim(); EAR.fin = ''; EAR.live = ''; ORV.listening = true;
   document.body.classList.add('holding'); hearShow(); return true;
@@ -957,7 +1071,7 @@ function listenStop() {
     const now = Date.now();
     if (now - lastTap < 320) { clearTimeout(tapT); lastTap = 0; turnWheel(); return; }   // double-tap: the wheel turns
     lastTap = now;
-    tapT = setTimeout(() => { lastTap = 0; meterToggle(); }, 320); };   // one tap: his scale, curved round him (sending is Enter, or letting go)
+    tapT = setTimeout(() => { lastTap = 0; if (LASTFAIL && $('line').value.trim()) { LASTFAIL = false; speak($('line').value); return; } meterToggle(); }, 320); };   // after a failed call, a tap really does try again   // one tap: his scale, curved round him (sending is Enter, or letting go)
   O.addEventListener('pointerup', up); O.addEventListener('pointercancel', () => { clearTimeout(holdT); if (held) { held = false; listenStop(); } });
 })();
 
@@ -1012,7 +1126,7 @@ const ORV = { listening: false };
     ctx.drawImage(src, 0, 0, w, r.neck + 1, X + sh * S, Y - rise * S, w * S, (r.neck + 1) * S);
     SP.forEach(s => { ctx.fillStyle = s.c; ctx.fillRect(X + (s.x + sh) * S, Y + (s.y - rise) * S, S, S); }); };
   const pick = a => a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1));
-  ORV.burst = n => { const Z = K.idle.sparks; for (let i = 0; i < (n || 9); i++) SP.push({ x: Z.from[0] + (i % 3) - 1, y: Z.from[1], dx: (i % 3) - 1, every: 1 + (i % 2), t: 0, life: 7 + (i % 6), c: K.wheel[(i * 5) % K.wheel.length] }); };   // a deed paid: the brass hand throws the twelve
+  ORV.burst = (n, colour) => { const Z = K.idle.sparks; for (let i = 0; i < (n || 9); i++) SP.push({ x: Z.from[0] + (i % 3) - 1, y: Z.from[1], dx: (i % 3) - 1, every: 1 + (i % 2), t: 0, life: 7 + (i % 6), c: colour && i % 2 ? colour : K.wheel[(i * 5) % K.wheel.length] }); };   // a deed paid: the brass hand throws the twelve
   const sparks = () => { const Z = K.idle.sparks;
     for (let i = SP.length - 1; i >= 0; i--) { const s = SP[i]; if (--s.life <= 0) { SP.splice(i, 1); continue; } if (++s.t % s.every === 0) { s.x += s.dx; s.y -= 1; } }
     if (d.clk >= (d.spark || 1.5)) { const n = pick(Z.n);
@@ -1177,6 +1291,7 @@ function swapSwords(to) {
   ]);
 }
 async function turnWheel() {
+  teach.done('wheel');
   if (WHEEL.busy) return; WHEEL.busy = true; arcClose();
   const to = WHEEL.front === 'orv' ? 'squatch' : 'orv', from = WHEEL.phi, dest = to === 'squatch' ? 90 : 0, n = K.turn.steps;
   const swing = swapSwords(to);
@@ -1419,8 +1534,11 @@ salmonCall();
     catch (e) { SPARE.hold = false; return; }
     location.reload(); return; }
   SPARE.hold = false; SPARE.save();
-  if (needKey) setOpen('Paste your key and tap test. A Groq or Gemini key is free.');
+  if (needKey) { salmonCall(); typeSay('(Orv points at the salmon.) Feed him a key, Groq or Gemini, both free, and I can talk. Until then, tell me a thing and I will write it on the sword myself.', true); }
 })();
+setTimeout(() => { if (BUSY || !$('set').hidden || UNDO) return;
+  const lessons = [['swipe', () => open().length > 0], ['crown', () => krixHeld() > 0], ['hold', () => load('inkling.log', []).some(e => e && e.who === 'k' && e.what === 'said' && String(e.text).split(/\s+/).length > 12)], ['wheel', () => OPENS >= 3]];
+  for (const [k, ok] of lessons) if (!TAUGHT[k] && ok()) { teach(k); break; } }, 2600);   // Orv teaches one verb an open, never two
 if (HAD && HAD_D) {
   if (!paidOpen(HAD_D)) typeSay('(Orv points at the salmon.) The ' + HAD_D + ' key costs money. Type ' + K.password + ' on the coin line in there.', true);
   else if (FIRST && !open().length) typeSay('(Orv rubs his claws together.) Your first Breath, High King. Tell me everything that is alive in you today, every road you are on. I will make the list.', true);

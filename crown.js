@@ -68,7 +68,7 @@
     /* the gems: one per lit cell, each with its own colour and temper; they move between the crown's cells */
     const GEMS = CELLS.slice().sort((a, b) => a.d - b.d).map((cell, i) => ({ r: cell.r, c: cell.c, base: cell.base, d: cell.d, ox: 0, oy: 0, wait: 0, fx: 0, fy: 0,
       j: (((i + 1) * 2654435761) >>> 0) % 1000 / 1000, col: (Math.random() * 4) | 0 }));   // in their places, lit from the heart outward
-    const st = { count: opts.count == null ? GEMS.length : opts.count, shown: null, step: 0, sec: null, last: null, acc: [0, 0], raf: 0, t: 0, alive: true };
+    const st = { count: opts.count == null ? GEMS.length : opts.count, shown: null, step: 0, sec: null, last: null, acc: [0, 0], raf: 0, t: 0, alive: true, bloomUntil: 0, from: 0 };
 
     /* THE ARMS */
     const ARMS = [], armOf = {};
@@ -87,7 +87,7 @@
     /* the number in the heart: one digit at a time, a second each, then a space */
     function digit(g, X, Y) {
       const s = String(Math.max(0, Math.floor(st.shown == null ? st.count : st.shown))), seq = s.split('').concat([' ']);
-      const ch = seq[Math.floor(Date.now() / KNOBS.secondMs) % seq.length]; if (ch === ' ') return;
+      const ch = seq[Math.floor((Date.now() - st.from) / KNOBS.secondMs) % seq.length]; if (ch === ' ') return;   // a new total reads from its first digit
       g.fillStyle = css('--ink') || '#f2f2f2';
       (DIG[ch] || DIG[0]).forEach((row, y) => Array.from(row).forEach((b, x) => { if (b === '1') g.fillRect(X + (PAD + heart.c0 + x) * S, Y + (PAD + heart.r0 + y) * S, S, S); }));
     }
@@ -103,7 +103,8 @@
         line.sort((p, q) => p.d - q.d);   // from the heart outward, on all three lines at once
         for (let i = 0; i < Math.min(extra, line.length); i++) { const a = line[i]; g.fillStyle = KNOBS.four[a.col]; g.fillRect(X + (PAD + a.c + a.ox) * S, Y + (PAD + a.r + a.oy) * S, S, S); } }
       const n = Math.min(st.count, GEMS.length);
-      for (let i = 0; i < n; i++) { const gm = GEMS[i]; g.fillStyle = KNOBS.four[gm.col];
+      const bloom = Date.now() < st.bloomUntil;   // earned: for a beat the crown wears its own true colours, his pattern cell for cell
+      for (let i = 0; i < n; i++) { const gm = GEMS[i]; g.fillStyle = bloom ? KNOBS.cycle[gm.base] : KNOBS.four[gm.col];
         g.fillRect(X + (PAD + gm.c + gm.ox) * S, Y + (PAD + gm.r + gm.oy) * S, S, S); }
       digit(g, X, Y);
     }
@@ -133,7 +134,8 @@
     else st.raf = requestAnimationFrame(frame);
     return {
       gems: GEMS.length,
-      set(n, shown) { st.count = Math.max(0, Math.min(GEMS.length, Math.round(n))); st.shown = shown == null ? null : shown; if (reduce) draw(canvas.getBoundingClientRect()); },
+      set(n, shown) { if ((shown == null ? null : shown) !== st.shown) st.from = Date.now(); st.count = Math.max(0, Math.min(GEMS.length, Math.round(n))); st.shown = shown == null ? null : shown; if (reduce) draw(canvas.getBoundingClientRect()); },
+      bloom(ms) { st.bloomUntil = Date.now() + (ms || 1000); moved(0, -3 * S); if (reduce) draw(canvas.getBoundingClientRect()); },   // a deed: the true face, and a jolt the gems click home from
       get count() { return st.count; },
       stop() { st.alive = false; cancelAnimationFrame(st.raf); }
     };
