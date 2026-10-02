@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-title" content="Inkling">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#454545">
+<title>Inkling</title>
+<link rel="manifest" href="./inkling.webmanifest?v=1">
+<script src="./crown.js"></script>
+<script src="./share.js"></script>
+<link rel="apple-touch-icon" href="./icon.png?v=true1">
+<link rel="stylesheet" href="./fonts.css">
+<!--
+  ORV — the whole app, bare bones (the King, 2026-10-01 morning):
+  "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
+   counting down time if there's a timed thing coming up ... nothing has to come up and cover anything ... a to-do
+   list and I can type to him and he'll answer back with a conversational message ... one line on the bottom ...
+   the words on their own, very colorful when selected, floating to the right, timed against the left-hand side with
+   a number on the most left-hand side of the entire screen ... listing my ideas, running the numbers and ordering my
+   tasks by priority. That's the whole app."
+
+  How it works, all of it:
+  - The list lives on this phone: localStorage 'inkling.state' {v, tasks:[{id, word, text, at, done, doneAt, gone}], one, n}.
+    The order of tasks IS the priority. Every word he types is kept first, verbatim, in 'inkling.log' (append-only).
+  - He types on the bottom line. Orv answers through the key box (the same box the Sword uses,
+    'monomyth.focus.byok.v1'); the model returns {say, ops}; this page checks every op and applies only the good ones.
+  - A key typed on the line is kept as the key (never sent to a model). A paid door waits for the word Cha-ching.
+  - "many thanks" clears the talk (the log keeps it). #say=<words> (the Tell Orv Shortcut) arrives as if typed.
+  - Tap a word: it lights in colour, floats right and shows its line. Swipe right = done. Swipe left = set aside.
+  Nothing pops up. Nothing covers anything.
+-->
+<style>
+:root {
+  --ground: #454545; --ink: #f2f2f2; --dim: #a9a9a9; --faint: #6e6e6e; --gold: #FFA512; --late: #FF3D12;
+  --pad: 18px; --orv: 80px; --orvh: 125px; --word: 22px; --small: 13px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--ground); color: var(--ink); overflow: hidden;
+  font-family: 'W95FA', ui-monospace, monospace; -webkit-font-smoothing: none; font-smooth: never; }
+#app { position: fixed; inset: 0; display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 14px) var(--pad) calc(env(safe-area-inset-bottom) + 10px) 8px; }
+/* THE ONE THING, upper left */
+#one { padding-left: 4px; min-height: 64px; }
+#oneWord { font-family: 'Dogica', ui-monospace, monospace; font-size: 30px; line-height: 38px; color: var(--gold); word-break: break-word; }
+#oneLine { font-size: var(--small); color: var(--dim); margin-top: 2px; }
+/* the countdown to the next scheduled thing: big digits like the camp app, no borders, no lines */
+#clock { margin-top: 8px; min-height: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#clock .digits { font-family: 'Dogica', ui-monospace, monospace; font-size: 26px; letter-spacing: .04em; line-height: 1.1; }
+#clock .what { font-size: var(--small); color: var(--dim); }
+/* the middle: the list | the divider (his name) | Orv's side */
+#main { flex: 1 1 auto; min-height: 0; display: flex; margin-top: 14px; }
+#left { flex: 0 0 var(--d, 58%); width: var(--d, 58%); min-width: 0; display: flex; flex-direction: column; }
+/* the list: numbers on the very left edge, times beside them, the words floating free */
+#list { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding-bottom: 8px; touch-action: pan-y; }
+/* the divider is only a word: "inkling", faint, in the middle of the screen. Drag the word. */
+#div { flex: 0 0 0px; position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+/* INKLING, sideways, like the SCRIPTORIUM spine: faint at rest, lit in the twelve colours under the finger */
+#star { position: absolute; left: 0; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); padding: 10px 14px; cursor: col-resize; touch-action: none;
+  font-family: 'Dogica', ui-monospace, monospace; font-size: 17px; letter-spacing: .3em; color: var(--ink); opacity: .16; white-space: nowrap; transition: opacity .25s; }
+#star.lit { opacity: 1; }
+#app.open #star { opacity: .32; }
+#app.open #div { z-index: 6; }
+#app.action #star { opacity: .5; color: var(--gold); }
+/* THE CROWN is the brand now (crown.js): upright, present; the word INKLING only if the crown cannot load */
+#star.crowned { transform: translate(-50%, -50%); padding: 4px; opacity: .92; letter-spacing: 0; }
+#star.crowned.lit, #app.action #star.crowned { opacity: 1; }
+#star canvas { display: block; }
+#right { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: calc(var(--orvh) - 36px); }
+#talk { flex: 1 1 auto; overflow-y: auto; display: none; padding: 0 2px 8px 6px; }
+#app.open #talk { display: block; position: fixed; z-index: 5; left: 8px; width: 75vw; top: calc(env(safe-area-inset-top) + 120px);
+  bottom: calc(env(safe-area-inset-bottom) + 64px); background: var(--ground); padding: 0 10px 8px 6px; }
+#app.action #right { display: none; }
+#mode { display: none; }
+.row { position: relative; min-height: 42px; padding: 6px 0 6px 6px; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+.at { display: block; font-size: 11px; color: var(--dim); margin-bottom: 1px; }
+.at:empty { display: none; }
+.at.late { color: var(--late); }
+.word { display: inline-block; font-family: 'Dogica', ui-monospace, monospace; font-size: 17px; font-weight: bold; line-height: 1.35; transition: none; }
+.line { display: none; font-size: 15px; line-height: 1.45; color: var(--dim); margin: 6px 0 4px; white-space: pre-wrap; }
+.row.sel .line { display: block; }
+.row.done .word { color: var(--faint) !important; text-decoration: line-through; }
+.row.is-one .word { color: var(--gold); }
+/* THE WORDS STAND ON POLYGONS (his word, 2026-10-01: "the words should be anchored on polygons, and they are just white until
+   clicked"). The Anchor's law: each word's bottom-left sits on its hex's centre (pulled in by H_INSET), and only the hex's
+   three-line bracket is drawn (its left edge and the two edges meeting at its bottom point), half-opaque until the word is
+   tapped. A word is white at rest; tapped, it wears its own colour. THE ONE THING keeps its gold. R = 11 px. */
+.word { position: relative; margin-left: 8px; color: var(--ink); }
+.word::before { content: ''; position: absolute; pointer-events: none; width: 22.05px; height: 25.00px; left: calc(var(--il, 2px) + -7.00px); top: calc(var(--ib, 17.5px) - 12.50px);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22.05' height='25.00'%3E%3Cpolyline points='1.50,7.00 1.50,18.00 11.03,23.50 20.55,18.00' fill='none' stroke='%23a9a9a9' stroke-opacity='0.5' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat; }
+.row.sel .word::before, .row.is-one .word::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22.05' height='25.00'%3E%3Cpolyline points='1.50,7.00 1.50,18.00 11.03,23.50 20.55,18.00' fill='none' stroke='%23f2f2f2' stroke-opacity='1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.row.is-one .word::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22.05' height='25.00'%3E%3Cpolyline points='1.50,7.00 1.50,18.00 11.03,23.50 20.55,18.00' fill='none' stroke='%23FFA512' stroke-opacity='1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+/* the swipe says what it will do: a check to the right, an x to the left */
+.mark { position: absolute; top: 4px; font-family: 'Dogica', ui-monospace, monospace; font-size: 26px; font-weight: bold; opacity: 0; pointer-events: none; }
+.mark.yes { left: 2px; color: #22FF12; } .mark.no { right: 6px; color: var(--late); }
+/* THE ONE THING opens too: tap it for the whole of it */
+#one { cursor: pointer; }
+#oneLine { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+#one.open #oneLine { display: block; -webkit-line-clamp: unset; font-size: 15px; line-height: 1.45; white-space: pre-wrap; }
+#bottom { padding-right: calc(var(--orv) + 4px); }
+#say { font-size: 16px; line-height: 1.35; max-height: 40vh; overflow-y: auto; padding: 0 2px 6px 6px; white-space: pre-wrap; }
+#say.stage { color: var(--dim); font-style: italic; }
+#line { width: 100%; font: inherit; font-size: 17px; color: var(--ink); background: transparent; border: 0;
+  border-bottom: 1px solid var(--faint); padding: 8px 2px 8px 4px; outline: none; border-radius: 0; }
+#line::placeholder { color: var(--faint); }
+#orv { position: fixed; right: 4px; bottom: calc(env(safe-area-inset-bottom) + 8px); width: var(--orv); height: var(--orvh); image-rendering: pixelated; cursor: pointer; }
+#talk .k { color: var(--dim); font-size: 15px; margin: 14px 0 4px; white-space: pre-wrap; }
+#talk .o { font-size: 16px; line-height: 1.35; margin: 0 0 4px; white-space: pre-wrap; }
+#talk .sum { color: var(--gold); font-size: 14px; margin: 10px 0 18px; }
+#keep { position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: calc(var(--pad) + 62px); font-size: var(--small);
+  color: var(--faint); background: none; border: 0; padding: 6px; font-family: inherit; }
+#flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; }
+/* DOUBLE-TAP ORV: the meter, story ↔ focus. A slider, nothing else. */
+#meter { position: fixed; z-index: 12; left: 18px; right: 18px; bottom: calc(env(safe-area-inset-bottom) + var(--orvh) + 22px); padding: 18px 6px 10px; background: var(--ground); }
+#meter[hidden] { display: none; }
+#meterTrack { position: relative; height: 34px; touch-action: none; cursor: pointer; }
+#meterTrack::before { content: ''; position: absolute; left: 0; right: 0; top: 16px; height: 2px; background: var(--faint); }
+#meterKnob { position: absolute; top: 7px; width: 20px; height: 20px; margin-left: -10px; background: var(--gold); }
+#meterWords { display: flex; justify-content: space-between; font-size: 15px; color: var(--dim); margin-top: 4px; }
+#meterWords b { font-weight: normal; color: var(--gold); }
+#meterSays { font-size: var(--small); color: var(--faint); margin-top: 8px; min-height: 1.3em; }
+/* HOLD ORV: he listens; the words appear as they are heard */
+#hear { position: fixed; z-index: 12; left: 14px; right: calc(var(--orv) + 18px); bottom: calc(env(safe-area-inset-bottom) + 70px);
+  font-size: clamp(20px, 6vw, 28px); line-height: 1.3; color: var(--ink); white-space: pre-wrap; pointer-events: none; }
+#hear[hidden] { display: none; }
+#hear i { color: var(--dim); font-style: normal; }
+#hear .dot { color: var(--late); }
+/* SQUATCH stands bottom-left, above the line: still, but for the sparks off his cigarette; he never takes a touch */
+#squatch { position: fixed; left: 10px; bottom: calc(env(safe-area-inset-bottom) + 46px); image-rendering: pixelated; pointer-events: none; }
+body.setting #squatch { visibility: hidden; }
+#orv { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+body.holding, body.holding * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
+#app, #say, #hear, #meter { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#line, #set textarea, #set input { -webkit-user-select: text; user-select: text; }
+/* THE SALMON OF KNOWLEDGE: the settings live behind him, top right */
+#salmon { position: fixed; z-index: 20; top: calc(env(safe-area-inset-top) + 10px); right: calc(var(--pad) - 4px); image-rendering: pixelated; cursor: pointer; padding: 6px; }
+#salmon.call { animation: swim 1.1s steps(2) infinite; }
+@keyframes swim { 50% { transform: translateX(-4px); } }
+@media (prefers-reduced-motion: reduce) { #salmon.call { animation: none; } }
+#set { position: fixed; inset: 0; z-index: 15; background: var(--ground); overflow-y: auto; display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top) + 58px) 22px calc(env(safe-area-inset-bottom) + 18px); }
+#set h2 { font-family: 'Dogica', ui-monospace, monospace; font-weight: normal; font-size: clamp(26px, 8vw, 40px); color: var(--gold); margin: 0; }
+#setBody { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: space-evenly; gap: 22px; padding: 26px 0 18px; }
+.sl { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.sl > span { font-size: 15px; letter-spacing: .06em; color: var(--dim); }
+.sl textarea, .sl input { width: 100%; min-width: 0; font: inherit; font-size: clamp(19px, 5.6vw, 26px); line-height: 1.3; color: var(--ink); background: transparent;
+  border: 0; border-bottom: 1px solid var(--faint); border-radius: 0; padding: 8px 2px 10px; outline: none; resize: none; overflow: hidden;
+  word-break: break-all; -webkit-appearance: none; }
+.sl textarea:focus, .sl input:focus { border-bottom-color: var(--ink); }
+.sl textarea::placeholder, .sl input::placeholder { color: var(--faint); }
+#setTest { align-self: flex-start; font: inherit; font-size: clamp(22px, 6.4vw, 30px); color: var(--gold); background: none; border: 0; padding: 6px 0; cursor: pointer; }
+#setSay { min-height: 4.2em; font-size: clamp(16px, 4.6vw, 21px); line-height: 1.4; color: var(--dim); white-space: pre-wrap; }
+#setSay.bad { color: var(--late); } #setSay.good { color: var(--gold); }
+#setDiag { font-size: 13px; line-height: 1.55; color: var(--faint); white-space: pre-wrap; }
+body.setting #app, body.setting #orv, body.setting #keep { visibility: hidden; }
+.sl[hidden], #set[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .row.sel .word, .line { transform: none; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="one"><div id="oneWord"></div><div id="oneLine"></div><div id="clock"></div></div>
+  <div id="main">
+    <div id="left"><div id="list" aria-label="your list, in order of priority"></div></div>
+    <div id="div" role="separator" aria-label="drag: far left shows your words, far right is action mode"></div>
+    <div id="right"><div id="talk" aria-label="the whole talk"><div id="chatLog"></div></div><div id="say"></div><div id="mode"></div></div>
+  </div>
+  <div id="bottom"><input id="line" autocomplete="off" autocapitalize="sentences" placeholder="tell orv" aria-label="tell Orv"></div>
+</div>
+<canvas id="squatch" aria-hidden="true"></canvas>
+<canvas id="orv" aria-label="Orv. Tap to send, double-tap for story or focus, hold to talk."></canvas>
+<div id="meter" hidden><div id="meterTrack" role="slider" aria-label="story or focus" aria-valuemin="0" aria-valuemax="100"><div id="meterKnob"></div></div>
+  <div id="meterWords"><span id="mwStory">story</span><span id="mwFocus">focus</span></div><div id="meterSays"></div></div>
+<div id="hear" hidden aria-live="polite"></div>
+<button id="keep" aria-label="keep a copy of the list">keep</button>
+<input id="restore" type="file" accept="application/json,.json" hidden>
+<div id="flash"></div>
+<canvas id="salmon" role="button" tabindex="0" aria-label="settings (the salmon of knowledge)"></canvas>
+<div id="set" hidden role="dialog" aria-label="settings">
+  <h2>settings</h2>
+  <div id="setBody">
+  <label class="sl"><span>key</span><textarea id="setKey" rows="1" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="paste your key" aria-label="your key"></textarea></label>
+  <label class="sl" id="setChaRow" hidden><span>coin</span><input id="setCha" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Cha-ching" aria-label="the word that lets Orv spend"></label>
+  <label class="sl"><span>model</span><input id="setModel" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="chosen for you" aria-label="the model Orv thinks with"></label>
+  <button id="setTest" type="button">test</button>
+  <div id="setSay" aria-live="polite"></div>
+  </div>
+  <div id="setDiag"></div>
+</div>
+<script>
+'use strict';
+/* ═══ KNOBS: every tunable value, for his eye ═══ */
+const K = {
+  wheel: ['#FF7A12', '#FF12A1', '#FA12FF', '#9212FF', '#2A12FF', '#126EFF', '#12D6FF', '#12FFC2', '#12FF5A', '#22FF12', '#8AFF12', '#F2FF12'],
+  seed: 'You are Orv, the teasing one-eyed homunculus and Hand. Read before speaking. Surface shapes, don\'t invent. Guide the King to write. Tease him.',
+  freeDoors: ['groq', 'gemini', 'openrouter'], password: 'Cha-ching',
+  swipe: 70, orvScale: 5, beat: [1400, 520, 130, 190], fps: 12, memory: 6, maxOps: 12, timeoutMs: 120000
+};
+/* THE NEW ORV (bead-pattern(2).png, 2026-10-01 20:22), his word: "idle should be slight SLIGHT up and down motion, turn the
+   summon knob way, way down … the idle can make sparks come out of orv's brass hand too" */
+K.idle = { summon: 0.05,           // the Summon rig's energy, way, way down (it was 0.34 at rest, 0.42 listening)
+           bob: 1, bobSec: 3.6,     // one pixel up and down, slowly: the upper body breathes, the hooves stay put
+           sparks: { from: [12, 1], every: [2.6, 6.5], n: [2, 4], life: [4, 8],   // off the brass hand's tip, now and then
+                     colours: ['#FFA64D', '#FF8000', '#FFD98A', '#FFF4CE'] } };
+const BOX = 'monomyth.focus.byok.v1';
+const DOORS = {
+  groq:       { list: 'https://api.groq.com/openai/v1/models', chat: 'https://api.groq.com/openai/v1/chat/completions' },
+  openrouter: { list: 'https://openrouter.ai/api/v1/models', chat: 'https://openrouter.ai/api/v1/chat/completions' },
+  xai:        { list: 'https://api.x.ai/v1/models', chat: 'https://api.x.ai/v1/chat/completions' },
+  openai:     { list: 'https://api.openai.com/v1/models', chat: 'https://api.openai.com/v1/chat/completions' },
+  anthropic:  { list: 'https://api.anthropic.com/v1/models?limit=100', chat: 'https://api.anthropic.com/v1/messages' },
+  gemini:     { list: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', chat: 'https://generativelanguage.googleapis.com/v1beta/models/' }
+};
+const $ = id => document.getElementById(id);
+const nowIso = () => new Date().toISOString();
+
+/* ═══ STORAGE: his list and his words, on this phone ═══ */
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+/* THE SPARE: every write is copied into IndexedDB too. If the phone ever drops localStorage (the key, the list),
+   the page finds it empty on open, pours the spare back in and reloads once. */
+const SPARE = { db: null, t: 0,
+  open() { return this.db || (this.db = new Promise((ok, no) => { try { const r = indexedDB.open('inkling-spare', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('s'); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); } catch (e) { no(e); } })); },
+  snap() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k === BOX || k.startsWith('inkling.')) o[k] = localStorage.getItem(k); } } catch (e) {} return o; },
+  save() { clearTimeout(this.t); this.t = setTimeout(async () => { try { const db = await this.open(), o = this.snap();
+    if (!Object.keys(o).length) return; db.transaction('s', 'readwrite').objectStore('s').put(o, 'all'); } catch (e) {} }, 300); },
+  async get() { try { const db = await this.open(); return await new Promise(ok => { const r = db.transaction('s').objectStore('s').get('all'); r.onsuccess = () => ok(r.result || null); r.onerror = () => ok(null); }); } catch (e) { return null; } }
+};
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); SPARE.save(); return true; } catch (e) { try { say('(This phone would not keep that. Tap keep to save a copy.)', true); } catch (x) {} return false; } };
+function blank() { return { v: 1, tasks: [], one: null, n: 0 }; }
+/* #k= : a kingdom arrives INSIDE the link (share.js — the crown's double-tap; or the Mac's own code). What is after the #
+   never leaves the phone. Whatever was here is set aside under inkling.archive.<time> (never deleted), the new kingdom is
+   kept, and the page opens again on it. */
+function fromKingdom() { if (!/^#k=[A-Za-z0-9_-]+$/.test(location.hash)) return;
+  const code = location.hash.slice(3);
+  history.replaceState(null, '', location.pathname + location.search);
+  INKSHARE.decode(code).then(o => {
+    if (!o || o.v !== 1 || !Array.isArray(o.t)) throw new Error('not a kingdom');
+    const was = load('inkling.state', null);
+    if (was && Array.isArray(was.tasks) && was.tasks.length) store('inkling.archive.' + Date.now(), { state: was, log: load('inkling.log', []) });
+    const tasks = o.t.slice(0, 200).map((x, i) => ({ id: 't' + (i + 1).toString(36), word: String(x[0] || '').trim().split(/\s+/)[0].slice(0, 24) || 'thing',
+      text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3], doneAt: x[3] ? nowIso() : null }));
+    store('inkling.state', { v: 1, tasks, one: Number.isInteger(o.one) && tasks[o.one] ? tasks[o.one].id : null, n: tasks.length });
+    const L = load('inkling.log', []); L.push({ at: nowIso(), who: 'k', what: 'a kingdom arrived', text: (o.from || 'a link') + ' · ' + tasks.length + ' things' }); store('inkling.log', L);
+    setTimeout(() => location.reload(), 350);
+  }).catch(() => {});
+}
+fromKingdom(); window.addEventListener('hashchange', fromKingdom);   // a fresh open, or a link tapped while the app is open
+/* the kingdom as a link: the share/save carries this */
+async function kingdomLink() {
+  const rows = live(), one = theOne();
+  const t = rows.map(x => { const a = [x.word, x.text || '']; if (x.at || x.done) a.push(x.at || 0); if (x.done) a.push(1); return a; });
+  return location.origin + location.pathname + '#k=' + await INKSHARE.encode({ v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t });
+}
+async function openShare() { try { await INKSHARE.show(await kingdomLink()); } catch (e) { say('(The code would not draw.)', true); } }
+/* #new: a new kingdom. Whatever was here is set aside (kept under orv.archive.<time>, never deleted). */
+if (location.hash === '#new') {
+  const was = load('inkling.state', null);
+  if (was) store('inkling.archive.' + Date.now(), { state: was, log: load('inkling.log', []) });
+  ['inkling.state', 'inkling.log', 'inkling.chat', 'inkling.summary', 'inkling.breath'].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  history.replaceState(null, '', location.pathname + location.search);
+}
+/* every open is counted, so a phone that forgets everything shows itself (opens stuck at 1) */
+const OPENS = (load('inkling.opens', 0) || 0) + 1; store('inkling.opens', OPENS);
+let ST = load('inkling.state', null);
+if (!ST || !Array.isArray(ST.tasks)) { ST = blank(); store('inkling.state', ST); }
+/* ask the phone to keep this kingdom for good (Safari honours it for sites he uses) */
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+function log(e) { const L = load('inkling.log', []); L.push(Object.assign({ at: nowIso() }, e)); store('inkling.log', L); }
+const save = () => store('inkling.state', ST);
+const live = () => ST.tasks.filter(t => !t.gone);
+const open = () => live().filter(t => !t.done);
+const byId = id => ST.tasks.find(t => t.id === id && !t.gone);
+function theOne() { const o = byId(ST.one); return o && !o.done ? o : open()[0] || null; }
+
+/* ═══ THE KEY BOX (the Sword's own shape: apiKey) ═══ */
+const box = () => load(BOX, {}) || {};
+const doorOf = k => { k = String(k || '').trim();
+  if (k.startsWith('gsk_')) return 'groq'; if (k.startsWith('sk-ant-')) return 'anthropic'; if (k.startsWith('sk-or-')) return 'openrouter';
+  if (k.startsWith('xai-')) return 'xai'; if (k.startsWith('AIza')) return 'gemini'; if (k.startsWith('sk-')) return 'openai'; return null; };
+const keyDoor = () => { const b = box(); return b.door || doorOf(b.apiKey); };
+const looksLikeKey = s => /^(gsk_|sk-ant-|sk-or-|xai-|AIza|sk-)[\w-]{16,}$/.test(String(s).trim());
+const paidOpen = d => K.freeDoors.includes(d) || !!(load('inkling.paid', {})[d]);
+
+/* ═══ DRAWING ═══ */
+function fmtAt(at) { const d = new Date(at); if (isNaN(d)) return ''; let h = d.getHours(), m = d.getMinutes(), p = h < 12 ? 'a' : 'p'; h = h % 12 || 12;
+  const today = new Date().toDateString() === d.toDateString();
+  return (today ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + h + (m ? ':' + String(m).padStart(2, '0') : '') + p; }
+/* a word's real ink, as the Anchor measures it (a font's own metrics lie): its first ink column and its lowest ink row,
+   from the top-left of its line box (Dogica 17px bold, the baseline 17.5px down). Measured once per word. */
+const INK = new Map();
+function inkOf(word) {
+  if (INK.has(word)) return INK.get(word);
+  const c = inkOf.c || (inkOf.c = document.createElement('canvas').getContext('2d', { willReadFrequently: true }));
+  c.font = "bold 17px 'Dogica', ui-monospace, monospace"; const m = c.measureText(word);
+  const r = { l: Math.round(-(m.actualBoundingBoxLeft || 0)), b: Math.round(17.5 + (m.actualBoundingBoxDescent || 0)) };
+  if (document.fonts && document.fonts.check && !document.fonts.check("bold 17px 'Dogica'")) return r;   // not cached until the face is in
+  INK.set(word, r); return r;
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { INK.clear(); try { render(); } catch (e) {} });
+function rainbow(el, text) { el.textContent = ''; Array.from(text).forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch; s.style.color = K.wheel[i % K.wheel.length]; el.appendChild(s); }); }
+let SEL = null;
+function render() {
+  const one = theOne();
+  $('oneWord').textContent = one ? one.word : (ST.tasks.length ? 'clear' : 'tell orv');
+  $('oneLine').textContent = one ? one.text : (ST.tasks.length ? 'every task is done' : 'what does the day hold?');
+  const L = $('list'); L.textContent = '';
+  const rows = open().concat(live().filter(t => t.done));
+  rows.forEach((t, i) => {
+    const r = document.createElement('div'); r.className = 'row' + (t.done ? ' done' : '') + (one && t.id === one.id ? ' is-one' : '') + (t.id === SEL ? ' sel' : '');
+    r.dataset.id = t.id;
+    const a = document.createElement('span'); a.className = 'at'; a.textContent = t.at ? fmtAt(t.at) : '';
+    if (t.at && !t.done && new Date(t.at) < new Date()) a.classList.add('late');
+    const w = document.createElement('span'); w.className = 'word';
+    w.textContent = t.word; if (t.id === SEL && !(one && t.id === one.id)) w.style.color = K.wheel[(i * 5 + 2) % K.wheel.length];   // white until tapped (his word)
+    const ink = inkOf(t.word); w.style.setProperty('--il', ink.l + 'px'); w.style.setProperty('--ib', ink.b + 'px');   // the Anchor: its bottom-left ink pixel on the hex centre
+    const l = document.createElement('div'); l.className = 'line'; l.textContent = t.text || '';
+    const yes = document.createElement('span'); yes.className = 'mark yes'; yes.textContent = t.done ? '↺' : '✓';
+    const no = document.createElement('span'); no.className = 'mark no'; no.textContent = '✗';
+    r.append(yes, no, a, w, l); L.appendChild(r);
+  });
+  tick();
+  if (window._crown) { const gems = live().filter(t => t.done).length; window._crown.set(Math.min(window._crown.gems, gems), gems); }   // a gem for each deed done
+}
+/* the clock: a countdown to THE ONE THING if it is timed, else to the next timed task; the digits wheel through colour */
+function span(ms) { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); }
+function tick() {
+  const c = $('clock'), one = theOne(), now = Date.now();
+  const timed = open().filter(t => t.at && !isNaN(new Date(t.at))).sort((a, b) => new Date(a.at) - new Date(b.at));
+  const next = timed.find(x => new Date(x.at) > now);                       // the next thing scheduled
+  const t = one && one.at && new Date(one.at) <= now ? one : next;          // the one thing gone late outranks it
+  c.textContent = ''; if (!t) return;
+  const ms = new Date(t.at) - now, late = ms < 0, txt = span(Math.abs(ms));
+  const d = document.createElement('span'); d.className = 'digits';
+  Array.from(txt).forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch;
+    s.style.color = late ? 'var(--late)' : /\d/.test(ch) ? K.wheel[(i + Math.floor(now / 1000)) % K.wheel.length] : 'var(--dim)'; d.appendChild(s); });
+  const w = document.createElement('span'); w.className = 'what';
+  w.textContent = late ? (t === one ? 'late' : t.word + ' is late') : 'until ' + (t === one ? 'it starts' : t.word) + ' · ' + fmtAt(t.at);
+  c.append(d, w);
+}
+setInterval(tick, 1000);
+$('one').addEventListener('click', () => $('one').classList.toggle('open'));
+
+/* ═══ TOUCH: tap = light it and float it right; swipe right = done; swipe left = set aside ═══ */
+(function touch() {
+  let row = null, x0 = 0, y0 = 0, dx = 0, lock = null;
+  const L = $('list');
+  L.addEventListener('pointerdown', e => { row = e.target.closest('.row'); if (!row) return; x0 = e.clientX; y0 = e.clientY; dx = 0; lock = null; });
+  L.addEventListener('pointermove', e => { if (!row) return; const mx = e.clientX - x0, my = e.clientY - y0;
+    if (!lock && (Math.abs(mx) > 10 || Math.abs(my) > 10)) lock = Math.abs(mx) > Math.abs(my) ? 'x' : 'y';
+    if (lock === 'x') { dx = mx; row.querySelector('.word').style.transform = 'translateX(' + dx + 'px)';
+      const f = Math.min(1, Math.abs(dx) / K.swipe); row.querySelector('.mark.yes').style.opacity = dx > 0 ? f : 0; row.querySelector('.mark.no').style.opacity = dx < 0 ? f : 0; } });
+  const end = () => { if (!row) return; const t = byId(row.dataset.id), w = row.querySelector('.word'); w.style.transform = ''; row.querySelectorAll('.mark').forEach(m => { m.style.opacity = 0; });
+    if (lock === 'x' && t && Math.abs(dx) > K.swipe) {
+      if (dx > 0) { t.done = !t.done; t.doneAt = t.done ? nowIso() : null; log({ who: 'k', what: t.done ? 'done' : 'undone', id: t.id }); }
+      else { t.gone = true; log({ who: 'k', what: 'set aside', id: t.id, word: t.word }); }
+      save(); render();
+    } else if (!lock && t) { SEL = SEL === t.id ? null : t.id; render(); }
+    row = null; };
+  L.addEventListener('pointerup', end); L.addEventListener('pointercancel', () => { if (row) row.querySelector('.word').style.transform = ''; row = null; });
+})();
+
+/* ═══ ORV'S WORDS on screen ═══ */
+let TYPING = 0;
+/* ═══ THINKING: a pixel wheel of the twelve colours turning, beside a skeleton of words, pixels running through it ═══ */
+let LOAD = 0;
+function unload() { if (LOAD) { cancelAnimationFrame(LOAD); LOAD = 0; } }
+function loading() {
+  clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.remove('stage');
+  const P = 3, W = Math.max(40, Math.floor((s.clientWidth || 200) / P)), H = 16;
+  const cv = document.createElement('canvas'); cv.width = W * P; cv.height = H * P; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
+  cv.style.imageRendering = 'pixelated'; cv.setAttribute('aria-label', 'Orv is thinking'); s.appendChild(cv);
+  const x = cv.getContext('2d'), N = K.wheel.length, cx = 7.5, cy = 7.5;
+  // the skeleton: three lines of word-blocks, two cells tall, the last line shorter
+  const words = [], x0 = 18;
+  [[1, 1], [6, 1], [11, .6]].forEach(([y, part]) => { let at = x0; const end = x0 + Math.floor((W - x0 - 1) * part);
+    while (at < end - 2) { const w = Math.min(end - at, 3 + Math.floor(Math.random() * 7)); if (w >= 2) words.push({ x: at, y, w }); at += w + 2; } });
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let t0 = 0, last = -1;
+  const draw = ts => {
+    if (!t0) t0 = ts; const f = Math.floor((ts - t0) / (1000 / K.fps));
+    if (f !== last) { last = f; x.clearRect(0, 0, cv.width, cv.height);
+      for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {          // the wheel: a ring of pixels, the colours turning
+        const dx = i - cx, dy = j - cy, r = Math.hypot(dx, dy); if (r < 4.2 || r > 7.4) continue;
+        const a = (Math.atan2(dy, dx) / (Math.PI * 2) + 1) % 1, k = Math.floor(a * N + f * .75) % N;
+        x.fillStyle = K.wheel[k]; x.fillRect(i * P, j * P, P, P); }
+      const sweep = (f * 1.5) % (W + 20) - 10;                              // the run of light through the words
+      words.forEach(wd => { for (let i = 0; i < wd.w; i++) for (let j = 0; j < 2; j++) {
+        const cxx = wd.x + i, near = Math.abs(cxx - sweep), lit = near < 3 || Math.random() < .015;
+        x.fillStyle = lit ? K.wheel[(cxx + f) % N] : '#5a5a5a'; x.fillRect(cxx * P, (wd.y + j) * P, P, P); } }); }
+    if (!still) LOAD = requestAnimationFrame(draw);
+  };
+  LOAD = requestAnimationFrame(draw);
+}
+function say(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = text; s.classList.toggle('stage', !!stage); }
+function typeSay(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.toggle('stage', !!stage);
+  const a = Array.from(String(text)); let i = 0; TYPING = setInterval(() => { i = Math.min(a.length, i + 3); s.textContent = a.slice(0, i).join(''); if (i >= a.length) clearInterval(TYPING); }, 1000 / K.fps); }
+function lastLine() { /* his lines show only when the divider is dragged far left */ }
+/* the whole talk, on the right pane: every word he said and every answer, from the log, oldest first */
+function drawChat() { const c = $('chatLog'); c.textContent = '';
+  load('inkling.log', []).forEach(e => { let el = null;
+    if (e.who === 'k' && e.what === 'said') { el = document.createElement('div'); el.className = 'k'; el.textContent = e.text; }
+    else if (e.what === 'answered') { el = document.createElement('div'); el.className = 'o'; el.textContent = e.text; }
+    else if (e.what === 'summary') { el = document.createElement('div'); el.className = 'sum'; el.textContent = '✦ ' + e.text; }
+    if (el) c.appendChild(el); });
+  const p = $('talk'); p.scrollTop = p.scrollHeight; }
+function flash() { const f = $('flash'); let i = 0; const go = () => { if (i >= K.wheel.length) { f.style.opacity = 0; return; }
+  f.style.background = K.wheel[i++]; f.style.opacity = .5; setTimeout(go, 1000 / K.fps); }; if (!matchMedia('(prefers-reduced-motion: reduce)').matches) go(); }
+
+/* ═══ THE DOOR: his key, his door, the door's own models ═══ */
+function fetchT(url, init) { const c = new AbortController(), t = setTimeout(() => c.abort(), K.timeoutMs);
+  return fetch(url, Object.assign({}, init, { signal: c.signal, referrerPolicy: 'no-referrer' })).finally(() => clearTimeout(t)); }
+function headers(d, key) {
+  if (d === 'anthropic') return { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' };
+  if (d === 'gemini') return { 'content-type': 'application/json', 'x-goog-api-key': key };
+  return { 'content-type': 'application/json', authorization: 'Bearer ' + key };
+}
+async function model(d, key, avoid) {
+  const b = box(), named = String(((b.models || {})[d]) || '') || String((((b.lists || {})[d]) || {}).pick || '');
+  if (named && named !== avoid) return named;
+  const kept = load('inkling.model', {}); if (kept[d] && kept[d] !== avoid) return kept[d];
+  const o = await (await fetchT(DOORS[d].list, { headers: headers(d, key) })).json();
+  let ids = d === 'gemini' ? (o.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => String(m.name).replace(/^models\//, ''))
+                           : (o.data || []).map(m => String(m.id));
+  ids = ids.filter(id => !/whisper|tts|embed|guard|image|audio|vision|search|realtime|transcribe|moderation|veo|imagen|live/i.test(id));
+  if (avoid) ids = ids.filter(id => id !== avoid);
+  if (!ids.length) throw new Error('that door listed no models');
+  if (d === 'gemini') {   // the newest plain flash: fast, free, not a preview
+    const ver = id => parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(id) || [0, 0])[1]);
+    const flash = ids.filter(id => /^gemini-[\d.]+-flash(-\d+)?$/.test(id)).sort((a, z) => ver(z) - ver(a));
+    const g = flash[0] || ids.find(id => /flash/i.test(id) && !/preview|exp/i.test(id)) || ids.find(id => /flash/i.test(id)) || ids[0];
+    kept[d] = g; store('inkling.model', kept); return g;
+  }
+  // a fast, able model, chosen from the door's own list (never a name fixed in this code)
+  const prefer = [/llama-3\.3-70b|gpt-oss-120b|qwen3|kimi|llama-4/i, /sonnet|flash|mini|70b/i];
+  const pick = (prefer.map(re => ids.find(id => re.test(id))).find(Boolean)) || ids[0];
+  kept[d] = pick; store('inkling.model', kept); return pick;
+}
+function doorError(r, o) { const e = o && o.error, msg = typeof e === 'string' ? e : (e && e.message) || (o && o.message) || 'status ' + r.status;
+  const x = new Error(msg); x.status = r.status; return x; }
+/* one answer: if the door is busy, slow or the model is gone, try once more with another model */
+async function answer(d, key, sys, turns) {
+  const m = await model(d, key);
+  try { return { m, text: await call(d, key, m, sys, turns) }; }
+  catch (e) {
+    if (e.status === 401 || e.status === 403) throw e;
+    const kept = load('inkling.model', {}); delete kept[d]; store('inkling.model', kept);
+    await new Promise(r => setTimeout(r, 1200));
+    const m2 = await model(d, key, m);
+    return { m: m2, text: await call(d, key, m2, sys, turns) };
+  }
+}
+const plainWhy = e => e && e.name === 'AbortError' ? 'it took too long' : String((e && e.message) || e).slice(0, 160);
+async function call(d, key, m, system, turns) {
+  if (d === 'anthropic') {
+    const body = { model: m, max_tokens: 4096, system, messages: turns, output_config: { effort: 'low' } };
+    let r = await fetchT(DOORS.anthropic.chat, { method: 'POST', headers: headers(d, key), body: JSON.stringify(body) });
+    if (r.status === 400) { delete body.output_config; r = await fetchT(DOORS.anthropic.chat, { method: 'POST', headers: headers(d, key), body: JSON.stringify(body) }); }
+    const o = await r.json().catch(() => ({})); if (!r.ok) throw doorError(r, o);
+    return (o.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  }
+  if (d === 'gemini') {
+    const body = { systemInstruction: { parts: [{ text: system }] }, contents: turns.map(t => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })),
+      generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } } };
+    const go = () => fetchT(DOORS.gemini.chat + encodeURIComponent(m) + ':generateContent', { method: 'POST', headers: headers(d, key), body: JSON.stringify(body) });
+    let r = await go();
+    if (r.status === 400) { delete body.generationConfig.thinkingConfig; r = await go(); }
+    const o = await r.json().catch(() => ({})); if (!r.ok) throw doorError(r, o);
+    return ((((o.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
+  }
+  const body = { model: m, messages: [{ role: 'system', content: system }].concat(turns), temperature: 0.6, response_format: { type: 'json_object' } };
+  let r = await fetchT(DOORS[d].chat, { method: 'POST', headers: headers(d, key), body: JSON.stringify(body) });
+  if (r.status === 400) { delete body.response_format; r = await fetchT(DOORS[d].chat, { method: 'POST', headers: headers(d, key), body: JSON.stringify(body) }); }
+  const o = await r.json().catch(() => ({})); if (!r.ok) throw doorError(r, o);
+  return ((o.choices || [])[0] || {}).message ? o.choices[0].message.content || '' : '';
+}
+
+/* ═══ WHAT ORV IS TOLD: the seed first, then the list as it stands, then the rules of the reply ═══ */
+function system() {
+  const now = new Date(), tz = -now.getTimezoneOffset(), off = (tz >= 0 ? '+' : '-') + String(Math.floor(Math.abs(tz) / 60)).padStart(2, '0') + ':' + String(Math.abs(tz) % 60).padStart(2, '0');
+  const list = open().map((t, i) => (i + 1) + '. [' + t.id + '] ' + t.word + ' — ' + (t.text || '') + (t.at ? ' (at ' + t.at + ')' : '')).join('\n') || '(the list is empty)';
+  const one = theOne();
+  return K.seed + '\n\nYou keep the King\'s list of pure tasks on his phone, and each day you sort it with him: merge duplicates, turn vague wishes into plain doable tasks, drop nothing he did not ask to drop, and order by what matters most (deadlines first, then what unblocks other things, then what he named as important). The order of the list IS its priority. Now is ' + now.toISOString() + ' (his local offset ' + off + ').' +
+    '\nTHE ONE THING: ' + (one ? one.word + ' [' + one.id + ']' : 'none') + '\nOPEN TASKS, in priority order:\n' + list +
+    '\nDone today: ' + live().filter(t => t.done).length + '.' +
+    '\n\nAnswer ONLY with one JSON object: {"say": "...", "ops": [...]}' +
+    '\n"say": a conversational reply in your own voice, to the High King. Usually two or three sentences. When he brings a problem, give him the tactic: the first move and, if it helps, up to five short numbered steps. Run the numbers when they matter (how many, how long, what fits before what).' +
+    '\n"ops": changes to the list, only when his words ask for them or plainly imply them. Allowed ops, nothing else:' +
+    '\n {"op":"add","word":"<one word>","text":"<a plain description: a sentence or two, what it is and why>","at":"<ISO time with offset, optional>"}' +
+    '\n {"op":"done","id":"<id>"}  {"op":"undone","id":"<id>"}  {"op":"remove","id":"<id>"}' +
+    '\n {"op":"edit","id":"<id>","word":"...","text":"...","at":"<ISO or null>"}' +
+    '\n {"op":"order","ids":["<id>", "..."]}   (the whole open list, highest priority first)' +
+    '\n {"op":"one","id":"<id>"}   (THE ONE THING)' +
+    '\nNew tasks you add go to the end unless you also send an order. Use only ids that exist. Never invent tasks he did not mention.' +
+    (FIRST ? '\nTHIS IS HIS FIRST BREATH: build his list from it. Add every task, idea and plan he names (one word each, his own line), order them by priority, set THE ONE THING, and give times only where he gives them. In "say", one or two sentences on the shape of his day, in your own voice.' : '') +
+    meterLine() +
+    (MODE === 'action' ? '\nACTION MODE: do what he asks to the list and say nothing: "say" must be "".' : '');
+}
+
+/* ═══ CHECK EVERY OP, APPLY THE GOOD ONES ═══ */
+function apply(ops) {
+  const out = { done: 0, dropped: [] };
+  if (!Array.isArray(ops)) return out;
+  ops.slice(0, K.maxOps).forEach(o => {
+    const t = o && o.id ? byId(String(o.id)) : null, drop = why => out.dropped.push((o && o.op) + ': ' + why);
+    const okAt = a => a == null || a === '' || !isNaN(new Date(a));
+    if (!o || typeof o.op !== 'string') return drop('not an op');
+    if (o.op === 'add') {
+      const word = String(o.word || '').trim().split(/\s+/)[0]; if (!word) return drop('no word'); if (!okAt(o.at)) return drop('bad time');
+      ST.n += 1; ST.tasks.push({ id: 't' + ST.n.toString(36), word: word.slice(0, 24), text: String(o.text || '').slice(0, 600), at: o.at ? new Date(o.at).toISOString() : null, done: false, doneAt: null });
+    } else if (o.op === 'done' || o.op === 'undone') { if (!t) return drop('no such task'); t.done = o.op === 'done'; t.doneAt = t.done ? nowIso() : null; }
+    else if (o.op === 'remove') { if (!t) return drop('no such task'); t.gone = true; }
+    else if (o.op === 'edit') { if (!t) return drop('no such task'); if (!okAt(o.at)) return drop('bad time');
+      if (o.word) t.word = String(o.word).trim().split(/\s+/)[0].slice(0, 24); if (o.text != null) t.text = String(o.text).slice(0, 600);
+      if ('at' in o) t.at = o.at ? new Date(o.at).toISOString() : null; }
+    else if (o.op === 'order') { if (!Array.isArray(o.ids)) return drop('no ids'); const seen = new Set(), first = [];
+      o.ids.forEach(id => { const x = byId(String(id)); if (x && !seen.has(x.id)) { seen.add(x.id); first.push(x); } });
+      ST.tasks = first.concat(ST.tasks.filter(x => !seen.has(x.id))); }
+    else if (o.op === 'one') { if (!t) return drop('no such task'); ST.one = t.id; }
+    else return drop('unknown op');
+    out.done += 1;
+  });
+  if (ops.length > K.maxOps) out.dropped.push((ops.length - K.maxOps) + ' ops over the limit');
+  save(); return out;
+}
+
+/* ═══ HE SPEAKS ═══ */
+let BUSY = false;
+let FIRST = !load('inkling.log', []).some(e => e.who === 'k' && e.what === 'said');
+async function speak(raw) {
+  const words = String(raw || '').trim(); if (!words || BUSY) return;
+  $('line').value = '';
+  if (looksLikeKey(words)) { setOpen(); $('setKey').value = words.replace(/\s+/g, ''); grow($('setKey')); return setTest(); }
+  log({ who: 'k', what: 'said', text: words });               // his words first, verbatim, always
+  if (FIRST) { const B = load('inkling.breath', []); B.push({ at: nowIso(), text: words, first: true }); store('inkling.breath', B); }
+  store('inkling.summary', '');
+  if (words.toLowerCase() === K.password.toLowerCase()) { const d = keyDoor(); if (d) { const p = load('inkling.paid', {}); p[d] = nowIso(); store('inkling.paid', p); } return say('Cha-ching heard. The ' + (d || '') + ' door is open.', true); }
+  if (/^many thanks\b/i.test(words)) { await thanks(); return; }
+  const use = /^use\s+([\w.-]{2,40})$/i.exec(words);
+  if (use) { const k2 = String(box().apiKey || '').trim(), d2 = keyDoor(); if (!d2) return say('(No key yet.)', true);
+    try { const o = await (await fetchT(DOORS[d2].list, { headers: headers(d2, k2) })).json();
+      const ids = d2 === 'gemini' ? (o.models || []).map(x => String(x.name).replace(/^models\//, '')) : (o.data || []).map(x => String(x.id));
+      const hit = ids.find(id => id.toLowerCase().includes(use[1].toLowerCase()));
+      if (!hit) return say('(The ' + d2 + ' door has no model like "' + use[1] + '".)', true);
+      const kept = load('inkling.model', {}); kept[d2] = hit; store('inkling.model', kept); const b = box(); if (b.models && b.models[d2]) { delete b.models[d2]; store(BOX, b); }
+      return say('Now thinking with ' + hit + '.', true); } catch (e) { return say('(The door would not list its models.)', true); } }
+  const key = String(box().apiKey || '').trim(), d = keyDoor();
+  if (!key || !d) { $('line').value = words; setOpen('Your key goes here, High King. Paste it and tap test.'); return; }
+  if (!paidOpen(d)) { $('line').value = words; setOpen('The ' + d + ' key costs money. Type ' + K.password + ' on the coin line.'); return; }
+  lastLine(words); BUSY = true; ORV.listening = true; loading();
+  const chat = load('inkling.chat', []).slice(-K.memory * 2), turns = chat.concat([{ role: 'user', content: words }]);
+  try {
+    const { m, text } = await answer(d, key, system(), turns);
+    let reply = null; try { reply = JSON.parse(text); } catch (e) { const j = /\{[\s\S]*\}/.exec(text); if (j) try { reply = JSON.parse(j[0]); } catch (e2) { reply = null; } }
+    if (!reply || typeof reply !== 'object') { log({ who: 'ai:' + d + ':' + m, what: 'unparsed', text }); say(String(text).slice(0, 600)); }
+    else { const r = apply(reply.ops); log({ who: 'ai:' + d + ':' + m, what: 'answered', text: String(reply.say || ''), ops: reply.ops || [], dropped: r.dropped });
+      if (MODE === 'action') { say(''); $('mode').textContent = 'ACTION · ' + r.done + ' DONE'; }
+      else typeSay(String(reply.say || '').slice(0, 900) || '(Orv nods.)', !reply.say);
+      if (r.done) FIRST = false; }
+    store('inkling.chat', turns.concat([{ role: 'assistant', content: text }]).slice(-K.memory * 2));
+  } catch (e) { log({ who: 'ai:' + d, what: 'error', text: String(e.message || e) }); if (e.status === 401 || e.status === 403) { BUSY = false; ORV.listening = false; $('line').value = words; return setOpen('The ' + d + ' door turned the key away: ' + String(e.message || e).slice(0, 140), true); } say('(Orv could not get through: ' + plainWhy(e) + '. Your words are kept; tap me to try again.)', true); $('line').value = words; }
+  BUSY = false; ORV.listening = false; render(); drawChat();
+}
+/* "many thanks": Orv sums up the talk in a line or two; the summary stays in the window until he types again */
+async function thanks() {
+  const chat = load('inkling.chat', []), key = String(box().apiKey || '').trim(), d = keyDoor();
+  let sum = '';
+  if (chat.length && key && d && paidOpen(d)) {
+    BUSY = true; ORV.listening = true; loading();
+    try { const { text } = await answer(d, key, system() + '\n\nThe King said "many thanks": the talk is over. Put in "say" a summary of this talk in one or two short sentences (what changed on the list, what comes next). "ops" must be [].',
+      chat.concat([{ role: 'user', content: 'many thanks' }]));
+      let r = null; try { r = JSON.parse(text); } catch (e) { const j = /\{[\s\S]*\}/.exec(text); if (j) try { r = JSON.parse(j[0]); } catch (e2) { r = null; } }
+      sum = r && r.say ? String(r.say) : ''; } catch (e) { sum = ''; }
+    BUSY = false; ORV.listening = false;
+  }
+  if (!sum) sum = open().length + ' open, ' + live().filter(t => t.done).length + ' done. ' + (theOne() ? 'Next: ' + theOne().word + '.' : 'The list is clear.');
+  log({ who: 'orv', what: 'summary', text: sum }); store('inkling.chat', []); store('inkling.summary', sum);
+  flash(); lastLine(''); say(sum); render(); drawChat();
+}
+$('line').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); speak($('line').value); } });
+/* ═══ ORV'S HANDS: tap = send (or open the line) · double-tap = the meter, story ↔ focus · hold = he listens, live ═══
+   (the double-tap is also where the other masters will turn, later) */
+const METER_WORDS = ['all story: full myth, the whole immersion', 'mostly story', 'story and focus, even', 'mostly focus', 'all focus: one line, no lore'];
+const meterVal = () => { const v = load('inkling.meter', 0.5); return typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0.5; };
+function meterLine() { const v = meterVal();
+  if (v <= 0.2) return '\nTHE METER IS ON STORY: speak fully in your voice, in the myth, with the world around him; still short enough to read on a phone.';
+  if (v >= 0.8) return '\nTHE METER IS ON FOCUS: "say" is ONE plain line, no lore, no flourish; just the fact or the next move.';
+  return v > 0.5 ? '\nTHE METER LEANS TO FOCUS: keep it short and plain, a touch of voice.' : v < 0.5 ? '\nTHE METER LEANS TO STORY: a little more voice and myth than usual.' : ''; }
+function meterDraw() { const v = meterVal(), k = $('meterKnob');
+  k.style.left = (v * 100) + '%'; $('meterTrack').setAttribute('aria-valuenow', Math.round(v * 100));
+  $('mwStory').innerHTML = v < 0.5 ? '<b>story</b>' : 'story'; $('mwFocus').innerHTML = v > 0.5 ? '<b>focus</b>' : 'focus';
+  $('meterSays').textContent = METER_WORDS[Math.round(v * 4)]; }
+(function meter() {
+  const T = $('meterTrack'); let drag = false;
+  const at = e => { const r = T.getBoundingClientRect(); const v = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); store('inkling.meter', Math.round(v * 20) / 20); meterDraw(); };
+  T.addEventListener('pointerdown', e => { drag = true; T.setPointerCapture(e.pointerId); at(e); });
+  T.addEventListener('pointermove', e => { if (drag) at(e); });
+  T.addEventListener('pointerup', () => { drag = false; log({ who: 'k', what: 'meter', v: meterVal() }); });
+  document.addEventListener('pointerdown', e => { if (!$('meter').hidden && !e.target.closest('#meter') && e.target.id !== 'orv') $('meter').hidden = true; }, true);
+})();
+function meterToggle() { const m = $('meter'); m.hidden = !m.hidden; if (!m.hidden) meterDraw(); }
+
+/* HOLD: Safari's own speech recognition (no Jev, no key); the words show live; letting go sends them to Orv */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+/* ONE ear for the whole sitting: it is started once (one permission ask) and kept awake while the app is open,
+   so a hold does not ask again. Only words heard WHILE HELD are taken. It rests after 3 quiet minutes. */
+const EAR = { rec: null, on: false, held: false, base: 0, n: 0, fin: '', live: '', rest: 0, last: [] };
+function hearShow() { const h = $('hear'); h.hidden = false; h.textContent = '';
+  const dot = document.createElement('span'); dot.className = 'dot'; dot.textContent = '● '; h.appendChild(dot);
+  h.appendChild(document.createTextNode(EAR.fin)); const i = document.createElement('i'); i.textContent = (EAR.fin ? ' ' : '') + EAR.live; h.appendChild(i); }
+function earWake() {
+  if (EAR.on) return true;
+  if (!SR) { say('(Orv cups an ear.) This phone will not let a page listen. Tap the line and use the keyboard\'s mic.', true); return false; }
+  if (!EAR.rec) {
+    const r = new SR(); r.continuous = true; r.interimResults = true; r.lang = navigator.language || 'en-US';
+    r.onresult = ev => { EAR.n = ev.results.length; EAR.last = ev.results; if (!EAR.held) return;
+      let fin = '', live = ''; for (let i = EAR.base; i < ev.results.length; i++) { const x = ev.results[i]; if (x.isFinal) fin += x[0].transcript; else live += x[0].transcript; }
+      EAR.fin = fin.trim(); EAR.live = live.trim(); hearShow(); };
+    r.onerror = ev => { if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { EAR.on = false; EAR.denied = true;
+      say('(Orv cannot hear you: the microphone was refused. In Safari: aA → Website Settings → Microphone → Allow.)', true); } };
+    r.onend = () => { EAR.n = 0; EAR.base = 0; if (EAR.on && !EAR.denied && !document.hidden) { try { r.start(); } catch (e) { EAR.on = false; } } else EAR.on = false; };
+    EAR.rec = r;
+  }
+  try { EAR.rec.start(); EAR.on = true; } catch (e) { EAR.on = /already/i.test(String(e && e.message)); }
+  return EAR.on;
+}
+function earRest() { EAR.on = false; try { EAR.rec && EAR.rec.stop(); } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (document.hidden) earRest(); });
+function listenStart() {
+  if (!earWake()) return false;
+  clearTimeout(EAR.rest); EAR.held = true; EAR.base = EAR.n; EAR.fin = ''; EAR.live = ''; ORV.listening = true;
+  document.body.classList.add('holding'); hearShow(); return true;
+}
+function listenStop() {
+  if (!EAR.held) return;
+  setTimeout(() => {                                           // a breath for the last words to land
+    EAR.held = false; ORV.listening = false; document.body.classList.remove('holding');
+    const words = (EAR.fin + ' ' + EAR.live).replace(/\s+/g, ' ').trim(); $('hear').hidden = true;
+    EAR.base = EAR.n; EAR.rest = setTimeout(earRest, 180000);
+    if (words) { log({ who: 'k', what: 'voice', text: words }); speak(words); }
+  }, 700);
+}
+(function hands() {
+  const O = $('orv'); let holdT = 0, held = false, lastTap = 0, tapT = 0, x0 = 0, y0 = 0;
+  O.addEventListener('contextmenu', e => e.preventDefault());
+  O.addEventListener('touchstart', e => e.preventDefault(), { passive: false });   // no magnifier, no selection, no callout
+  O.addEventListener('pointerdown', e => { held = false; x0 = e.clientX; y0 = e.clientY; try { O.setPointerCapture(e.pointerId); } catch (x) {}
+    holdT = setTimeout(() => { held = true; clearTimeout(tapT); lastTap = 0; listenStart(); }, 380); });
+  O.addEventListener('pointermove', e => { if (!held && Math.hypot(e.clientX - x0, e.clientY - y0) > 14) clearTimeout(holdT); });
+  const up = () => { clearTimeout(holdT);
+    if (held) { held = false; listenStop(); return; }
+    const now = Date.now();
+    if (now - lastTap < 320) { clearTimeout(tapT); lastTap = 0; meterToggle(); return; }   // double-tap
+    lastTap = now;
+    tapT = setTimeout(() => { lastTap = 0; if ($('line').value.trim()) speak($('line').value); else $('line').focus(); }, 320); };
+  O.addEventListener('pointerup', up); O.addEventListener('pointercancel', () => { clearTimeout(holdT); if (held) { held = false; listenStop(); } });
+})();
+
+/* ═══ KEEP / RESTORE: a copy of the list as a file (hold keep to restore) ═══ */
+(function keep() {
+  let t = 0, held = false;
+  $('keep').addEventListener('pointerdown', () => { held = false; t = setTimeout(() => { held = true; $('restore').click(); }, 700); });
+  $('keep').addEventListener('pointerup', async () => { clearTimeout(t); if (held) return;
+    const name = 'orv-' + new Date().toISOString().slice(0, 10) + '.json', blob = new Blob([JSON.stringify({ state: ST, log: load('inkling.log', []) })], { type: 'application/json' });
+    const file = new File([blob], name, { type: 'application/json' });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; } } catch (e) { return; }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); });
+  $('restore').addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return;
+    try { const o = JSON.parse(await f.text()); if (o && o.state && Array.isArray(o.state.tasks)) { ST = o.state; save(); log({ who: 'k', what: 'restored', text: f.name }); render(); say('Restored from ' + f.name + '.', true); } }
+    catch (x) { say('(That file would not open.)', true); } });
+})();
+
+/* ═══ ORV, SUMMONED: his own idle rig (Summon.tsx via OrvSummon2), the one Orv, never redrawn ═══ */
+const ORV = { listening: false };
+(async function orvBoot() {
+  const cv = $('orv'); let O; try { O = await (await fetch('./orv/orv3.json')).json(); } catch (e) { return; }
+  const w = O.w, h = O.h, S = K.orvScale, mx = 1, mxR = 2, my = 6;   // close to the side: one pixel of room on the left, two on the right (his word)
+  const lowest = rows => { for (let y = rows.length - 1; y >= 0; y--) if (/[^.]/.test(rows[y])) return y; return rows.length - 1; };
+  const floor = Math.max.apply(null, O.frames.map(lowest));
+  const rig = rows => { const width = rows.map(r => { let lo = 1e9, hi = -1; for (let x = 0; x < r.length; x++) if (r[x] !== '.') { lo = Math.min(lo, x); hi = Math.max(hi, x); } return hi < 0 ? 0 : hi - lo + 1; });
+    const top = Math.max(1, Math.round(h * .34)); let hm = 0, ha = 0; for (let y = 0; y < top; y++) if (width[y] > hm) { hm = width[y]; ha = y; }
+    let neck = ha + 1, n = 1e9; for (let y = ha + 1; y < Math.round(h * .5); y++) if (width[y] > 0 && width[y] < n) { n = width[y]; neck = y; }
+    const foot = h - Math.max(3, Math.round(h * .13)); let waist = Math.round((neck + h) / 2); n = 1e9;
+    for (let y = neck + 2; y < foot - 2; y++) if (width[y] > 0 && width[y] < n) { n = width[y]; waist = y; }
+    return { neck, foot, leg: Math.max(neck + 2, Math.min(waist, foot - 2)) }; };
+  const poses = O.frames.map(raw => { const drop = floor - lowest(raw); const rows = drop > 0 ? Array(drop).fill('.'.repeat(w)).concat(raw.slice(0, raw.length - drop)) : raw;
+    const src = document.createElement('canvas'); src.width = w; src.height = h; const sx = src.getContext('2d'), img = sx.createImageData(w, h);
+    rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) { const hx = O.pal[row[x]]; if (!hx) continue; const v = parseInt(hx.slice(1), 16), o = (y * w + x) * 4;
+      img.data[o] = (v >> 16) & 255; img.data[o + 1] = (v >> 8) & 255; img.data[o + 2] = v & 255; img.data[o + 3] = 255; } });
+    sx.putImageData(img, 0, 0); return { src, r: rig(rows) }; });
+  cv.width = (w + mx + mxR) * S; cv.height = (h + my) * S; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
+  const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+  const d = { sx: 0, vx: 0, clk: 0, next: 2 }; let f = 0, last = 0, timer = 0;
+  const cl = (v, m) => Math.max(-m, Math.min(m, v));
+  const SP = [];   // the sparks off his brass hand
+  const paint = (p, E) => { p = Math.min(p, poses.length - 1); const { src, r } = poses[p], rise = Math.round((.5 + .5 * Math.sin(d.clk * Math.PI * 2 / K.idle.bobSec)) * K.idle.bob);
+    const st = Math.round(cl(d.sx * (1.6 + E * .9), 3 + E * 1.5)), sh = st + Math.round(cl(d.sx * (.5 + E * .3), 1.5)), sl = Math.round(st * .45), X = mx * S, Y = my * S;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(src, 0, r.neck, w, r.leg - r.neck, X + st * S, Y + r.neck * S - rise * S, w * S, (r.leg - r.neck) * S + rise * S);
+    ctx.drawImage(src, 0, r.leg, w, r.foot - r.leg, X + sl * S, Y + r.leg * S, w * S, (r.foot - r.leg) * S);
+    ctx.drawImage(src, 0, r.foot, w, h - r.foot, X, Y + r.foot * S, w * S, (h - r.foot) * S);
+    ctx.drawImage(src, 0, 0, w, r.neck + 1, X + sh * S, Y - rise * S, w * S, (r.neck + 1) * S);
+    SP.forEach(s => { ctx.fillStyle = s.c; ctx.fillRect(X + (s.x + sh) * S, Y + (s.y - rise) * S, S, S); }); };
+  const pick = a => a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1));
+  const sparks = () => { const Z = K.idle.sparks;
+    for (let i = SP.length - 1; i >= 0; i--) { const s = SP[i]; if (--s.life <= 0) { SP.splice(i, 1); continue; } if (++s.t % s.every === 0) { s.x += s.dx; s.y -= 1; } }
+    if (d.clk >= (d.spark || 1.5)) { const n = pick(Z.n);
+      for (let i = 0; i < n; i++) SP.push({ x: Z.from[0] + (i % 2), y: Z.from[1], dx: Math.random() < .3 ? 1 : 0, every: 1 + (i % 2), t: 0, life: pick(Z.life), c: Z.colours[Math.floor(Math.random() * Z.colours.length)] });
+      d.spark = d.clk + Z.every[0] + Math.random() * (Z.every[1] - Z.every[0]); } };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { paint(0, K.idle.summon); return; }
+  const arm = () => { clearTimeout(timer); timer = setTimeout(() => { f = (f + 1) % poses.length; arm(); }, K.beat[f % K.beat.length]); }; arm();
+  const loop = ts => { const t = ts / 1000, E = K.idle.summon;
+    if (t - last >= 1 / K.fps) { last = t; d.clk += 1 / K.fps; d.vx += -d.sx * (5 + E * 6) / K.fps; d.vx *= .89 - E * .07; d.sx += d.vx / K.fps;
+      if (d.clk > d.next) { d.vx += (Math.random() < .5 ? -1 : 1) * ((.4 + E * .6) + Math.random() * (2.4 + E * 2.6)) * K.idle.summon; d.next = d.clk + (1.5 - E * 1.2) + Math.random() * (6 - E * 4.8); }
+      sparks(); paint(ORV.listening ? 2 : f, E); }
+    requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+})();
+
+/* ═══ SQUATCH (bead-pattern(3).png, 2026-10-01 20:42), his word: "i made a squatch too. his animation can be the cigarette
+   sparks going up." His body stands still, cell for cell. The sparks are his own red pixels in the column above the ember:
+   they climb one row a step and come round to the ember again, in his own spacing. ═══ */
+K.squatch = { scale: 5, stepMs: 240, ember: [9, 10], cols: [9, 10] };   // ember = [x, y] in his own cells; the sparks' column
+(async function squatchBoot() {
+  const cv = $('squatch'); let O; try { O = await (await fetch('./squatch/squatch.json')).json(); } catch (e) { return; }
+  const S = K.squatch.scale, w = O.w, h = O.h, rows = O.frames[0], [ex, ey] = K.squatch.ember;
+  const isSpark = (x, y) => y < ey && K.squatch.cols.includes(x) && O.pal[rows[y][x]] && O.pal[rows[y][x]].toUpperCase() === '#FF0000';
+  const sparks = []; rows.forEach((r, y) => Array.from(r).forEach((ch, x) => { if (isSpark(x, y)) sparks.push({ x, y, c: O.pal[ch] }); }));
+  cv.width = w * S; cv.height = h * S; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
+  const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+  const body = () => rows.forEach((r, y) => Array.from(r).forEach((ch, x) => { const c = O.pal[ch]; if (!c || isSpark(x, y)) return; ctx.fillStyle = c; ctx.fillRect(x * S, y * S, S, S); }));
+  const draw = () => { ctx.clearRect(0, 0, cv.width, cv.height); body(); sparks.forEach(s => { if (s.y >= 0) { ctx.fillStyle = s.c; ctx.fillRect(s.x * S, s.y * S, S, S); } }); };
+  draw(); if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  setInterval(() => { sparks.forEach(s => { s.y -= 1; if (s.y < 0) s.y = ey - 1; }); draw(); }, K.squatch.stepMs);   // up, and round again from the ember
+})();
+
+/* ═══ THE DIVIDER: his name, vertical. It follows the hand 1:1 and holds where let go.
+   All the way left: his own lines appear and scroll. All the way right: action mode, Orv acts and does not answer.
+   Double-tap: back to the middle. ═══ */
+let MODE = 'talk';
+(function divider() {
+  const D = $('div'), A = $('app'), M = $('main');
+  /* his symbol has come (2026-10-01): THE CROWN stands where the word INKLING stood (crown.js). Drag it as before; the gems
+     follow with their clicky lag. Double-tap: the share/save (share.js). The word comes back only if the crown cannot load. */
+  D.innerHTML = '<span id="star" class="crowned" aria-label="the crown: drag to move the divide, double-tap for your kingdom as a code"><canvas id="crown"></canvas></span>';
+  const STAR = $('star');
+  CROWN.load('./crown.json').then(data => { window._crown = CROWN.make($('crown'), data, { scale: 5, pad: 3, count: 0 }); render(); })
+    .catch(() => { STAR.classList.remove('crowned'); STAR.textContent = 'INKLING'; });
+  let dark = 0;
+  const light = () => { clearTimeout(dark); STAR.classList.add('lit'); };
+  const unlight = () => { clearTimeout(dark); dark = setTimeout(() => STAR.classList.remove('lit'), 900); };
+  STAR.addEventListener('pointerdown', light); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => STAR.addEventListener(t, unlight));
+  const KD = { dflt: 0.58, left: 0.16, right: 0.86, min: 0.06, max: 0.94 };
+  const setD = (f, keep) => { f = Math.max(KD.min, Math.min(KD.max, f)); A.style.setProperty('--d', (f * 100).toFixed(2) + '%');
+    const was = MODE; MODE = f >= KD.right ? 'action' : 'talk'; A.classList.toggle('open', f <= KD.left); A.classList.toggle('action', MODE === 'action');
+    $('mode').textContent = MODE === 'action' ? 'ACTION' : ''; if (A.classList.contains('open')) drawChat();
+    if (keep) store('inkling.d', f); };
+  setD(load('inkling.d', KD.dflt), false);
+  let drag = false, x0 = 0, f0 = 0, lastTap = 0;
+  STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; STAR.setPointerCapture(e.pointerId); });
+  STAR.addEventListener('pointermove', e => { if (!drag) return; const r = M.getBoundingClientRect(); setD(f0 + (e.clientX - x0) / r.width, false); });
+  STAR.addEventListener('pointerup', e => { if (!drag) return; drag = false; const r = M.getBoundingClientRect(), f = f0 + (e.clientX - x0) / r.width;
+    const t = Date.now(); if (Math.abs(e.clientX - x0) < 4 && t - lastTap < 350) { lastTap = 0; openShare(); return; } lastTap = t; setD(f, true); });   // double-tap: the share/save
+})();
+
+/* ═══ BOOT: #say= from the Tell Orv Shortcut arrives as if typed ═══ */
+render();
+function fromHash() { const m = /^#say=(.*)$/s.exec(location.hash); if (!m) return; let w = ''; try { w = decodeURIComponent(m[1].replace(/\+/g, ' ')); } catch (e) { w = ''; }
+  history.replaceState(null, '', location.pathname + location.search); if (w.trim()) speak(w); }
+fromHash(); window.addEventListener('hashchange', fromHash);
+drawChat();
+/* ═══ SETTINGS, behind the Salmon of Knowledge (top right). Minimal lines: key · coin (paid doors only) · model.
+   The key box grows with the letters. "test" asks the doors for their model lists (free) to find whose key it is,
+   keeps it, reads it back to prove the phone kept it, then asks Orv one short real question so you SEE him answer.
+   The app never blocks on a key screen: with no key it opens anyway and the salmon swims until it is fed. ═══ */
+const TRY = ['gemini', 'groq', 'openrouter', 'anthropic', 'openai', 'xai'];
+let SET_BUSY = false;
+const grow = el => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
+function setSay(t, how) { const s = $('setSay'); s.textContent = t || ''; s.classList.toggle('bad', how === 'bad'); s.classList.toggle('good', how === 'good'); }
+function setDiag() {
+  const app = (navigator.standalone || matchMedia('(display-mode: standalone)').matches) ? 'the Home Screen app' : 'a Safari tab';
+  const kat = load('inkling.keyAt', null), d = keyDoor();
+  $('setDiag').textContent = 'key kept: ' + (box().apiKey ? (d || '?') + (kat ? ' since ' + fmtAt(kat) : '') : 'none') +
+    '\nopens this phone remembers: ' + OPENS + (OPENS === 1 ? '  (if this stays 1 every time, the phone is wiping Orv)' : '') +
+    '\nopened as ' + app + ' · ' + location.pathname;
+}
+function setFill() {
+  const k = String(box().apiKey || ''), d = keyDoor();
+  if (document.activeElement !== $('setKey')) $('setKey').value = k;
+  $('setModel').value = d ? String((load('inkling.model', {}) || {})[d] || '') : '';
+  $('setChaRow').hidden = !(d && !paidOpen(d));
+  grow($('setKey')); setDiag();
+}
+function setOpen(why, bad) {
+  document.body.classList.add('setting'); $('set').hidden = false; $('salmon').classList.remove('call');
+  setFill(); setSay(why || '', bad ? 'bad' : '');
+  if (!box().apiKey) setTimeout(() => $('setKey').focus(), 60);
+}
+function setClose() {
+  $('set').hidden = true; document.body.classList.remove('setting'); salmonCall();
+  const k = box().apiKey, d = keyDoor();
+  if (k && d && paidOpen(d) && $('line').value.trim()) { const w = $('line').value; speak(w); }
+}
+function salmonCall() { const d = keyDoor(); $('salmon').classList.toggle('call', !box().apiKey || !d || !paidOpen(d)); }
+async function setTest() {
+  if (SET_BUSY) return;
+  const v = $('setKey').value.replace(/\s+/g, '');
+  if (!v) { setSay('Paste your key on the key line first.', 'bad'); return $('setKey').focus(); }
+  SET_BUSY = true; $('setTest').textContent = 'testing…'; setSay('asking the doors whose key this is…');
+  try {
+    const guess = doorOf(v), order = guess ? [guess].concat(TRY.filter(x => x !== guess)) : TRY;
+    let door = null, firstWhy = '';
+    for (const d of order) {
+      try { const r = await fetchT(DOORS[d].list, { headers: headers(d, v) }); const o = await r.json().catch(() => ({}));
+        if (r.ok) { door = d; break; } if (!firstWhy) firstWhy = doorError(r, o).message;
+      } catch (e) { if (!firstWhy) firstWhy = e.name === 'AbortError' ? 'no answer in time' : String(e.message || e); }
+    }
+    if (!door) { log({ who: 'k', what: 'key refused', text: firstWhy }); return setSay('✗ No door took that key.\n' + String(firstWhy).slice(0, 200), 'bad'); }
+    const was = box().apiKey;
+    const b = box(); b.apiKey = v; b.door = door; store(BOX, b); store('inkling.keyAt', nowIso()); log({ who: 'k', what: 'key', door });
+    if (box().apiKey !== v) return setSay('✗ The key works, but this phone refused to keep it.\nIn Settings → Apps → Safari, turn off "Block All Cookies", and do not use a Private tab.', 'bad');
+    if (was !== v) { const kept = load('inkling.model', {}); delete kept[door]; store('inkling.model', kept); }
+    setFill();
+    if (!paidOpen(door)) return setSay('✓ The key works (' + door + ') and this phone kept it.\nIt costs money: type ' + K.password + ' on the coin line, then test again.', 'good');
+    setSay('✓ ' + door + ' took the key and this phone kept it. Now asking Orv one short question…', 'good');
+    const t0 = performance.now();
+    const { m, text } = await answer(door, v, K.seed + '\nThis is a test of the line. Answer ONLY with the JSON object {"say": "<one short sentence to the High King, in your voice, saying you hear him>", "ops": []}.', [{ role: 'user', content: 'Orv, can you hear me?' }]);
+    let r = null; try { r = JSON.parse(text); } catch (e) { const j = /\{[\s\S]*\}/.exec(text); if (j) try { r = JSON.parse(j[0]); } catch (e2) { r = null; } }
+    const heard = (r && r.say) ? String(r.say) : String(text || '').slice(0, 200);
+    setFill();
+    setSay('✓ Works. ' + door + ' · ' + m + ' · ' + ((performance.now() - t0) / 1000).toFixed(1) + 's\nOrv: ' + heard, 'good');
+    log({ who: 'k', what: 'tested', door, model: m });
+    setTimeout(() => { if ($('set').hidden) return; setClose();               // plug and play: tested, so straight into the app
+      if (!$('line').value.trim()) typeSay(FIRST && !open().length ? '(Orv rubs his claws together.) Your first Breath, High King. Tell me everything that is alive in you today, every road you are on. I will make the list.' : '(Orv blinks his one eye.) Talk to me.', true);
+      setTimeout(() => $('line').focus(), 100); }, 2200);
+  } catch (e) {
+    setSay('✗ The key is kept, but Orv could not get through: ' + plainWhy(e), 'bad');
+  } finally { SET_BUSY = false; $('setTest').textContent = 'test'; setDiag(); salmonCall(); }
+}
+$('setTest').addEventListener('click', setTest);
+$('setKey').addEventListener('input', () => grow($('setKey')));
+$('setKey').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); setTest(); } });
+$('setCha').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('setCha').blur(); } });
+$('setCha').addEventListener('change', () => {
+  const w = $('setCha').value.trim(), d = keyDoor(); if (!w || !d) return;
+  if (w.toLowerCase() !== K.password.toLowerCase()) return setSay('That is not the word. Type ' + K.password + '.', 'bad');
+  const p = load('inkling.paid', {}); p[d] = nowIso(); store('inkling.paid', p); log({ who: 'k', what: 'cha-ching', door: d });
+  $('setCha').value = ''; setFill(); setTest();
+});
+$('setModel').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('setModel').blur(); } });
+$('setModel').addEventListener('change', async () => {
+  const want = $('setModel').value.trim(), k = String(box().apiKey || ''), d = keyDoor(); if (!k || !d) return;
+  const kept = load('inkling.model', {});
+  if (!want) { delete kept[d]; store('inkling.model', kept); return setSay('Orv will choose the model himself.'); }
+  try { const o = await (await fetchT(DOORS[d].list, { headers: headers(d, k) })).json();
+    const ids = d === 'gemini' ? (o.models || []).map(x => String(x.name).replace(/^models\//, '')) : (o.data || []).map(x => String(x.id));
+    const hit = ids.find(id => id.toLowerCase() === want.toLowerCase()) || ids.find(id => id.toLowerCase().includes(want.toLowerCase()));
+    if (!hit) return setSay('The ' + d + ' door has no model like "' + want + '".', 'bad');
+    kept[d] = hit; store('inkling.model', kept); $('setModel').value = hit; setSay('Orv now thinks with ' + hit + '. Tap test to hear him.', 'good');
+  } catch (e) { setSay('The door would not list its models: ' + plainWhy(e), 'bad'); }
+});
+/* the salmon himself: true pixels, drawn from a map, never smoothed */
+(function salmon() {
+  const MAP = [
+    '.......ooooo........',
+    '.....oodddddoo....oo',
+    '...oodddddddddo..odo',
+    '..odwedddkddddoooddo',
+    '.osssssssssssssssddo',
+    '..olllllssssssooosdo',
+    '...oollllllsso...oso',
+    '.....ooooooo......oo',
+  ];
+  const PAL = { o: '#3a1f2b', d: '#e0605a', s: '#fa8072', l: '#ffd0bf', w: '#ffffff', e: '#141733', k: '#b8473f' };
+  const S = 4, c = $('salmon'), x = c.getContext('2d');
+  c.width = MAP[0].length * S; c.height = MAP.length * S; c.style.width = c.width + 'px'; c.style.height = c.height + 'px';
+  MAP.forEach((row, y) => Array.from(row).forEach((ch, i) => { if (PAL[ch]) { x.fillStyle = PAL[ch]; x.fillRect(i * S, y * S, S, S); } }));
+  const tog = () => $('set').hidden ? setOpen() : setClose();
+  c.addEventListener('click', tog);
+  c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+})();
+
+const HAD = box().apiKey, HAD_D = keyDoor();
+salmonCall();
+if (!HAD || !HAD_D) { (async () => {                   // the key is gone from localStorage: is it in the spare?
+  const sp = await SPARE.get(); let again = false; try { again = sessionStorage.getItem('inkling.poured') === '1'; } catch (e) {}
+  if (sp && sp[BOX] && !again) { try { Object.keys(sp).forEach(k => localStorage.setItem(k, sp[k])); sessionStorage.setItem('inkling.poured', '1'); } catch (e) { return; }
+    location.reload(); return; }
+  setOpen('Paste your key and tap test. A Groq or Gemini key is free.');
+})(); }
+else if (!paidOpen(HAD_D)) typeSay('(Orv points at the salmon.) The ' + HAD_D + ' key costs money. Type ' + K.password + ' on the coin line in there.', true);
+else if (FIRST && !open().length) typeSay('(Orv rubs his claws together.) Your first Breath, High King. Tell me everything that is alive in you today, every road you are on. I will make the list.', true);
+else if (load('inkling.summary', '')) say(load('inkling.summary', ''));
+</script>
+</body>
+</html>

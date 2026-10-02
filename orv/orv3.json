@@ -1,0 +1,50 @@
+{
+"w": 13,
+"h": 19,
+"pal": {
+".": null,
+"a": "#BF4040",
+"b": "#D27979",
+"c": "#663300",
+"d": "#FF8000",
+"e": "#8D40BF",
+"f": "#862D86",
+"g": "#FFA64D",
+"h": "#004066",
+"i": "#00FFFF",
+"j": "#A75100",
+"k": "#000000",
+"l": "#40BFBF",
+"m": "#40BF6B",
+"n": "#0070B3",
+"o": "#70B300",
+"p": "#00A0FF",
+"q": "#A5D279",
+"r": "#00FFA0",
+"s": "#99FFDF"
+},
+"frames": [
+[
+"..c.....c....",
+"..j.....j....",
+"..cjaabjc..dd",
+"..caoiric...d",
+"..bamkkla.d.g",
+"..abikksb.gdd",
+"..aapiqia..g.",
+"...abbbb...d.",
+"...aaaa...g..",
+"..efabefgd...",
+".afebaef.....",
+"ab.fabf......",
+"ab.eaae......",
+".a.hhnh......",
+"...h..h......",
+"..ab.aa......",
+"..a..a.......",
+"..ac.bc......",
+"..cc.cc......"
+]
+],
+"from": "~/Downloads/bead-pattern(2).png (MakeBead, 2026-10-01 20:22), the King's Orv, cell for cell; never redrawn"
+}

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#454545">
+<title>The Crown</title>
+<link rel="stylesheet" href="./fonts.css">
+<script src="./crown.js"></script>
+<script src="./share.js"></script>
+<!--
+  THE CROWN — what it would look like (his word, 2026-10-01): the crown is the adjuster, up and down, and the brand.
+  The number in the middle is the total of gems; the pixels are the gems, growing from the middle; move it and the gems
+  follow with clicky lag; they change once a second. Double-tap: the share/save, the QR with Orv in the centre.
+  A look, not a ledger: dragging here changes nothing anywhere. Opened as crown.html#k=… it shares that kingdom.
+-->
+<style>
+  :root { --ground: #454545; --ink: #f2f2f2; --dim: #a9a9a9; --faint: #6e6e6e; }
+  html, body { margin: 0; height: 100%; background: var(--ground); color: var(--ink); overflow: hidden; -webkit-user-select: none; user-select: none; }
+  #track { position: fixed; left: 50%; top: 9vh; bottom: 16vh; width: 0; border-left: 1px dotted var(--faint); }
+  #crown { position: fixed; left: 50%; transform: translateX(-50%); touch-action: none; cursor: grab; image-rendering: pixelated; }
+  #crown.held { cursor: grabbing; }
+  #say { position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 5vh); text-align: center;
+         font-family: 'W95FA', ui-monospace, monospace; font-size: 14px; color: var(--dim); padding: 0 18px; }
+  #say b { font-family: 'Dogica', ui-monospace, monospace; font-weight: normal; color: var(--ink); }
+</style>
+</head>
+<body>
+<div id="track" aria-hidden="true"></div>
+<canvas id="crown" role="slider" aria-label="the crown: drag up and down; double-tap for the code" aria-valuemin="0" aria-valuemax="76" tabindex="0"></canvas>
+<div id="say"><b>drag the crown</b> up and down · <b>double-tap</b> it for the code</div>
+<script>
+(async function () {
+  const cv = document.getElementById('crown'), track = document.getElementById('track'), say = document.getElementById('say');
+  const data = await CROWN.load('./crown.json');
+  const S = Math.max(6, Math.min(16, Math.floor(Math.min(innerWidth * 0.5, innerHeight * 0.32) / 15)));   // about half the screen's width
+  const crown = CROWN.make(cv, data, { scale: S, pad: 8, count: 0 });
+  const N = crown.gems;
+  let lo = 0, hi = 0, y = 0;
+  const bounds = () => { const r = track.getBoundingClientRect(); lo = r.top - cv.height / 2; hi = r.bottom - cv.height / 2; };
+  const place = v => { y = Math.max(lo, Math.min(hi, v)); cv.style.top = Math.round(y) + 'px';
+    const n = Math.round((1 - (y - lo) / Math.max(1, hi - lo)) * N); crown.set(n); cv.setAttribute('aria-valuenow', n); };
+  bounds(); place(hi);
+  addEventListener('resize', () => { const f = (y - lo) / Math.max(1, hi - lo); bounds(); place(lo + f * (hi - lo)); });
+  /* the hand: drag up and down; a still double-tap opens the code */
+  let drag = false, y0 = 0, top0 = 0, moved = 0, lastTap = 0;
+  cv.addEventListener('pointerdown', e => { drag = true; moved = 0; y0 = e.clientY; top0 = y; cv.classList.add('held'); cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (!drag) return; moved = Math.max(moved, Math.abs(e.clientY - y0)); place(top0 + e.clientY - y0); });
+  const up = () => { if (!drag) return; drag = false; cv.classList.remove('held');
+    if (moved < 6) { const t = Date.now(); if (t - lastTap < 340) { lastTap = 0; share(); } else lastTap = t; } };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('keydown', e => { if (e.key === 'ArrowUp') place(y - (hi - lo) / N); if (e.key === 'ArrowDown') place(y + (hi - lo) / N); if (e.key === 'Enter') share(); });
+  /* the code: this page's own #k= kingdom if it came with one, else the kingdom kept on this phone by the app */
+  async function share() {
+    const app = location.origin + location.pathname.replace(/crown\.html$/, '');
+    let link = /^#k=[A-Za-z0-9_-]+$/.test(location.hash) ? app + location.hash : null;
+    if (!link) { try { const st = JSON.parse(localStorage.getItem('inkling.state') || 'null');
+      if (st && Array.isArray(st.tasks) && st.tasks.some(t => !t.gone)) { const rows = st.tasks.filter(t => !t.gone);
+        link = app + '#k=' + await INKSHARE.encode({ v: 1, from: 'the crown', one: rows.findIndex(t => t.id === st.one), t: rows.map(t => { const a = [t.word, t.text || '']; if (t.at || t.done) a.push(t.at || 0); if (t.done) a.push(1); return a; }) }); } } catch (e) {} }
+    if (!link) { say.textContent = 'no kingdom on this phone yet: open the app with your link first'; return; }
+    INKSHARE.show(link);
+  }
+})();
+</script>
+</body>
+</html>
