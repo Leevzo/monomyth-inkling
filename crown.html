@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#454545">
 <title>The Crown</title>
-<link rel="stylesheet" href="./fonts.css?v=1790914188">
-<script>window.INK_V = '1790914188';</script>
-<script src="./crown.js?v=1790914188"></script>
-<script src="./share.js?v=1790914188"></script>
+<link rel="stylesheet" href="./fonts.css?v=1790914493">
+<script>window.INK_V = '1790914493';</script>
+<script src="./crown.js?v=1790914493"></script>
+<script src="./share.js?v=1790914493"></script>
 <!--
   THE CROWN — what it would look like (his word, 2026-10-01): the crown is the adjuster, up and down, and the brand.
   The number in the middle is the total of gems; the pixels are the gems, growing from the middle; move it and the gems
@@ -59,7 +59,7 @@
       if (st && Array.isArray(st.tasks) && st.tasks.some(t => !t.gone)) { const rows = st.tasks.filter(t => !t.gone);
         link = app + '#k=' + await INKSHARE.encode({ v: 1, from: 'the crown', one: rows.findIndex(t => t.id === st.one), t: rows.map(t => { const a = [t.word, t.text || '']; if (t.at || t.done) a.push(t.at || 0); if (t.done) a.push(1); return a; }) }); } } catch (e) {} }
     if (!link) { say.textContent = 'no kingdom on this phone yet: open the app with your link first'; return; }
-    const r = cv.getBoundingClientRect(); INKSHARE.show(link, { from: [r.left + r.width / 2, r.top + r.height / 2] });
+    const r = cv.getBoundingClientRect(); INKSHARE.show(link, { from: [r.left + r.width / 2, r.top + r.height / 2], onRead: code => { location.href = location.pathname.replace(/crown(\.html)?$/, '') + '#k=' + code; } });
   }
 })();
 </script>

@@ -10,12 +10,12 @@
 <meta name="theme-color" content="#454545">
 <title>Inkling</title>
 <link rel="manifest" href="./inkling.webmanifest?v=2">
-<script>window.INK_V = '1790914188';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
-<script src="./crown.js?v=1790914188"></script>
-<script src="./share.js?v=1790914188"></script>
-<script src="./sky.js?v=1790914188"></script>
+<script>window.INK_V = '1790914493';   /* THE BUILD: stamp.sh renews it on every ship; the app checks version.json and fetches itself fresh */</script>
+<script src="./crown.js?v=1790914493"></script>
+<script src="./share.js?v=1790914493"></script>
+<script src="./sky.js?v=1790914493"></script>
 <link rel="apple-touch-icon" href="./icon.png?v=orv3">
-<link rel="stylesheet" href="./fonts.css?v=1790914188">
+<link rel="stylesheet" href="./fonts.css?v=1790914493">
 <!--
   ORV — the whole app, bare bones (the King, 2026-10-01 morning):
   "Orv in the corner of the screen, the one thing in the upper left-hand corner with some fun visual details like
@@ -305,7 +305,7 @@ async function kingdomLink() {
   return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }
 async function openShare() { try { if (!window.INKSHARE) throw new Error('no share'); const c = $('crown').getBoundingClientRect();
-  await INKSHARE.show(await kingdomLink(), { from: [c.left + c.width / 2, c.top + c.height / 2], onOpen: () => $('restore').click() }); } catch (e) { say('(The code would not draw.)', true); } }
+  await INKSHARE.show(await kingdomLink(), { from: [c.left + c.width / 2, c.top + c.height / 2], onRead: code => { location.hash = '#k=' + code; } }); /* shown, and read with a camera: nothing else */ } catch (e) { say('(The code would not draw.)', true); } }
 /* #new: a new kingdom. Whatever was here is set aside (kept under orv.archive.<time>, never deleted). */
 if (location.hash === '#new') {
   const was = load('inkling.state', null);
