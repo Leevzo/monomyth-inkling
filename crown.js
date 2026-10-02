@@ -23,9 +23,9 @@
 (function (root) {
   'use strict';
   const KNOBS = {
-    stepMs: 45,          // a lagging gem takes a step this often: the click
-    lagPerPx: 1.4,       // ticks of wait per crown pixel of distance from the heart before a gem sets off home
-    stride: 6,           // a gem this many crown pixels away walks home in 2-pixel clicks, twice this in 3, and so on
+    stepMs: 30,          // a trailing gem takes a step this often: the click
+    lagPerPx: 0,         // his word: "the pixels of the crown need to follow immediately, not after a delay" (no waiting; was 1.4)
+    stride: 3,           // a gem this many crown pixels away walks home in 2-pixel clicks, twice this in 3, and so on
     boxLag: 14,          // without the overlay, a gem never trails further than its canvas allows (min of this and pad)
     secondMs: 1000,      // the colours step this often
     cycle: ['#FF0000', '#FF8000', '#70B300', '#2D8686', '#00A0FF', '#A640BF'],   // the crown's six, in hue order

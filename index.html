@@ -161,6 +161,8 @@ body.setting #arc { display: none; }
 #line { display: block; resize: none; overflow: hidden; font-size: clamp(20px, 6vw, 28px) !important; line-height: 1.3; max-height: 40vh; }
 body.holding #bottom::before { content: '●'; position: absolute; left: -6px; top: 12px; color: var(--late); font-size: 10px; }
 #hear { display: none !important; }
+.sayGhost { position: absolute; font-size: 16px; line-height: 1.35; white-space: pre-wrap; padding: 0 2px 6px 6px; pointer-events: none; }
+.sayGhost.stage { color: var(--dim); font-style: italic; }
 #star.crowned { cursor: move; }
 #orv { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
 body.holding, body.holding * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
@@ -437,8 +439,11 @@ function loading() {
   };
   LOAD = requestAnimationFrame(draw);
 }
-function say(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = text; s.classList.toggle('stage', !!stage); }
-function typeSay(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.toggle('stage', !!stage);
+/* each master keeps his own last words (his word: "when character changes, their words come out") */
+const wordsOf = m => load('inkling.say.' + m, { text: '', stage: false });
+const keepWords = (text, stage) => store('inkling.say.' + (window.WHEEL_FRONT || 'orv'), { text: String(text || ''), stage: !!stage });
+function say(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = text; s.classList.toggle('stage', !!stage); keepWords(text, stage); }
+function typeSay(text, stage) { clearInterval(TYPING); unload(); const s = $('say'); s.textContent = ''; s.classList.toggle('stage', !!stage); keepWords(text, stage);
   const a = Array.from(String(text)); let i = 0; TYPING = setInterval(() => { i = Math.min(a.length, i + 3); s.textContent = a.slice(0, i).join(''); if (i >= a.length) clearInterval(TYPING); }, 1000 / K.fps); }
 function lastLine() { /* his lines show only when the divider is dragged far left */ }
 /* the whole talk, on the right pane: every word he said and every answer, from the log, oldest first */
@@ -822,7 +827,7 @@ K.seedSquatch = 'You are Squatch, the sasquatch on the couch, stuck in one day, 
 })();
 
 const WHEEL = { front: load('inkling.front', 'orv') === 'squatch' ? 'squatch' : 'orv', phi: 0, busy: false };
-WHEEL.phi = WHEEL.front === 'squatch' ? 90 : 0;
+WHEEL.phi = WHEEL.front === 'squatch' ? 90 : 0; window.WHEEL_FRONT = WHEEL.front;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 /* each stands on the wheel at the same distance from the corner, a quarter turn apart, and upright when in front */
 function wheelPlace() {
@@ -853,12 +858,22 @@ function drawList2() { const sq = load('inkling.squatch', null), L = $('list2');
 /* the swords swing about the lower LEFT corner, the opposite way to the wheel: the one going leaves to the left (for Squatch)
    or back to the right (for Orv), the one coming swings in from the other side, step for step with the wheel's clicks */
 /* one pair swings about a corner of the screen: the one going turns away, the one coming turns in from the other side */
-async function swing(out, inn, corner, dir) {
+async function swing(out, inn, corner, dir, late) {
   const n = K.turn.steps, cx = corner[0] === 'r' ? innerWidth : 0, cy = corner[1] === 'b' ? innerHeight : 0;
   inn.hidden = false;
   [out, inn].forEach(el => { const r = el.getBoundingClientRect(); el.style.transformOrigin = (cx - r.left) + 'px ' + (cy - r.top) + 'px'; });
-  for (let i = 0; i <= n; i++) { const t = i / n; out.style.transform = 'rotate(' + (90 * dir * t) + 'deg)'; inn.style.transform = 'rotate(' + (-90 * dir * (1 - t)) + 'deg)'; await sleep(K.turn.stepMs); }
-  out.hidden = true; out.style.transform = ''; inn.style.transform = '';
+  if (late) { inn.style.transition = 'none'; inn.style.opacity = '0'; }
+  for (let i = 0; i <= n; i++) { const t = i / n; out.style.transform = 'rotate(' + (90 * dir * t) + 'deg)'; inn.style.transform = 'rotate(' + (-90 * dir * (1 - t)) + 'deg)';
+    if (late && i === n - 1) { inn.style.transition = 'opacity .12s linear'; inn.style.opacity = '1'; }   // seen only just before it lands
+    await sleep(K.turn.stepMs); }
+  out.hidden = true; out.style.transform = ''; inn.style.transform = ''; if (late) { inn.style.opacity = ''; inn.style.transition = ''; }
+}
+/* his words go out with his sky; the next master's come in with his: a ghost of the old words swings away while the box fills */
+function swingWords(to, d) {
+  const S = $('say'), R = $('right'), ghost = S.cloneNode(true); ghost.removeAttribute('id'); ghost.className = 'sayGhost' + (S.classList.contains('stage') ? ' stage' : '');
+  ghost.style.left = S.offsetLeft + 'px'; ghost.style.top = S.offsetTop + 'px'; ghost.style.width = S.offsetWidth + 'px'; R.appendChild(ghost);
+  clearInterval(TYPING); const w = wordsOf(to); S.textContent = w.text; S.classList.toggle('stage', !!w.stage);
+  return swing(ghost, S, 'rb', d, true).then(() => ghost.remove());
 }
 function swapSwords(to) {
   const sq = to === 'squatch', d = sq ? -1 : 1;   // to Squatch the wheel turns clockwise; the swords and skies turn the other way
@@ -866,6 +881,7 @@ function swapSwords(to) {
   return Promise.all([
     swing(sq ? $('list') : $('list2'), sq ? $('list2') : $('list'), 'lb', d),     // the sword leaves to the left
     swing(sq ? $('skyO') : $('skyS'), sq ? $('skyS') : $('skyO'), 'rb', d),     // the constellation, the opposite way to the wheel
+    swingWords(to, d),                                                          // and his words with it
     swing(sq ? $('salmon') : $('cig'), sq ? $('cig') : $('salmon'), 'rt', -d)   // his own settings icon turns with the wheel
   ]);
 }
@@ -874,9 +890,9 @@ async function turnWheel() {
   const to = WHEEL.front === 'orv' ? 'squatch' : 'orv', from = WHEEL.phi, dest = to === 'squatch' ? 90 : 0, n = K.turn.steps;
   const swing = swapSwords(to);
   for (let i = 1; i <= n; i++) { WHEEL.phi = from + (dest - from) * i / n; wheelPlace(); click(); await sleep(K.turn.stepMs); }
-  await swing; WHEEL.front = to; store('inkling.front', to); frontWords(); WHEEL.busy = false;
+  await swing; WHEEL.front = to; window.WHEEL_FRONT = to; store('inkling.front', to); frontWords(); WHEEL.busy = false;
 }
-(function wheelBoot() { frontWords(); const sq = WHEEL.front === 'squatch';
+(function wheelBoot() { frontWords(); const sq = WHEEL.front === 'squatch'; { const w = wordsOf(WHEEL.front); if (w.text && !$('say').textContent) { $('say').textContent = w.text; $('say').classList.toggle('stage', !!w.stage); } }
   $('list').hidden = sq; $('list2').hidden = !sq; $('skyO').hidden = sq; $('skyS').hidden = !sq; $('salmon').hidden = sq; $('cig').hidden = !sq;
   setTimeout(drawSky, 0); wheelPlace(); })();
 
