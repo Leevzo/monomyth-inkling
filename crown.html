@@ -37,7 +37,7 @@
   const crown = CROWN.make(cv, data, { scale: S, pad: 8, count: 0 });
   const N = crown.gems;
   let lo = 0, hi = 0, y = 0;
-  const bounds = () => { const r = track.getBoundingClientRect(); lo = r.top - cv.height / 2; hi = r.bottom - cv.height / 2; };
+  const bounds = () => { const r = track.getBoundingClientRect(); lo = Math.max(r.top - cv.height / 2, -S * 8 + 4); hi = Math.min(r.bottom - cv.height / 2, innerHeight - cv.height + S * 8 - 4); };   // the crown itself stays on the screen
   const place = v => { y = Math.max(lo, Math.min(hi, v)); cv.style.top = Math.round(y) + 'px';
     const n = Math.round((1 - (y - lo) / Math.max(1, hi - lo)) * N); crown.set(n); cv.setAttribute('aria-valuenow', n); };
   bounds(); place(hi);
@@ -52,7 +52,7 @@
   cv.addEventListener('keydown', e => { if (e.key === 'ArrowUp') place(y - (hi - lo) / N); if (e.key === 'ArrowDown') place(y + (hi - lo) / N); if (e.key === 'Enter') share(); });
   /* the code: this page's own #k= kingdom if it came with one, else the kingdom kept on this phone by the app */
   async function share() {
-    const app = location.origin + location.pathname.replace(/crown\.html$/, '');
+    const app = location.origin + location.pathname.replace(/crown(\.html)?$/, '');
     let link = /^#k=[A-Za-z0-9_-]+$/.test(location.hash) ? app + location.hash : null;
     if (!link) { try { const st = JSON.parse(localStorage.getItem('inkling.state') || 'null');
       if (st && Array.isArray(st.tasks) && st.tasks.some(t => !t.gone)) { const rows = st.tasks.filter(t => !t.gone);

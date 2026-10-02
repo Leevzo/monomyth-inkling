@@ -41,15 +41,15 @@
     canvas.style.imageRendering = 'pixelated';
     const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = false;
     /* the heart: the empty middle the bars stand round */
-    const cy = (H - 1) / 2, cx = (W - 1) / 2;
-    const heart = { r0: Math.round(cy) - 2, c0: Math.round(cx) - 1, rows: 5, cols: 3 };
+    const hr = Array.isArray(data.heart) ? data.heart : [Math.round((H - 1) / 2) - 2, Math.round((W - 1) / 2) - 1];   // the hole in the pattern (crown.json)
+    const heart = { r0: hr[0], c0: hr[1], rows: 5, cols: 3 }, cy = heart.r0 + 2, cx = heart.c0 + 1;   // the gems grow from its middle
     const gems = data.cells.map(([r, c, hex]) => {
       const dy = r - cy, dx = c - cx, ang = (Math.atan2(-dx, -dy) + Math.PI * 2) % (Math.PI * 2);   // counter-clockwise from the top
       return { r, c, base: Math.max(0, KNOBS.cycle.indexOf(hex.toUpperCase())), hex, d: Math.hypot(dx, dy), ang, ox: 0, oy: 0, wait: 0 };
     }).sort((a, b) => a.d - b.d || a.ang - b.ang);
     const st = { count: opts.count == null ? gems.length : opts.count, shown: null, step: 0, last: null, acc: [0, 0], raf: 0, t: 0, alive: true };
     const quiet = () => KNOBS.quiet || (getComputedStyle(root.document.documentElement).getPropertyValue('--faint') || '#6e6e6e').trim();
-    function colourOf(g, lit) { return lit ? KNOBS.cycle[(g.base + st.step) % KNOBS.cycle.length] : quiet(); }
+    function colourOf(g, lit, q) { return lit ? KNOBS.cycle[(g.base + st.step) % KNOBS.cycle.length] : q; }
     function digits(n) {
       const s = String(Math.max(0, Math.floor(n))), k = s.length;
       const dot = Math.max(1, Math.floor(Math.min((heart.cols * S) / (k * 4 - 1), (heart.rows * S) / 5)));
@@ -61,7 +61,7 @@
     }
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      gems.forEach((g, i) => { ctx.fillStyle = colourOf(g, i < st.count); ctx.fillRect((PAD + g.c + g.ox) * S, (PAD + g.r + g.oy) * S, S, S); });
+      const q = quiet(); gems.forEach((g, i) => { ctx.fillStyle = colourOf(g, i < st.count, q); ctx.fillRect((PAD + g.c + g.ox) * S, (PAD + g.r + g.oy) * S, S, S); });
       digits(st.shown == null ? st.count : st.shown);
     }
     /* the canvas moved on the screen by (dx, dy) px: the gems stay behind, then walk home one click at a time */
@@ -69,7 +69,8 @@
       st.acc[0] += dx / S; st.acc[1] += dy / S;
       const mx = Math.trunc(st.acc[0]), my = Math.trunc(st.acc[1]); if (!mx && !my) return;
       st.acc[0] -= mx; st.acc[1] -= my;
-      gems.forEach(g => { g.ox = Math.max(-KNOBS.maxLag, Math.min(KNOBS.maxLag, g.ox - mx)); g.oy = Math.max(-KNOBS.maxLag, Math.min(KNOBS.maxLag, g.oy - my));
+      const ML = Math.min(KNOBS.maxLag, PAD);   // a lagging gem never leaves the canvas
+      gems.forEach(g => { g.ox = Math.max(-ML, Math.min(ML, g.ox - mx)); g.oy = Math.max(-ML, Math.min(ML, g.oy - my));
         g.wait = Math.max(g.wait, Math.round(g.d * KNOBS.lagPerPx)); });
     }
     function frame(ts) {

@@ -23,6 +23,7 @@
   }
   async function decode(s) {
     const out = await new Response(new Blob([unb64u(s)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+    if (out.byteLength > 1e6) throw new Error('too big to be a kingdom');
     return JSON.parse(new TextDecoder().decode(out));
   }
   let ORV = null;
@@ -32,8 +33,8 @@
   async function draw(link) {
     const QR = (await import('./vendor/qrcode.js')).default;
     let q = null, level = null;
-    for (const cap of [KNOBS.maxVersion, KNOBS.lastVersion]) {   // the strongest correction that stays small enough; then anything that fits
-      for (const L of KNOBS.levels) { try { const t = QR.create(link, { errorCorrectionLevel: L }); if (t.version <= cap) { q = t; level = L; break; } } catch (e) {} }
+    for (const cap of [KNOBS.maxVersion, KNOBS.lastVersion]) {   // the strongest correction that stays small enough; past that, the smallest code that fits
+      for (const L of (cap === KNOBS.lastVersion ? KNOBS.levels.slice().reverse() : KNOBS.levels)) { try { const t = QR.create(link, { errorCorrectionLevel: L }); if (t.version <= cap) { q = t; level = L; break; } } catch (e) {} }
       if (q) break; }
     if (!q) throw new Error('the kingdom is too big for one code');
     const n = q.modules.size, Z = KNOBS.quiet, total = n + Z * 2;
@@ -75,7 +76,7 @@
     const cp = word('copy', async () => { try { await navigator.clipboard.writeText(link); cp.textContent = 'copied'; } catch (e) { prompt('the link', link); } });
     word('close', () => v.remove());
     v.append(img, cap, words);
-    v.addEventListener('click', e => { if (e.target === v) v.remove(); });
+    const t0 = Date.now(); v.addEventListener('click', e => { if (e.target === v && Date.now() - t0 > 450) v.remove(); });   // the double-tap's own click never closes it
     root.document.body.appendChild(v);
     try { const d = await draw(link); img.src = d.canvas.toDataURL('image/png'); img.dataset.version = d.version; img.dataset.level = d.level; }
     catch (e) { cap.textContent = (e && e.message) || 'the code would not draw'; }

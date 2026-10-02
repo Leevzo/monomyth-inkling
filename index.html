@@ -242,20 +242,23 @@ function blank() { return { v: 1, tasks: [], one: null, n: 0 }; }
 /* #k= : a kingdom arrives INSIDE the link (share.js — the crown's double-tap; or the Mac's own code). What is after the #
    never leaves the phone. Whatever was here is set aside under inkling.archive.<time> (never deleted), the new kingdom is
    kept, and the page opens again on it. */
-function fromKingdom() { if (!/^#k=[A-Za-z0-9_-]+$/.test(location.hash)) return;
-  const code = location.hash.slice(3);
+function fromKingdom() { const m = /#k=([A-Za-z0-9_-]+)/.exec(location.hash); if (!m) return;
   history.replaceState(null, '', location.pathname + location.search);
-  INKSHARE.decode(code).then(o => {
+  if (!window.INKSHARE) return;
+  INKSHARE.decode(m[1]).then(o => {
     if (!o || o.v !== 1 || !Array.isArray(o.t)) throw new Error('not a kingdom');
-    const was = load('inkling.state', null);
-    if (was && Array.isArray(was.tasks) && was.tasks.length) store('inkling.archive.' + Date.now(), { state: was, log: load('inkling.log', []) });
-    const tasks = o.t.slice(0, 200).map((x, i) => ({ id: 't' + (i + 1).toString(36), word: String(x[0] || '').trim().split(/\s+/)[0].slice(0, 24) || 'thing',
+    const tasks = o.t.filter(Array.isArray).slice(0, 200).map((x, i) => ({ id: 't' + (i + 1).toString(36), word: String(x[0] || '').trim().split(/\s+/)[0].slice(0, 24) || 'thing',
       text: String(x[1] || '').slice(0, 600), at: x[2] && !isNaN(new Date(x[2])) ? new Date(x[2]).toISOString() : null, done: !!x[3], doneAt: x[3] ? nowIso() : null }));
-    if (o.sq && Array.isArray(o.sq.c)) store('inkling.squatch', o.sq);   // Squatch's constellation, his own sword
-    store('inkling.state', { v: 1, tasks, one: Number.isInteger(o.one) && tasks[o.one] ? tasks[o.one].id : null, n: tasks.length });
+    const sq = o.sq && Array.isArray(o.sq.c) && Array.isArray(o.sq.l) && Array.isArray(o.sq.s) ? o.sq : null;   // Squatch's constellation, his own sword
+    /* only now, with the new kingdom whole: the old one is set aside first, and if the phone will not keep it aside, nothing changes */
+    const was = load('inkling.state', null), wasSq = load('inkling.squatch', null);
+    if ((was && Array.isArray(was.tasks) && was.tasks.length) || wasSq)
+      if (!store('inkling.archive.' + Date.now(), { state: was, squatch: wasSq, log: load('inkling.log', []) })) throw new Error('this phone would not keep the old kingdom aside');
+    if (sq) store('inkling.squatch', sq);
+    ST = { v: 1, tasks, one: Number.isInteger(o.one) && tasks[o.one] ? tasks[o.one].id : null, n: tasks.length }; save();   // in memory too, so nothing writes the old one back
     const L = load('inkling.log', []); L.push({ at: nowIso(), who: 'k', what: 'a kingdom arrived', text: (o.from || 'a link') + ' · ' + tasks.length + ' things' }); store('inkling.log', L);
     setTimeout(() => location.reload(), 350);
-  }).catch(() => {});
+  }).catch(e => { try { say('(That link would not open' + (e && e.message ? ': ' + e.message : '') + '.)', true); } catch (x) {} });
 }
 fromKingdom(); window.addEventListener('hashchange', fromKingdom);   // a fresh open, or a link tapped while the app is open
 /* the kingdom as a link: the share/save carries this */
@@ -265,7 +268,7 @@ async function kingdomLink() {
   const sq = load('inkling.squatch', null), o = { v: 1, from: 'Inkling', one: one ? rows.indexOf(one) : -1, t }; if (sq) o.sq = sq;
   return location.origin + location.pathname + '#k=' + await INKSHARE.encode(o);
 }
-async function openShare() { try { await INKSHARE.show(await kingdomLink()); } catch (e) { say('(The code would not draw.)', true); } }
+async function openShare() { try { if (!window.INKSHARE) throw new Error('no share'); await INKSHARE.show(await kingdomLink()); } catch (e) { say('(The code would not draw.)', true); } }
 /* #new: a new kingdom. Whatever was here is set aside (kept under orv.archive.<time>, never deleted). */
 if (location.hash === '#new') {
   const was = load('inkling.state', null);
@@ -310,7 +313,7 @@ function inkOf(word) {
   if (document.fonts && document.fonts.check && !document.fonts.check("bold 17px 'Dogica'")) return r;   // not cached until the face is in
   INK.set(word, r); return r;
 }
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { INK.clear(); try { render(); } catch (e) {} });
+if (document.fonts && document.fonts.load) document.fonts.load("bold 17px 'Dogica'").then(() => { INK.clear(); try { render(); } catch (e) {} }).catch(() => {});
 function rainbow(el, text) { el.textContent = ''; Array.from(text).forEach((ch, i) => { const s = document.createElement('span'); s.textContent = ch; s.style.color = K.wheel[i % K.wheel.length]; el.appendChild(s); }); }
 let SEL = null;
 function render() {
@@ -543,6 +546,7 @@ let BUSY = false;
 let FIRST = !load('inkling.log', []).some(e => e.who === 'k' && e.what === 'said');
 async function speak(raw) {
   const words = String(raw || '').trim(); if (!words || BUSY) return;
+  const km = /#k=[A-Za-z0-9_-]+/.exec(words); if (km) { $('line').value = ''; location.hash = km[0]; return; }   // a kingdom link pasted here: the Home Screen app takes it in
   $('line').value = '';
   if (looksLikeKey(words)) { setOpen(); $('setKey').value = words.replace(/\s+/g, ''); grow($('setKey')); return setTest(); }
   log({ who: 'k', what: 'said', text: words });               // his words first, verbatim, always
@@ -798,7 +802,7 @@ let MODE = 'talk';
      follow with their clicky lag. Double-tap: the share/save (share.js). The word comes back only if the crown cannot load. */
   D.innerHTML = '<span id="star" class="crowned" aria-label="the crown: drag to move the divide, double-tap for your kingdom as a code"><canvas id="crown"></canvas></span>';
   const STAR = $('star');
-  CROWN.load('./crown.json').then(data => { window._crown = CROWN.make($('crown'), data, { scale: 5, pad: 3, count: 0 }); render(); })
+  (window.CROWN ? CROWN.load('./crown.json') : Promise.reject(new Error('no crown'))).then(data => { window._crown = CROWN.make($('crown'), data, { scale: 5, pad: 3, count: 0 }); render(); })
     .catch(() => { STAR.classList.remove('crowned'); STAR.textContent = 'INKLING'; });
   let dark = 0;
   const light = () => { clearTimeout(dark); STAR.classList.add('lit'); };
@@ -814,7 +818,7 @@ let MODE = 'talk';
   const setMT = (v, keep) => { const M = $('main'), room = M.getBoundingClientRect().bottom - (M.getBoundingClientRect().top - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mt')) || 0));
     v = Math.max(0, Math.min(room * 0.62, v)); document.documentElement.style.setProperty('--mt', v + 'px'); if (keep) store('inkling.mt', v); };
   setMT(load('inkling.mt', 0), false);
-  STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; y0 = e.clientY; mt0 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mt')) || 0; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; STAR.setPointerCapture(e.pointerId); });
+  STAR.addEventListener('pointerdown', e => { drag = true; x0 = e.clientX; y0 = e.clientY; mt0 = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mt')) || 0; const r = M.getBoundingClientRect(); f0 = (D.getBoundingClientRect().left - r.left) / r.width; try { STAR.setPointerCapture(e.pointerId); } catch (x) {} });
   STAR.addEventListener('pointermove', e => { if (!drag) return; const r = M.getBoundingClientRect(); setD(f0 + (e.clientX - x0) / r.width, false); setMT(mt0 + 2 * (e.clientY - y0), false); });   // free moving
   STAR.addEventListener('pointerup', e => { if (!drag) return; drag = false; const r = M.getBoundingClientRect(), f = f0 + (e.clientX - x0) / r.width;
     const t = Date.now(); if (Math.abs(e.clientX - x0) < 4 && Math.abs(e.clientY - y0) < 4 && t - lastTap < 350) { lastTap = 0; openShare(); return; } lastTap = t; setD(f, true); setMT(mt0 + 2 * (e.clientY - y0), true); });   // double-tap: the share/save
@@ -941,7 +945,7 @@ const HAD = box().apiKey, HAD_D = keyDoor();
 salmonCall();
 if (!HAD || !HAD_D) { (async () => {                   // the key is gone from localStorage: is it in the spare?
   const sp = await SPARE.get(); let again = false; try { again = sessionStorage.getItem('inkling.poured') === '1'; } catch (e) {}
-  if (sp && sp[BOX] && !again) { try { Object.keys(sp).forEach(k => localStorage.setItem(k, sp[k])); sessionStorage.setItem('inkling.poured', '1'); } catch (e) { return; }
+  if (sp && sp[BOX] && !again) { try { Object.keys(sp).forEach(k => { if (localStorage.getItem(k) == null) localStorage.setItem(k, sp[k]); /* only what is missing */ }); sessionStorage.setItem('inkling.poured', '1'); } catch (e) { return; }
     location.reload(); return; }
   setOpen('Paste your key and tap test. A Groq or Gemini key is free.');
 })(); }
