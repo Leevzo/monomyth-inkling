@@ -15,4 +15,10 @@ The King's app on the phone, at https://leevzo.github.io/monomyth-inkling/ (a cl
   The mouth is his own key's own door: the page calls Anthropic straight from the phone (anthropic-dangerous-direct-browser-access),
   the key read from the shared key box (monomyth.focus.byok.v1), never sent anywhere else. A key inside a sentence becomes [a key].
   The model is chosen from the door's own list and shared with Inkling (inkling.model). The desk is only a guest's seat and the cast.
+- `ghost/` — the ghost: the same guest seat for the wide world, no Mac awake. A Cloudflare Worker that can read nothing.
+  The page seals the pack (AES-GCM) on the King's glass before it travels; the ghost stores and hands back ciphertext only;
+  the read key rides after the `#` in the guest link, which no server ever sees. Notes back are sealed the same way and open
+  only for the King's word (held hashed at the ghost, plain nowhere but the King's drawer). Seats and notes live a month past
+  their last breath. Wake it: `npx wrangler login`, `npx wrangler kv namespace create SEATS` (paste the id into
+  `ghost/wrangler.toml`), `npx wrangler deploy`. Then give the ghost's address once in Squatch's settings.
 - `squatch-desk.py` — the desk on this Mac. A guest at `/s/<token>` gets one scene, read only, and may send a note back. The king key is given only to 127.0.0.1. The store is `~/.kingdom/squatch-desk/`, not this repository.

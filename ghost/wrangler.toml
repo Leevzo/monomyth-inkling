@@ -1,0 +1,8 @@
+name = "squatch-ghost"
+main = "squatch-ghost.js"
+compatibility_date = "2026-09-01"
+
+# After: npx wrangler kv namespace create SEATS
+kv_namespaces = [
+  { binding = "SEATS", id = "PASTE_YOUR_SEATS_ID_HERE" }
+]

@@ -10,6 +10,7 @@
 <title>Squatch</title>
 <link rel="stylesheet" href="/fonts.css">
 <link rel="apple-touch-icon" href="/squatch-icon.png">
+<link rel="icon" type="image/png" href="/squatch-icon.png">
 <link rel="manifest" href="/squatch.webmanifest">
 <script>if (location.pathname.indexOf('/s/') === 0) document.documentElement.classList.add('guest');</script>
 <!--
@@ -20,7 +21,10 @@
   Every pause of the pen, every line he says, every note, goes into an append-only log.
   The mouth is his own key's own door: this page calls Anthropic straight from the phone, and the key
   never leaves the box it shares with Inkling (monomyth.focus.byok.v1). The desk never sees it.
-  The desk is only a guest's seat on the house LAN: one scene, read only, and a note back.
+  The desk is a guest's seat on the house LAN: one scene, read only, and a note back.
+  The ghost is the same seat for the wide world, with no Mac awake: a page-less desk that can read
+  nothing. Packs and notes are sealed on this glass before they travel (AES-GCM; the key rides after
+  the #, which no server ever sees). Notes back open only for the King's own word, held hashed.
   A key inside a sentence becomes [a key] before anything is written.
   Notes have no intelligence. A voice note is kept whole; it is not transcribed.
 -->
@@ -94,9 +98,9 @@
   #setLink, #setHouse { color: var(--teal); word-break: break-all; }
   #setNotes { color: var(--dim); }
   #setHouse { font-size: 12px; }
-  #key, #castcode { background: transparent; border: 0; border-bottom: 1px solid var(--line);
+  #key, #castcode, #ghost { background: transparent; border: 0; border-bottom: 1px solid var(--line);
     color: var(--ink); font: inherit; font-size: 14px; padding: 6px 0; outline: none; }
-  #key { width: 100%; }
+  #key, #ghost { width: 100%; }
   #castword { font-size: 22px; letter-spacing: 0.14em; color: var(--ink); }
   html.guest #talksec, html.guest #cig, html.guest #set, html.guest #anew, html.guest #share, html.guest #keep, html.guest #bring,
   html.guest #hold, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode { display: none !important; }
@@ -167,6 +171,7 @@
   <h2>the cigarette</h2>
   <div id="setProjects"></div>
   <input id="key" type="password" aria-label="Your key, on this phone" placeholder="Your key, on this phone" autocomplete="off" spellcheck="false">
+  <input id="ghost" aria-label="The ghost's address" placeholder="The ghost's address — https://….workers.dev (the wide-world seat)" autocomplete="off" spellcheck="false">
   <p id="setHouse"></p>
   <button type="button" id="setScene">share this scene</button>
   <button type="button" id="setFollow">share whichever scene I have open</button>
@@ -196,6 +201,8 @@
     return p;
   }
   var kingKey = '', shares = {}, noteSince = 0, guest = location.pathname.indexOf('/s/') === 0 ? location.pathname.slice(3) : '';
+  var gkey = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
+  var ghost = '', ghostShares = {}, ghostRev = -1;
   var glass = null, castCode = '', castSending = false, castReceiving = false, castRev = -1, castTimer = 0;
   var house = '', deskReady = false, wantCast = false, hearing = false;
   function save() {
@@ -413,6 +420,108 @@
   var KEYISH = /(gsk_|sk-ant-|sk-or-|xai-|AIza|sk-)[\w-]{16,}/g;
   function scrub(s) { return String(s == null ? '' : s).replace(KEYISH, '[a key]'); }
 
+  /* the ghost's seal: AES-GCM, the key grown from the secret, all of it on this glass.
+     What travels and what the ghost keeps is ciphertext; the secret rides after the #,
+     which no server ever sees. gSeal returns base64(iv + ciphertext); gOpen returns the object or null. */
+  function gSha(s) { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s))).then(function (b) { return new Uint8Array(b); }); }
+  function gB64(buf) { var s = '', a = new Uint8Array(buf); a.forEach(function (b) { s += String.fromCharCode(b); }); return btoa(s); }
+  function gUn64(s) { var t = atob(s), b = new Uint8Array(t.length), i; for (i = 0; i < t.length; i++) b[i] = t.charCodeAt(i); return b; }
+  function gSeal(secret, obj) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return gSha(secret).then(function (k) { return crypto.subtle.importKey('raw', k, 'AES-GCM', false, ['encrypt']); })
+      .then(function (key) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(JSON.stringify(obj))); })
+      .then(function (ct) { var both = new Uint8Array(12 + ct.byteLength); both.set(iv); both.set(new Uint8Array(ct), 12); return gB64(both); });
+  }
+  function gOpen(secret, b64) {
+    return gSha(secret).then(function (k) { return crypto.subtle.importKey('raw', k, 'AES-GCM', false, ['decrypt']); })
+      .then(function (key) { var b = gUn64(b64); return crypto.subtle.decrypt({ name: 'AES-GCM', iv: b.slice(0, 12) }, key, b.slice(12)); })
+      .then(function (pt) { return JSON.parse(new TextDecoder().decode(pt)); })
+      .catch(function () { return null; });
+  }
+  function gRand(p) {
+    var b = crypto.getRandomValues(new Uint8Array(18)), s = '', i;
+    for (i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return p + btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function ghostSave() {
+    try {
+      localStorage.setItem('squatch.room.ghost', ghost);
+      localStorage.setItem('squatch.room.ghostshares', JSON.stringify(ghostShares));
+    } catch (e) {}
+  }
+  /* a seat in the wide world: seal the pack on this glass, hand the ghost only ciphertext.
+     The seat's id is public to the ghost; the read key is a separate secret that rides
+     after the #, which no server ever sees. The king's word stays in this drawer. */
+  function ghostShare(mode) {
+    if (mode === 'scene' && !state.scene) { $('setLink').textContent = 'Select a scene in the story first.'; return; }
+    var pack = R.scenePack(state.script, state.title, state.scene);
+    if (!pack.scene) { $('setLink').textContent = 'The page has no scene yet.'; return; }
+    var rid = gRand('sq1.'), rkey = gRand('sq1.'), king = gRand('sqk.');
+    $('setLink').textContent = 'The ghost is being handed the scene…';
+    gSeal(rkey, pack).then(function (data) {
+      return fetch(ghost + '/api/seat', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: rid, king: king, data: data }) })
+        .then(function (r) { return r.json().then(function (o) { return { ok: r.ok, o: o }; }); });
+    }).then(function (x) {
+      if (!x.ok || !x.o || !x.o.rev) { $('setLink').textContent = (x.o && x.o.error) || 'The ghost did not take it.'; return; }
+      ghostShares[rid] = { rkey: rkey, king: king, mode: mode === 'follow' ? 'follow' : pack.scene.key, project: state.id, rev: x.o.rev, since: 0 };
+      ghostSave();
+      $('setLink').textContent = ghost + '/s/' + rid + '#' + rkey;
+      state.log.push({ t: now(), kind: 'share', chars: (pack.scene.text || '').length, scene: pack.scene.key, mode: mode, where: 'ghost' });
+      save();
+    }).catch(function () { $('setLink').textContent = 'The ghost did not answer.'; });
+  }
+  /* follow seats are resealed and handed again on every save; a seat the ghost forgot is let go */
+  function ghostPublish() {
+    Object.keys(ghostShares).forEach(function (rid) {
+      var rec = ghostShares[rid];
+      if (!rec || rec.project !== state.id) return;
+      var pack = R.scenePack(state.script, state.title, rec.mode === 'follow' ? state.scene : rec.mode);
+      if (!pack.scene) return;
+      gSeal(rec.rkey, pack).then(function (data) {
+        return fetch(ghost + '/api/seat', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: rid, king: rec.king, data: data, rev: rec.rev }) });
+      }).then(function (r) {
+        if (r.status === 404) { delete ghostShares[rid]; ghostSave(); return null; }
+        if (!r.ok) return null;
+        return r.json().then(function (o) { if (o && o.rev) rec.rev = o.rev; });
+      }).catch(function () {});
+    });
+  }
+  /* notes the guests sealed for this seat; only the king's word opens them, and only on this glass */
+  function ghostNotes() {
+    if (!ghost) return;
+    Object.keys(ghostShares).forEach(function (rid) {
+      var rec = ghostShares[rid];
+      if (!rec) return;
+      fetch(ghost + '/api/seat/notes?id=' + encodeURIComponent(rid) + '&since=' + (rec.since || 0), { headers: { 'x-squatch-king': rec.king } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (o) {
+          if (!o || !o.notes || !o.notes.length) return null;
+          var got = o.notes.slice();
+          return got.reduce(function (p, n) {
+            return p.then(function () {
+              return gOpen(rec.rkey, n.data).then(function (plain) {
+                if (!plain || !plain.text) return;
+                rec.since = Math.max(rec.since || 0, n.n);
+                var key = plain.scene || '*';
+                if (!state.notes[key]) state.notes[key] = [];
+                state.notes[key].push({ id: 'gh' + n.n + rid.slice(-4), at: n.at, text: (plain.name || 'a guest') + ': ' + plain.text });
+                state.log.push({ t: now(), kind: 'note', scene: key, text: plain.text, who: plain.name || 'a guest' });
+              });
+            });
+          }, Promise.resolve()).then(function () {
+            if (!got.length) return;
+            var last = got[got.length - 1];
+            $('kept').textContent = 'A note came through the ghost.';
+            var box = $('setNotes');
+            if (box) box.textContent = 'Notes from the wide world land here.';
+            save();
+          });
+        }).catch(function () {});
+    });
+  }
+
   /* the mouth: his key, Anthropic's door, straight from this phone. One voice with the desk — same seed,
      same page-on-the-desk line; the model is chosen from the door's own list and shared with Inkling. */
   var MOUTH = 'https://api.anthropic.com/v1/messages';
@@ -618,6 +727,7 @@
   });
 
   function publish() {
+    if (ghost && !guest) ghostPublish();
     if (!kingKey || guest) return;
     Object.keys(shares).forEach(function (token) {
       var rec = shares[token];
@@ -631,7 +741,8 @@
     });
   }
   function share(mode) {
-    if (!kingKey) { $('setLink').textContent = 'This glass is not the desk. Open Squatch on the Mac.'; return; }
+    if (ghost) return ghostShare(mode);
+    if (!kingKey) { $('setLink').textContent = 'No seat is awake: give the ghost its address below, or open Squatch at the desk on the Mac.'; return; }
     if (mode === 'scene' && !state.scene) { $('setLink').textContent = 'Select a scene in the story first.'; return; }
     var pack = R.scenePack(state.script, state.title, mode === 'follow' ? state.scene : state.scene);
     if (!pack.scene) { $('setLink').textContent = 'The page has no scene yet.'; return; }
@@ -695,7 +806,26 @@
     if ($('title').value !== state.title) $('title').value = state.title;
     $('title').readOnly = true;
   }
+  /* a ghost guest: the seat's ciphertext is opened on this glass with the key that rode after the # */
+  function ghostPull() {
+    fetch('/api/seat?id=' + encodeURIComponent(guest)).then(function (r) { return r.ok ? r.json() : null; }).then(function (o) {
+      if (!o || !o.data || o.rev === ghostRev) return;
+      ghostRev = o.rev;
+      gOpen(gkey, o.data).then(function (pack) { if (pack) applyPack(pack); });
+    }).catch(function () {});
+  }
+  function ghostSendBack(name, text, input) {
+    gSeal(gkey, { name: name, text: text, scene: state.scene || '' }).then(function (data) {
+      return fetch('/api/seat/note', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: guest, data: data }) });
+    }).then(function (r) {
+      if (!r.ok) { $('kept').textContent = 'The note did not go.'; return; }
+      input.value = '';
+      $('kept').textContent = 'Sealed and sent back to him.';
+    }).catch(function () { $('kept').textContent = 'The note did not go.'; });
+  }
   function pull() {
+    if (gkey) return ghostPull();
     fetch('/api/s/' + guest).then(function (r) { return r.ok ? r.json() : null; }).then(function (o) {
       if (o && o.pack) applyPack(o.pack);
     }).catch(function () {});
@@ -710,6 +840,7 @@
     }
     var text = input.value.trim();
     if (!text) return;
+    if (gkey) return ghostSendBack(name, text, input);
     fetch('/api/s/' + guest + '/note', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text, name: name }) })
       .then(function (r) {
@@ -895,6 +1026,10 @@
     shelf = loadShelf();
     state = currentOf(shelf);
     try { shares = JSON.parse(localStorage.getItem('squatch.room.shares') || '{}') || {}; } catch (e) { shares = {}; }
+    try { ghost = (localStorage.getItem('squatch.room.ghost') || '').trim().replace(/\/+$/, ''); } catch (e) {}
+    try { ghostShares = JSON.parse(localStorage.getItem('squatch.room.ghostshares') || '{}') || {}; } catch (e) { ghostShares = {}; }
+    if (ghost) $('ghost').value = ghost;
+    setInterval(ghostNotes, 2000);
     Object.keys(shares).forEach(function (token) {
       if (typeof shares[token] === 'string') shares[token] = { project: shelf.projects[0].id, mode: shares[token] };
     });
@@ -944,6 +1079,13 @@
       } catch (e) {}
       $('line').placeholder = v ? 'Say it to Squatch.' : "The council's mouth is shut. Your words are kept.";
       $('kept').textContent = v ? 'The key is in the box this phone shares with Inkling.' : 'No key on this phone.';
+    });
+    $('ghost').addEventListener('change', function () {
+      var v = $('ghost').value.trim().replace(/\/+$/, '');
+      if (v && v.indexOf('http') !== 0) v = 'https://' + v;
+      ghost = v;
+      try { localStorage.setItem('squatch.room.ghost', ghost); } catch (e) {}
+      $('kept').textContent = ghost ? 'The ghost has an address.' : 'The ghost was let go.';
     });
     $('cast').addEventListener('click', onCast);
     $('castcode').addEventListener('keydown', function (e) {
