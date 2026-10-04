@@ -352,6 +352,28 @@ class Desk(BaseHTTPRequestHandler):
             code, obj = mouth(key, messages, script)
             self._json(code, obj)
             return
+        if path == "/api/ear":
+            if not self._king():
+                self._json(403, {"error": "not the desk"})
+                return
+            n = int(self.headers.get("Content-Length") or 0)
+            if n <= 0 or n > 30_000_000:
+                self._json(413, {"error": "too big"})
+                return
+            body = self.rfile.read(n)
+            req = urllib.request.Request("http://127.0.0.1:5214/inference", data=body, method="POST",
+                                         headers={"Content-Type": self.headers.get("Content-Type") or "multipart/form-data"})
+            try:
+                with urllib.request.urlopen(req, timeout=180) as resp:
+                    data = json.loads(resp.read().decode())
+                text = (data.get("text") or "").strip()
+                if not text:
+                    self._json(502, {"error": "the ear heard nothing"})
+                    return
+                self._json(200, {"text": text})
+            except Exception:
+                self._json(502, {"error": "no ear on this machine"})
+            return
         if path == "/api/share":
             if not self._king():
                 self._json(403, {"error": "not the desk"})

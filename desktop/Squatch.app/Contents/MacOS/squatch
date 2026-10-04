@@ -1,0 +1,9 @@
+#!/bin/bash
+# Squatch — the writing inkling. Opens the room on the King's glass,
+# and wakes the house desk (the guest seat on the LAN) if it sleeps.
+DESK="$HOME/Code/monomyth-inkling-pages/squatch-desk.py"
+if [ -f "$DESK" ] && ! lsof -i :5243 -sTCP:LISTEN >/dev/null 2>&1; then
+  nohup python3 "$DESK" >/dev/null 2>&1 &
+  disown 2>/dev/null
+fi
+open "https://leevzo.github.io/monomyth-inkling/squatch.html"

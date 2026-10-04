@@ -62,6 +62,7 @@
     color: var(--ink); font: inherit; font-size: 14px; padding: 6px 0; outline: none; }
   #hold.hot { color: #FF3D12; }
   #kept { color: var(--faint); font-size: 12px; min-height: 1.2em; padding: 4px 0 0; }
+  #kept button { font-family: inherit; font-size: 12px; color: var(--teal); background: transparent; border: 0; padding: 0; cursor: pointer; }
   #talk { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
   .zip { color: var(--faint); font-size: 13px; padding: 8px 0; }
   .chunk { color: var(--dim); font-size: 13px; padding: 3px 0 3px 10px; }
@@ -103,7 +104,7 @@
   #key, #ghost { width: 100%; }
   #castword { font-size: 22px; letter-spacing: 0.14em; color: var(--ink); }
   html.guest #talksec, html.guest #cig, html.guest #set, html.guest #anew, html.guest #share, html.guest #keep, html.guest #bring,
-  html.guest #hold, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode { display: none !important; }
+  html.guest #hold, html.guest #tape, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode { display: none !important; }
   html.guest #switch button[data-screen="talk"] { display: none; }
   @media (max-width: 700px) {
     #note { flex-wrap: wrap; }
@@ -136,6 +137,7 @@
   <button type="button" id="bring">open</button>
   <canvas id="cig" role="button" tabindex="0" aria-label="settings, the cigarette"></canvas>
   <input id="file" type="file" accept="application/json,.json,.inkling" hidden>
+  <input id="voicetape" type="file" accept="audio/*,.m4a,.mp3,.webm,.wav,.ogg,.txt,.fountain,.md" hidden>
 </header>
 <nav id="switch">
   <button type="button" data-screen="script" class="on">script</button>
@@ -149,6 +151,7 @@
       <input id="noteline" aria-label="A note, kept for you, with no one else reading it" placeholder="A note for you. Tap a scene to pin it." autocomplete="off">
       <button type="button" id="sendnote">to me</button>
       <button type="button" id="hold">hold</button>
+      <button type="button" id="tape">tape</button>
     </div>
     <div id="kept"></div>
   </section>
@@ -311,9 +314,23 @@
       if (k === '*') return false;
       return !parsed.scenes.some(function (sc) { return R.sceneKey(sc) === k; });
     });
-    var bits = notes.map(function (n) { return n.voice ? 'a voice note, kept' : n.text; });
-    if (orphans.length) bits.push(orphans.length + ' note' + (orphans.length === 1 ? '' : 's') + ' kept from a scene whose heading changed');
-    $('kept').textContent = bits.join('  ·  ');
+    var keptEl = $('kept');
+    keptEl.textContent = '';
+    notes.forEach(function (n, i) {
+      var el;
+      if (n.voice) {
+        el = document.createElement('button');
+        el.type = 'button';
+        el.textContent = '▶ ' + (n.name || 'a voice note');
+        el.addEventListener('click', function () { playVoice(n.voice, n.name); });
+      } else {
+        el = document.createElement('span');
+        el.textContent = n.text;
+      }
+      keptEl.appendChild(el);
+      if (i < notes.length - 1) keptEl.appendChild(document.createTextNode('  ·  '));
+    });
+    if (orphans.length) keptEl.appendChild(document.createTextNode((notes.length ? '  ·  ' : '') + orphans.length + ' note' + (orphans.length === 1 ? '' : 's') + ' kept from a scene whose heading changed'));
   }
 
   function pageScript() { return glass ? glass.script : state.script; }
@@ -667,6 +684,155 @@
   $('hold').addEventListener('pointerup', function () { wantHear = false; stopRec(); });
   $('hold').addEventListener('pointercancel', function () { wantHear = false; stopRec(); });
   $('hold').addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  function getVoice(id) {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var q = db.transaction('voice', 'readonly').objectStore('voice').get(id);
+        q.onsuccess = function () { res(q.result || null); };
+        q.onerror = function () { rej(q.error); };
+      });
+    });
+  }
+  function playVoice(id, name) {
+    getVoice(id).then(function (blob) {
+      if (!blob) { $('kept').textContent = 'That voice note is gone from this phone.'; return; }
+      var a = new Audio(URL.createObjectURL(blob));
+      a.play().catch(function () {});
+      $('kept').textContent = 'Playing: ' + (name || 'a voice note') + '.';
+    }).catch(function () { $('kept').textContent = 'That voice note would not play.'; });
+  }
+
+  /* the decide slot (JEV-INSTALL §4, the house shape): state and typed questions in, typed answers out, never prose.
+     The voiceless door's key sits in its own box (monomyth.focus.decide.v1), the one Orv's glass shares.
+     With no key the slot answers 'none' and the rules stand. It never throws. */
+  var DECIDE_BOX = 'monomyth.focus.decide.v1';
+  function decideLoad() { try { return JSON.parse(localStorage.getItem(DECIDE_BOX) || '{}') || {}; } catch (e) { return {}; } }
+  function decide(state, questions) {
+    var t0 = Date.now(), slot = decideLoad();
+    if (!slot.key && !slot.url) return Promise.resolve({ answers: {}, door: 'none', ms: 0, synthetic: false });
+    var base = slot.url ? String(slot.url).split('#')[0] : 'https://ai-gateway.vercel.sh/typesafe';
+    var headers = { 'content-type': 'application/json' };
+    if (slot.key) headers.authorization = 'Bearer ' + slot.key;
+    if (slot.pass) headers['x-relay-pass'] = slot.pass;
+    return fetch(base + '/v1/systemone', { method: 'POST', headers: headers,
+      body: JSON.stringify({ model: slot.model || 'jev', state: state, questions: questions }) })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        if (!o || !o.answers) return { answers: {}, door: 'none', ms: Date.now() - t0, synthetic: false };
+        return { answers: o.answers, door: slot.url ? 'relay' : 'vercel', model: o.model || slot.model || 'jev', ms: Date.now() - t0, synthetic: false };
+      })
+      .catch(function () { return { answers: {}, door: 'none', ms: Date.now() - t0, synthetic: false }; });
+  }
+  /* the wrapper's law: a name is a speaker only if the rules are sure or the voiceless door is.
+     One noul per doubtful name, all asked in one call; names the door doubts are struck from the cues
+     (their line stays, as action) and from the cast line. The model never writes a word of the script. */
+  function doorNames(text) {
+    var built = R.construct(text), slot = decideLoad();
+    if ((!slot.key && !slot.url) || !built.people.length) return Promise.resolve(null);
+    var candidates = built.people.filter(function (n) { return ['SQUATCH', 'HUMAN', 'YOU'].indexOf(n) < 0; });
+    if (!candidates.length) return Promise.resolve(null);
+    var questions = {};
+    candidates.forEach(function (n) {
+      questions['n_' + n] = { type: 'noul',
+        instructions: 'In this spoken screenplay tape, is "' + n + '" a character whose name cues their speech (the name said alone, then their line)?',
+        criteria: { 'true': 'the name cues a character who speaks', 'false': 'an action beat, an adjective, or the ear’s mishearing' } };
+    });
+    return decide({ tape: String(text).slice(0, 8000) }, questions).then(function (r) {
+      var struck = candidates.filter(function (n) {
+        var a = r.answers['n_' + n];
+        return !(a && typeof a.noul === 'number' && a.noul >= 0.6);
+      });
+      if (!struck.length || r.door === 'none') return null;
+      var script = built.script.split('\n').filter(function (l) {
+        return struck.indexOf(l.trim()) < 0;
+      }).map(function (l) {
+        if (!/^CAST\b/i.test(l)) return l;
+        var names = l.replace(/^CAST:?\s*/i, '').split(',').map(function (x) { return x.trim(); })
+          .filter(function (x) { return x && struck.indexOf(x.toUpperCase()) < 0; });
+        return names.length ? 'CAST ' + names.join(', ') : '';
+      }).join('\n').replace(/\n{3,}/g, '\n\n');
+      return { script: script, struck: struck, door: r.door, model: r.model, ms: r.ms };
+    });
+  }
+
+  /* a tape in: audio is kept whole and may be heard through an ear; a text file is heard straight onto the page. */
+  function boxGroq() {
+    try {
+      var b = JSON.parse(localStorage.getItem('monomyth.focus.byok.v1') || '{}');
+      if (b && typeof b.apiKey === 'string' && b.apiKey.indexOf('gsk_') === 0 && (!b.door || b.door === 'groq')) return b.apiKey;
+    } catch (e) {}
+    return '';
+  }
+  function hearTape(id, blob, name) {
+    var done = function (text, door) {
+      var wrapped = doorNames(text);
+      var finish = function (fix) {
+        if (fix) {
+          R.applyScript(state, fix.script, now());
+          $('page').value = fix.script;
+          state.log.push({ t: now(), kind: 'wrapped', struck: fix.struck, door: fix.door, model: fix.model, ms: fix.ms });
+          $('kept').textContent = 'The voiceless door struck ' + fix.struck.join(', ') + ' from the cues (' + fix.ms + ' ms). The page was rewrapped.';
+        }
+        var key = state.scene || '*';
+        if (!state.notes[key]) state.notes[key] = [];
+        state.notes[key].push({ id: 'h' + id, at: now(), text: 'heard (' + door + '): ' + text.slice(0, 600) });
+        state.log.push({ t: now(), kind: 'heard', voice: id, door: door, chars: text.length });
+        save(); paint();
+      };
+      if (wrapped) wrapped.then(finish); else finish(null);
+    };
+    if (kingKey) {
+      var fd = new FormData();
+      fd.append('file', blob, 'tape');
+      fetch('/api/ear', { method: 'POST', headers: { 'X-Squatch-Desk': kingKey }, body: fd })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (o) {
+          if (o && o.text) done(o.text, 'the desk ear');
+          else $('kept').textContent = 'The ear heard nothing; the tape is kept whole.';
+        }).catch(function () { $('kept').textContent = 'The ear did not answer; the tape is kept whole.'; });
+      return;
+    }
+    var g = boxGroq();
+    if (g) {
+      var fd2 = new FormData();
+      fd2.append('file', blob, 'tape');
+      fd2.append('model', 'whisper-large-v3-turbo');
+      fd2.append('response_format', 'json');
+      fetch('https://api.groq.com/openai/v1/audio/transcriptions', { method: 'POST', headers: { authorization: 'Bearer ' + g }, body: fd2 })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (o) {
+          if (o && o.text) done(o.text, 'the free door');
+          else $('kept').textContent = 'The free door did not hear it; the tape is kept whole.';
+        }).catch(function () { $('kept').textContent = 'The free door did not hear it; the tape is kept whole.'; });
+      return;
+    }
+    $('kept').textContent = 'Kept whole: ' + (name || 'a tape') + '. No ear on this glass — at the desk, or a gsk_ key in the box, hears tapes.';
+  }
+  function keepTape(f) {
+    var id = 'u' + now();
+    putVoice(id, f).then(function () {
+      var item = R.note(state, state.scene || '*', '', now(), id);
+      if (item) item.name = f.name;
+      if (state.log.length) { state.log[state.log.length - 1].bytes = f.size; state.log[state.log.length - 1].name = f.name; }
+      save(); paint();
+      hearTape(id, f, f.name);
+    }).catch(function () { $('kept').textContent = 'The tape could not be kept.'; });
+  }
+  $('tape').addEventListener('click', function () { if (!guest && !glass) $('voicetape').click(); });
+  $('voicetape').addEventListener('change', function () {
+    var f = $('voicetape').files && $('voicetape').files[0]; $('voicetape').value = ''; if (!f || guest || glass) return;
+    if (/^audio\//.test(f.type) || /\.(m4a|mp3|webm|wav|ogg)$/i.test(f.name)) return keepTape(f);
+    var reader = new FileReader();
+    reader.onload = function () {
+      var built = R.construct(String(reader.result));
+      R.applyScript(state, built.script, now());
+      state.log.push({ t: now(), kind: 'tape', name: f.name, chars: built.script.length });
+      save(); paint();
+      $('page').value = state.script;
+      $('kept').textContent = 'The tape was heard onto the page: ' + (built.people.join(', ') || 'no one yet') + ' stepped in.';
+    };
+    reader.readAsText(f);
+  });
 
   $('share').addEventListener('click', function () {
     var text = state.script;

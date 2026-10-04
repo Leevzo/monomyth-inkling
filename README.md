@@ -15,6 +15,11 @@ The King's app on the phone, at https://leevzo.github.io/monomyth-inkling/ (a cl
   The mouth is his own key's own door: the page calls Anthropic straight from the phone (anthropic-dangerous-direct-browser-access),
   the key read from the shared key box (monomyth.focus.byok.v1), never sent anywhere else. A key inside a sentence becomes [a key].
   The model is chosen from the door's own list and shared with Inkling (inkling.model). The desk is only a guest's seat and the cast.
+  Tapes: the tape button takes a voice file (kept whole, playable, heard through the desk's ear on the LAN or a gsk_ key
+  in the box) or a text file (heard straight onto the page). A heard tape is wrapped by rules, then by the voiceless door:
+  Jev is asked one noul per doubtful name (its own box, monomyth.focus.decide.v1, shared with Orv's glass) and false
+  names are struck from the cues — their words stay as action. The model never writes a word of the script.
+  desktop/Squatch.app — the room as a Mac app: his true icon, the desk woken if asleep.
 - `ghost/` — the ghost: the same guest seat for the wide world, no Mac awake. A Cloudflare Worker that can read nothing.
   The page seals the pack (AES-GCM) on the King's glass before it travels; the ghost stores and hands back ciphertext only;
   the read key rides after the `#` in the guest link, which no server ever sees. Notes back are sealed the same way and open
