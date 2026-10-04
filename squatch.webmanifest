@@ -4,8 +4,8 @@
  "id": "./squatch.html",
  "start_url": "./squatch.html",
  "display": "standalone",
- "background_color": "#17232E",
- "theme_color": "#17232E",
+ "background_color": "#F2EAD8",
+ "theme_color": "#F2EAD8",
  "icons": [
   {
    "src": "squatch-icon.png",

@@ -29,29 +29,30 @@
   Notes have no intelligence. A voice note is kept whole; it is not transcribed.
 -->
 <style>
-  /* the desk wears WriterDuet's two lights now (the King's notes, 2026-10-01), on Scriptorium's
-     light grid like the old room: slate desk both ways, the page white or slate, the ink following.
-     The highlight is the door blue, .34 at rest; colour stays on content, never chrome. */
+  /* vellum's own two lights (arcadeSkin, vellum/app/index.html 3675), which Scriptorium wears:
+     warm parchment day, warm dark night, gold the one accent. The grid stays the old
+     Scriptorium's texture — a light grid, 26px squares, never on the panels. */
   @font-face { font-family: 'DarkByte'; src: url('fonts/DarkByte.ttf') format('truetype'); font-display: block; }
   @font-face { font-family: 'AqBold'; src: url('fonts/aquarius-bold.ttf') format('truetype'); font-display: block; }
   @font-face { font-family: 'AqMono'; src: url('fonts/aquarius-mono.ttf') format('truetype'); font-display: block; }
   @font-face { font-family: 'Scream'; src: url('fonts/scream.ttf') format('truetype'); font-display: block; }
-  :root, html[data-theme="dark"] {
-    --bg: #17232E; --paper: #1F2E3B; --ink: #E1E8ED; --dim: #8899A6; --faint: #5B6D7C;
-    --line: #2C3D4C; --edge: #E1E8ED;
-    --teal: #4A9FD8; --teal-dim: #2F6F9E; --ghost: rgba(74, 159, 216, .34);
-    --hover: rgba(138, 155, 168, .10); --wash: rgba(74, 159, 216, .09);
-    --grid: rgba(136, 153, 166, .09);
-    --gold: #FFA512; --red: #FF3D12;
+  :root, html[data-theme="light"] {
+    --bg: #F2EAD8; --paper: #FBF6EA; --ink: #141414; --dim: #3A352E; --faint: #8A8279;
+    --line: #C9C1B4; --edge: #141414;
+    --teal: #9E5A00; --teal-dim: #B4700A; --ghost: rgba(158, 90, 0, .26);
+    --hover: rgba(20, 20, 20, .06); --wash: rgba(158, 90, 0, .10);
+    --grid: rgba(20, 20, 20, .055);
+    --gold: #B8862F; --red: #B4211F;
     --side-w: 280px;
     --pad: 14px;
   }
-  html[data-theme="light"] {
-    --bg: #E1E8ED; --paper: #FFFFFF; --ink: #14171A; --dim: #657786; --faint: #AAB8C2;
-    --line: #CCD6DD; --edge: #14171A;
-    --teal: #1F6FAE; --teal-dim: #4A9FD8; --ghost: rgba(31, 111, 174, .28);
-    --hover: rgba(101, 119, 134, .12); --wash: rgba(31, 111, 174, .08);
-    --grid: rgba(101, 119, 134, .16);
+  html[data-theme="dark"] {
+    --bg: #141414; --paper: #1F1D1A; --ink: #F2EAD8; --dim: #C9C1B4; --faint: #8A8279;
+    --line: #33302B; --edge: #F2EAD8;
+    --teal: #FFA512; --teal-dim: #BF7B0D; --ghost: rgba(255, 165, 18, .26);
+    --hover: rgba(242, 234, 216, .07); --wash: rgba(255, 165, 18, .10);
+    --grid: rgba(242, 234, 216, .05);
+    --gold: #FFA512; --red: #FF3D12;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { background: var(--bg); }
@@ -133,6 +134,8 @@
      the same corner he takes in the Inkling app. The drop into that app is this seat. */
   #sprite { position: fixed; z-index: 5; right: 9px; bottom: 5px; image-rendering: pixelated;
     background: transparent; pointer-events: none; }
+  /* in the warm dark his black fur sinks into the desk — the moon he keeps on the icon rises behind him */
+  html[data-theme="dark"] #sprite { background: radial-gradient(ellipse 62% 46% at 50% 54%, #FBF6EA 94%, transparent 99%); }
   #cig { image-rendering: pixelated; cursor: pointer; background: transparent; flex: 0 0 auto; }
   #set { position: fixed; z-index: 30; top: 64px; right: 12px; width: min(320px, calc(100vw - 24px));
     max-height: calc(100vh - 80px); overflow: auto;
@@ -317,17 +320,27 @@
   function now() { return Date.now(); }
 
   function smallGlass() { return window.matchMedia('(max-width: 979px)').matches; }
-  /* the wheel's word-colours were chosen to read on the grey; on the white page they pull
-     deeper, same hue, so no name ever washes out in the light. */
-  function deepen(hex) {
+  /* the wheel's word-colours were chosen to read on the grey; on the parchment they take
+     vellum's own soul law — same hue, 55% saturation, 36% lightness — so no name washes out
+     in the day (vellum/app soulColor). */
+  function hueOf(hex) {
     var n = parseInt(String(hex).slice(1), 16) || 0;
-    var r = (n >> 16 & 255), g = (n >> 8 & 255), b = (n & 255);
-    r = Math.round(r * .55); g = Math.round(g * .62); b = Math.round(b * .55);
-    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    var r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min, h = 0;
+    if (d) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60; if (h < 0) h += 360;
+    }
+    return Math.round(h);
+  }
+  function lampHue(c) {
+    return document.documentElement.getAttribute('data-theme') === 'light'
+      ? 'hsl(' + hueOf(c) + ' 60% 31%)' : c;
   }
   function inkOf(name) {
-    var c = R.textOf(name);
-    return document.documentElement.getAttribute('data-theme') === 'light' ? deepen(c) : c;
+    return lampHue(R.textOf(name));
   }
   function show(name) {
     screen = name;
@@ -1283,7 +1296,7 @@
       setInterval(function () {
         if (dragging || !word) return;
         ci = (ci + 1) % R.WHEEL.length;
-        word.style.color = R.WHEEL[ci];
+        word.style.color = lampHue(R.WHEEL[ci]);
       }, 900);
     }
     if (!sp) return;
@@ -1524,7 +1537,8 @@
       applyLamp(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
       paint();
     });
-    applyLamp(document.documentElement.getAttribute('data-theme') || 'dark');
+    applyLamp(document.documentElement.getAttribute('data-theme') || 'light');
+    paint();   /* the lamp just set the day; the inks must take it before the first face */
     $('ghost').addEventListener('change', function () {
       var v = $('ghost').value.trim().replace(/\/+$/, '');
       if (v && v.indexOf('http') !== 0) v = 'https://' + v;
