@@ -14,14 +14,20 @@
 <link rel="manifest" href="squatch.webmanifest?v=4">
 <script>if (location.pathname.indexOf('/s/') === 0) document.documentElement.classList.add('guest');</script>
 <!--
-  SQUATCH — the writing inkling (the King, 2026-10-03).
+  SQUATCH — the writing inkling (the King, 2026-10-03; the three screens, 2026-10-04).
   Inkling is the marketplace. This is one inkling: a script, a talk, a sky.
-  Left: the script. Middle: the talk (last turn large, earlier turns zipped; pull down).
-  Right: the constellation the page itself fills, and the story in order under it.
+  On the phone, three screens a swipe apart: the script (left), the talk (middle — the last turn
+  large, the earlier turns pull down), the sky and the story (right — the constellation the page
+  itself fills, the plot folded into its summary). On the glass: the script and the sky/story side
+  by side, the talk stays on the phone (his word). Squatch keeps the lower-right corner, always.
+  The menu comes in from the left on the phone. The cigarette opens the settings — the same scene
+  as the Inkling app's (key · coin · model · test), worn in this room's own skin.
+  A word from a guest lights a hexagon at the sky's right edge, blinking until he taps the
+  constellation; the words pop up under the ball.
   Every pause of the pen, every line he says, every note, goes into an append-only log.
   The mouth is his own key's own door: this page calls Anthropic straight from the phone, and the key
   never leaves the box it shares with Inkling (monomyth.focus.byok.v1). The desk never sees it.
-  The desk is a guest's seat on the house LAN: one scene, read only, and a note back.
+  The desk is a guest's seat on the house LAN: one scene, read only, and a word back to the King.
   The ghost is the same seat for the wide world, with no Mac awake: a page-less desk that can read
   nothing. Packs and notes are sealed on this glass before they travel (AES-GCM; the key rides after
   the #, which no server ever sees). Notes back open only for the King's own word, held hashed.
@@ -142,12 +148,24 @@
     #say button { font-size: 11px; letter-spacing: 0; }
   }
 
-  /* ——— the constellation's window: her whisper-panel's frame — paper, one ink line, radius 2 — */
-  #sky { min-height: 150px; max-width: 330px; width: 100%; margin: 2px auto 10px;
+  /* ——— the constellation's window: her whisper-panel's frame — paper, one ink line, radius 2 —
+     the ball fills its pane now (his word 2026-10-04: the Orv-app one was too small) — */
+  #sky { min-height: 150px; width: 100%; margin: 2px auto 10px;
     background: var(--panel); border: 1px solid var(--ink); border-radius: 2px; }
   #sky:empty { display: none; }
   .sky-facts { color: var(--grey); font-size: 13px; }
   .sky-facts .h { color: var(--ink); }
+
+  /* the story, folded into its summary — vellum's tome-fold in this room's hand: the whole plot
+     collapses to one line (scenes · beats · the first beat); a tap opens it */
+  #plotfold { margin: 0; }
+  #plotfold[hidden] { display: none; }
+  #plotfold summary { cursor: pointer; list-style: none; font-size: 11px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--star); margin: 10px 0 6px; user-select: none; -webkit-user-select: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #plotfold summary::-webkit-details-marker { display: none; }
+  #plotfold summary::before { content: "▸ "; color: var(--grey); }
+  #plotfold[open] summary::before { content: "▾ "; }
 
   /* chapters and plot: vellum's story hand in Scriptorium's frame — the rail on the left, the serif inside */
   #story, #plot { list-style: none; margin: 6px 0 0; padding: 0; }
@@ -159,8 +177,9 @@
   #plot .n { font-size: 11px; color: var(--grey); margin-right: 8px; }
   #plot .t { font-size: 13px; line-height: 1.5; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .02em; color: var(--ink); }
   #empty { color: var(--grey); padding: 12px 0; font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
-  /* the plot's tab wears the star, the way her right panel's active word does */
-  #plotLabel { color: var(--star); }
+
+  /* the middle screen: the talk fills it, the history pulls down over it */
+  #roomtalk { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 
   /* the desk: the rail of file-words on top (Vellum's own law), the page and its
      chapter outline below — one on the phone stacked, two across on the glass */
@@ -181,20 +200,47 @@
   html[data-theme="dark"] #sprite { background: radial-gradient(ellipse 62% 46% at 50% 54%, #FBF6EA 94%, transparent 99%); }
   #cig { cursor: pointer; background: transparent; }
 
-  /* ——— drawers, hers exactly: paper, one ink line, the soft drop — */
-  #set { position: fixed; top: calc(var(--top-h) + env(safe-area-inset-top, 0px));
-    bottom: calc(var(--speak-h) + env(safe-area-inset-bottom, 0px)); right: 12px;
-    width: min(380px, calc(100vw - 24px)); display: flex; flex-direction: column; z-index: 6;
-    background: var(--panel); color: var(--ink); padding: 8px 12px; overflow-y: auto;
-    border: 1px solid var(--ink); box-shadow: 0 6px 20px rgba(0, 0, 0, .08); }
+  /* ——— the settings scene: THE INKLING APP'S OWN, lifted whole (the salmon's scene, 2026-10-02),
+     worn in this room's skin — full-screen paper, the big underlined lines: key · coin (paid doors
+     only) · model · the ghost · test · the say-back · the diagnostics. The cigarette opens and
+     closes it, as the salmon does there. ——— */
+  #set { position: fixed; inset: 0; z-index: 15; background: var(--paper);
+    background-image: repeating-conic-gradient(var(--dither) 0 25%, transparent 0 50%); background-size: 4px 4px;
+    color: var(--ink); overflow-y: auto; display: flex; flex-direction: column;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) 22px calc(18px + env(safe-area-inset-bottom, 0px)); }
   #set[hidden] { display: none; }
-  #set h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--grey); font-weight: normal; margin: 3px 0 8px; }
-  #set p { font-size: 13px; margin: 6px 0; }
-  #set button { display: block; text-align: left; padding: 5px 0; font-size: 13px; }
+  #set h2 { font-family: 'DarkByte', Monaco, monospace; font-weight: normal; font-size: clamp(24px, 7vw, 36px);
+    letter-spacing: 1px; color: var(--star-d); margin: 0; -webkit-font-smoothing: none; }
+  #setBody { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: space-evenly;
+    gap: 20px; padding: 22px 0 16px; max-width: 560px; width: 100%; margin: 0 auto; }
+  .sl { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+  .sl > span { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--grey); }
+  .sl textarea, .sl input { width: 100%; min-width: 0; font: inherit; font-size: clamp(16px, 4.6vw, 20px);
+    line-height: 1.35; color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--line);
+    border-radius: 0; padding: 6px 2px 8px; outline: none; resize: none; overflow: hidden;
+    word-break: break-all; -webkit-appearance: none; }
+  .sl textarea:focus, .sl input:focus { border-bottom-color: var(--ink); }
+  .sl textarea::placeholder, .sl input::placeholder { color: var(--grey); opacity: .7; }
+  #setTest { align-self: flex-start; font: inherit; font-size: clamp(18px, 5.4vw, 24px); color: var(--star-d);
+    background: none; border: 0; padding: 4px 0; cursor: pointer; }
+  #setSay { min-height: 3.6em; font-size: clamp(13px, 4vw, 16px); line-height: 1.45; color: var(--grey); white-space: pre-wrap; }
+  #setSay.bad { color: var(--red); } #setSay.good { color: var(--star-d); }
+  #setDiag { font-size: 12px; line-height: 1.55; color: var(--grey); white-space: pre-wrap; max-width: 560px; width: 100%; margin: 0 auto; }
+  .sl[hidden], #set[hidden] { display: none; }
+  #set button.setword { display: block; text-align: left; padding: 5px 0; font-size: 14px; }
+  #setProjects button { display: block; text-align: left; padding: 5px 0; font-size: 14px; }
   #setLink, #setHouse { color: var(--star-d); word-break: break-all; }
   #setNotes { color: var(--grey); }
   #setHouse { font-size: 12px; }
-  /* the menu: her whisper panel, a breath under the quiet words */
+  #set p { font-size: 13px; margin: 6px 0; }
+  /* while the scene stands, the room steps back and only the cigarette stays lit (the salmon's law) */
+  body.setting #main, body.setting #note, body.setting #sprite, body.setting #pager,
+  body.setting header, body.setting #spine { visibility: hidden; }
+  body.setting #quiet { z-index: 16; }
+  body.setting #menuBtn, body.setting #lamp { visibility: hidden; }
+  @media (max-width: 700px) { body.setting #cig { display: block; } }
+  /* the menu: her whisper panel, a breath under the quiet words — on the glass; on the phone
+     it is the drawer that comes in from the left (his word, 2026-10-04) */
   #menu { position: fixed; z-index: 15; top: calc(44px + env(safe-area-inset-top, 0px)); right: 22px;
     min-width: 216px; background: var(--panel); color: var(--ink);
     border: 1px solid var(--ink); border-radius: 2px; padding: 10px 14px;
@@ -203,26 +249,23 @@
   #menu [hidden] { display: none; }
   #menu button { display: block; text-align: left; padding: 6px 0; font-size: 13px; }
   #menu .sep { border-top: 1px solid var(--line); margin: 6px 0 2px; opacity: .5; }
-  #key, #ghost { display: block; margin: 6px 0; padding: 4px 0; min-height: 30px; width: 100%;
-    background: transparent; border: 0; border-bottom: 1px solid var(--line);
-    color: var(--ink); font: inherit; font-size: 14px; }
-  #key:focus, #ghost:focus { border-bottom-color: var(--ink); }
-  html.guest #roomtalk, html.guest #cig, html.guest #set, html.guest #menu, html.guest #menuBtn, html.guest #anew,
+  html.guest #roomtalk, html.guest #talksec, html.guest #cig, html.guest #set, html.guest #menu, html.guest #menuBtn, html.guest #anew,
   html.guest #share, html.guest #keep, html.guest #bring, html.guest #xport,
   html.guest #hold, html.guest #tape, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode,
   html.guest #saytape, html.guest #hear, html.guest #rail { display: none !important; }
+  html.guest #pager i:nth-child(2) { display: none; }   /* a guest holds two screens: the scene and its sky */
 
-  /* the pager: two dots for two rooms, the phone's own tell of where the swipe stands */
+  /* the pager: three dots for three rooms, the phone's own tell of where the swipe stands —
+     and the buttons for the swipe (the house law: a button for every swipe) */
   #pager { display: none; gap: 9px; justify-content: center; z-index: 5;
     position: fixed; left: 0; right: 0; bottom: calc(var(--speak-h) + 6px + env(safe-area-inset-bottom, 0px)); }
-  #pager i { width: 7px; height: 7px; border-radius: 50%; background: var(--grey); opacity: .55; }
+  #pager i { width: 7px; height: 7px; border-radius: 50%; background: var(--grey); opacity: .55; cursor: pointer; }
   #pager i.on { background: var(--star); opacity: 1; }
   @media (max-width: 700px) {
     header { left: 14px; right: 14px; }
     #quiet { right: 14px; gap: 12px; }
     #quiet button { font-size: 11px; }
     #menu { right: 14px; }
-    #set { right: 8px; }
     #count, #kept { max-width: 60vw; }
     /* the speak bar's words must all keep their seat on the small glass */
     #note { gap: 6px; }
@@ -235,11 +278,19 @@
     #rail button { font-size: 11px; letter-spacing: 0; }
   }
   @media (max-width: 979px) {
-    /* two rooms, one swipe apart, the script on the left: the phone scrolls sideways between them,
-       each room tall enough to hold its own scroll */
+    /* three rooms, one swipe apart, the script on the left, the talk in the middle, the sky and
+       the story on the right: the phone scrolls sideways between them, each room tall enough to
+       hold its own scroll */
     #main { flex-direction: row; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }
     #main section { display: flex; flex: 0 0 100%; width: 100%; min-width: 0; scroll-snap-align: start; overflow-y: auto; padding-bottom: 110px; }
     #pager { display: flex; }
+    /* the note's bar belongs to the page; it steps aside on the talk and the sky */
+    body:not([data-screen="script"]) #note { display: none; }
+    /* the menu comes in from the left (his word) */
+    #menu { left: 0; right: auto; top: 0; bottom: 0; min-width: min(260px, 76vw); border: 0;
+      border-right: 1px solid var(--ink); border-radius: 0; box-shadow: 6px 0 20px rgba(0, 0, 0, .10);
+      padding: calc(20px + env(safe-area-inset-top, 0px)) 18px 18px; animation: menuIn .22s ease; }
+    @keyframes menuIn { from { transform: translateX(-104%); } to { transform: translateX(0); } }
     /* he keeps the corner, smaller, above the pager */
     #sprite { transform: scale(.6); transform-origin: bottom right; right: 12px; bottom: calc(var(--speak-h) + 22px + env(safe-area-inset-bottom, 0px)); }
   }
@@ -253,7 +304,7 @@
     html.guest #main section { width: 50%; }
     html.guest #spine { display: none !important; }
     /* the talk stays on the phone (his word): the desk holds the page and the side panel only */
-    #roomtalk { display: none !important; }
+    #talksec { display: none !important; }
     section { display: flex; width: 28%; }
     #scriptsec { flex: 1 1 auto; width: auto; min-width: 0; padding-right: 30px; }
     #toolsec { width: var(--side-w); flex: 0 0 var(--side-w); padding: 0 16px 20px 16px; }
@@ -288,7 +339,7 @@
   try { var savedLamp = localStorage.getItem('squatch.room.theme'); if (savedLamp) document.documentElement.setAttribute('data-theme', savedLamp); } catch (e) {}
 </script>
 </head>
-<body>
+<body data-screen="script">
 <header>
   <input id="title" aria-label="The name of this project" placeholder="Name this project" spellcheck="false" autocomplete="off">
   <span id="count"></span>
@@ -342,11 +393,7 @@
       <button type="button" id="tape">tape</button>
     </div>
   </section>
-  <section id="toolsec" data-name="tools">
-    <div id="sky" aria-label="The constellation of this script"></div>
-    <p id="empty">Write a scene. The stars come out of the page.</p>
-    <p class="mlabel" id="plotLabel">plot</p>
-    <ol id="plot"></ol>
+  <section id="talksec" data-name="talk">
     <div id="roomtalk">
       <div id="talk"></div>
       <form id="say">
@@ -357,20 +404,37 @@
       </form>
     </div>
   </section>
+  <section id="toolsec" data-name="tools">
+    <div id="sky" aria-label="The constellation of this script"></div>
+    <p id="empty">Write a scene. The stars come out of the page.</p>
+    <details id="plotfold">
+      <summary id="plotsum">the story, in order</summary>
+      <ol id="plot"></ol>
+    </details>
+  </section>
 </div>
-<div id="pager" aria-hidden="true"><i class="on"></i><i></i></div>
+<div id="pager" aria-hidden="true"><i class="on" data-go="script"></i><i data-go="talk"></i><i data-go="tools"></i></div>
 <canvas id="sprite" aria-label="Squatch"></canvas>
 <div id="spine" title="drag: the side panel's width"><span id="spineword">SQUATCH</span></div>
 <div id="set" hidden role="dialog" aria-label="settings">
-  <h2>the cigarette</h2>
-  <div id="setProjects"></div>
-  <input id="key" type="password" aria-label="Your key, on this phone" placeholder="Your key on this phone — gsk_…, or the voiceless door's vck_…" autocomplete="off" spellcheck="false">
-  <input id="ghost" aria-label="The ghost's address" placeholder="The ghost's address — https://….workers.dev (the wide-world seat)" autocomplete="off" spellcheck="false">
-  <p id="setHouse"></p>
-  <button type="button" id="setScene">share this scene</button>
-  <button type="button" id="setFollow">share whichever scene I have open</button>
-  <p id="setLink"></p>
-  <div id="setNotes"></div>
+  <h2>settings</h2>
+  <div id="setBody">
+    <label class="sl"><span>key</span><textarea id="setKey" rows="1" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="paste your key — sk-ant-… wakes Squatch · gsk_… lends the ear · vck_… seats the voiceless door" aria-label="your key"></textarea></label>
+    <label class="sl" id="setChaRow" hidden><span>coin</span><input id="setCha" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Cha-ching" aria-label="the word that lets Squatch spend"></label>
+    <label class="sl"><span>model</span><input id="setModel" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="chosen for you" aria-label="the model Squatch thinks with"></label>
+    <label class="sl"><span>the ghost</span><input id="ghost" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://….workers.dev — the wide-world seat" aria-label="The ghost's address"></label>
+    <button id="setTest" type="button">test</button>
+    <div id="setSay" aria-live="polite"></div>
+    <div class="sl"><span>the room's projects</span><div id="setProjects"></div></div>
+    <div class="sl"><span>a seat for a guest</span>
+      <button type="button" id="setScene" class="setword">share this scene</button>
+      <button type="button" id="setFollow" class="setword">share whichever scene I have open</button>
+      <p id="setLink"></p>
+      <p id="setHouse"></p>
+    </div>
+    <div id="setNotes"></div>
+  </div>
+  <div id="setDiag"></div>
 </div>
 <script src="squatch-room.js"></script>
 <script src="sky.js"></script>
@@ -432,17 +496,21 @@
   function inkOf(name) {
     return lampHue(R.textOf(name));
   }
-  function show(name) {
+  /* the three rooms of the phone: the page (left) · the talk (middle) · the sky and the story (right).
+     A guest holds two: the scene and its sky. */
+  function screenNames() { return guest ? ['script', 'tools'] : ['script', 'talk', 'tools']; }
+  function markScreen(name) {
     screen = name;
+    document.body.setAttribute('data-screen', name);
+    paintPager(name);
+  }
+  function show(name) {
     var mobile = smallGlass();
     Array.prototype.forEach.call(document.querySelectorAll('section'), function (s) {
       if (mobile) s.classList.add('on');
       else s.classList.toggle('on', s.getAttribute('data-name') === name);
     });
-    Array.prototype.forEach.call(document.querySelectorAll('#switch button'), function (b) {
-      b.classList.toggle('on', b.getAttribute('data-screen') === name);
-    });
-    paintPager(name);
+    markScreen(name);
     if (mobile) {
       var el = document.querySelector('section[data-name="' + name + '"]'), main = $('main');
       if (el && main && Math.round(main.scrollLeft) !== el.offsetLeft) main.scrollTo({ left: el.offsetLeft });
@@ -450,7 +518,7 @@
   }
   function paintPager(name) {
     var dots = document.querySelectorAll('#pager i'); if (!dots.length) return;
-    var idx = name === 'tools' ? 1 : 0;
+    var idx = screenNames().indexOf(name);
     Array.prototype.forEach.call(dots, function (d, i) { d.classList.toggle('on', i === idx); });
   }
 
@@ -484,6 +552,13 @@
     }
   }
 
+  /* the ball was too small on the Orv app (his word, 2026-10-04): here it fills its pane — the
+     spacing steps up with the pane's width, and the ball still grows with its facts */
+  function skyKnobs() {
+    var w = ($('sky') || {}).clientWidth || 300;
+    var spacing = Math.max(14, Math.min(26, Math.round(w / 14)));
+    return { spacing: spacing, star: { place: 4, person: 3, out: 6, sel: 8 }, out: 14, label: 13, small: 11, top: 44 };
+  }
   function paintSky(parsed) {
     var host = $('sky'), empty = $('empty');
     if (!parsed.people.length && !parsed.places.length) {
@@ -492,7 +567,7 @@
       return;
     }
     empty.hidden = true;
-    if (window.SKY && SKY.draw) SKY.draw(host, R.skyFrom(pageScript(), pageTitle()));
+    if (window.SKY && SKY.draw) SKY.draw(host, R.skyFrom(pageScript(), pageTitle()), skyKnobs());
   }
 
   function paintStory(parsed) {
@@ -601,15 +676,21 @@
     fmt.innerHTML = out.join('\n');
     fmt.scrollTop = ta.scrollTop; fmt.scrollLeft = ta.scrollLeft;
   }
-  /* the plot: every beat of the page in order, numbered, who speaks first — vellum's story row,
-     and a press walks the page to the scene the beat belongs to */
+  /* the story as organization: the whole plot folded into its summary (vellum's tome-fold law) —
+     at rest one line (scenes · beats · the first beat); a tap opens the beats, numbered, each in
+     its speaker's colour, and a press walks the page to the scene the beat belongs to */
   function paintPlot() {
-    var el = $('plot');
-    if (!el) return;
+    var el = $('plot'), fold = $('plotfold'), sum = $('plotsum');
+    if (!el || !fold) return;
     el.textContent = '';
-    if (guest || glass) return;
+    if (guest || glass) { fold.hidden = true; return; }
     var script = pageScript(), beats = R.plotOf(script) || [];
     var scenes = R.parse(script).scenes;
+    if (!beats.length) { fold.hidden = true; return; }
+    fold.hidden = false;
+    sum.textContent = 'the story — ' + scenes.length + (scenes.length === 1 ? ' scene' : ' scenes')
+      + ' · ' + beats.length + (beats.length === 1 ? ' beat' : ' beats')
+      + ' · ' + R.chunk(beats[0].who ? beats[0].who + '. ' + beats[0].text : beats[0].text);
     beats.forEach(function (b, i) {
       var li = document.createElement('li'), n = document.createElement('span'), t = document.createElement('span');
       n.className = 'n'; n.textContent = i + 1;
@@ -685,9 +766,10 @@
     state.title = t; save(); paint();
   });
 
-  var swEl = document.getElementById('switch');
-  if (swEl) swEl.addEventListener('click', function (e) {
-    var b = e.target.closest('button'); if (!b) return; show(b.getAttribute('data-screen'));
+  /* the pager's dots are the buttons for the swipe (the house law: a button for every swipe) */
+  $('pager').addEventListener('click', function (e) {
+    var d = e.target.closest('i'); if (!d || !d.getAttribute('data-go')) return;
+    show(d.getAttribute('data-go'));
   });
 
   /* the swipe tells the room which screen it stands on; a crossing of the seam re-lays the rooms */
@@ -701,15 +783,10 @@
     main.addEventListener('scroll', function () {
       if (!smallGlass()) return;
       var w = main.clientWidth; if (!w) return;
-      var idx = Math.round(main.scrollLeft / w);
-      var name = idx === 0 ? 'script' : 'tools';
-      if (name !== screen) {
-        screen = name;
-        Array.prototype.forEach.call(document.querySelectorAll('#switch button'), function (b) {
-          b.classList.toggle('on', b.getAttribute('data-screen') === name);
-        });
-        paintPager(name);
-      }
+      var names = screenNames();
+      var idx = Math.max(0, Math.min(names.length - 1, Math.round(main.scrollLeft / w)));
+      var name = names[idx];
+      if (name !== screen) markScreen(name);
     });
   })();
 
@@ -729,6 +806,40 @@
   /* a key inside a sentence becomes [a key] before anything is written, even while Squatch is busy (Inkling's law) */
   var KEYISH = /(gsk_|sk-ant-|sk-or-|xai-|AIza|sk-)[\w-]{16,}/g;
   function scrub(s) { return String(s == null ? '' : s).replace(KEYISH, '[a key]'); }
+
+  /* the bell: a guest's word waits as a blink on the sky's hexagon until the king taps the
+     constellation; then the waiting words pop up where the sky's own words sit. The waiting
+     list lives in this drawer ('squatch.room.bell'), so a shut room loses none of them. */
+  var bellBox = [];
+  function bellLoad() {
+    try { bellBox = JSON.parse(localStorage.getItem('squatch.room.bell') || '[]'); } catch (e) { bellBox = []; }
+    if (!Array.isArray(bellBox)) bellBox = [];
+  }
+  function bellSave() { try { localStorage.setItem('squatch.room.bell', JSON.stringify(bellBox.slice(-30))); } catch (e) {} }
+  function bellRing() {
+    if (guest || glass || !window.SKY || !SKY.setUnread) return;
+    SKY.setUnread($('sky'), bellBox.length, bellShow);
+  }
+  function bellShow() {
+    if (!bellBox.length) { bellRing(); return; }
+    var sky = $('sky'), facts = sky && sky._sky && sky._sky.facts;
+    if (facts) {
+      facts.textContent = '';
+      bellBox.forEach(function (n) {
+        var p = document.createElement('p');
+        p.textContent = (n.name || 'a guest') + ': ' + (n.text || '');
+        facts.appendChild(p);
+      });
+    }
+    var last = bellBox[bellBox.length - 1];
+    $('kept').textContent = (last.name || 'a guest') + '’s words, up on the sky.';
+    bellBox = []; bellSave(); bellRing();
+  }
+  function bellAdd(name, text) {
+    bellBox.push({ name: name || 'a guest', text: String(text || ''), at: now() });
+    if (bellBox.length > 30) bellBox = bellBox.slice(-30);
+    bellSave(); bellRing();
+  }
 
   /* the ghost's seal: AES-GCM, the key grown from the secret, all of it on this glass.
      What travels and what the ghost keeps is ciphertext; the secret rides after the #,
@@ -818,6 +929,7 @@
                 if (!state.notes[key]) state.notes[key] = [];
                 state.notes[key].push({ id: 'gh' + n.n + rid.slice(-4), at: n.at, text: (plain.name || 'a guest') + ': ' + plain.text });
                 state.log.push({ t: now(), kind: 'note', scene: key, text: plain.text, who: plain.name || 'a guest' });
+                bellAdd(plain.name, plain.text);
               });
             });
           }, Promise.resolve()).then(function () {
@@ -888,6 +1000,7 @@
     var key = phoneKey();
     if (!key || guest || glass) return;
     if (key.indexOf('sk-ant-') !== 0) { hearing = false; $('kept').textContent = 'Squatch’s door is Anthropic; an sk-ant- key opens it.'; return; }
+    if (!paidOpen('anthropic')) { hearing = false; $('kept').textContent = 'Squatch’s door costs coin: the cigarette, the coin line, the word Cha-ching.'; return; }
     var msgs = state.chat.filter(function (m) { return m.who === 'king' || m.who === 'squatch'; }).slice(-16).map(function (m) {
       return { role: m.who === 'king' ? 'user' : 'assistant', content: m.text };
     });
@@ -1300,7 +1413,7 @@
   var menuSetBtn = $('menuSet');
   if (menuSetBtn) menuSetBtn.addEventListener('click', function () {
     closeMenu();
-    $('set').hidden = false;
+    setOpen();
   });
   function replayOk() {
     var back = R.replay(state.log, '');
@@ -1371,6 +1484,7 @@
           if (!state.notes[key]) state.notes[key] = [];
           state.notes[key].push({ id: 'g' + n.id, at: n.at, text: (n.name || 'a guest') + ': ' + n.text });
           state.log.push({ t: now(), kind: 'note', scene: key, text: n.text, who: n.name || 'a guest' });
+          bellAdd(n.name, n.text);
         });
         var last = o.notes[o.notes.length - 1];
         $('kept').textContent = (last.name || 'a guest') + ' sent a note.';
@@ -1476,6 +1590,172 @@
       setInterval(function () { sparks.forEach(function (s) { s.y -= 1; if (s.y < 0) s.y = ey - 1; }); draw(); }, 240);
     }).catch(function () {});
   }
+  /* the settings scene, ported from the Inkling app: key · coin · model · test · say-back ·
+     diagnostics, behind the cigarette. The boxes are the very ones Inkling keeps —
+     monomyth.focus.byok.v1, inkling.model, inkling.paid — so a key kept here wakes Inkling too,
+     and a Cha-ching here is law there. Only the test keeps a key; typing never does. */
+  var SET_BOX = 'monomyth.focus.byok.v1';
+  var SET_TRY = ['gemini', 'groq', 'openrouter', 'anthropic', 'openai', 'xai'];
+  var SET_FREE = ['groq', 'gemini', 'openrouter'];
+  var SET_LIST = {
+    groq: 'https://api.groq.com/openai/v1/models',
+    openrouter: 'https://openrouter.ai/api/v1/models',
+    xai: 'https://api.x.ai/v1/models',
+    openai: 'https://api.openai.com/v1/models',
+    anthropic: 'https://api.anthropic.com/v1/models?limit=100',
+    gemini: 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200'
+  };
+  function setBox() { try { return JSON.parse(localStorage.getItem(SET_BOX) || '{}') || {}; } catch (e) { return {}; } }
+  function keyDoor(k) {
+    if (/^sk-ant-/.test(k)) return 'anthropic';
+    if (/^gsk_/.test(k)) return 'groq';
+    if (/^sk-or-/.test(k)) return 'openrouter';
+    if (/^xai-/.test(k)) return 'xai';
+    if (/^AIza/.test(k)) return 'gemini';
+    if (/^sk-/.test(k)) return 'openai';
+    return '';
+  }
+  function paidOpen(d) {
+    if (SET_FREE.indexOf(d) >= 0) return true;
+    try { var p = JSON.parse(localStorage.getItem('inkling.paid') || '{}') || {}; return !!(d && p[d]); } catch (e) { return false; }
+  }
+  function setHeaders(d, key) {
+    if (d === 'anthropic') return ahead(key);
+    if (d === 'gemini') return { 'x-goog-api-key': key };
+    return { authorization: 'Bearer ' + key };
+  }
+  function fetchT(url, opts, ms) {
+    var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, ms || 30000);
+    opts = opts || {}; opts.signal = ctl.signal; opts.referrerPolicy = 'no-referrer';
+    return fetch(url, opts).then(function (r) { clearTimeout(t); return r; }, function (e) { clearTimeout(t); throw e; });
+  }
+  function fmtAt(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d.getTime())) return '';
+    try { return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch (e) { return iso; }
+  }
+  function grow(el) { if (!el) return; el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 160) + 'px'; }
+  function setSay(t, how) {
+    var say = $('setSay'); if (!say) return;
+    say.textContent = t || '';
+    say.className = how === 'good' ? 'good' : (how === 'bad' ? 'bad' : '');
+  }
+  function setDiag() {
+    var el = $('setDiag'); if (!el) return;
+    var b = setBox(), d = b.door || keyDoor(b.apiKey || ''), at = '';
+    try { at = localStorage.getItem('inkling.keyAt') || ''; } catch (e) {}
+    var lines = [];
+    lines.push(d && b.apiKey ? ('key kept: ' + d + (at ? ' · since ' + fmtAt(at) : '')) : 'no key on this phone');
+    lines.push('opened as ' + (matchMedia('(display-mode: standalone)').matches ? 'the Home Screen room' : 'a browser tab'));
+    lines.push('this glass: ' + location.pathname);
+    if (house) lines.push('the house: ' + house + '/squatch.html');
+    el.textContent = lines.join('\n');
+  }
+  function setFill() {
+    var b = setBox(), d = b.door || keyDoor(b.apiKey || '');
+    $('setKey').value = b.apiKey || '';
+    grow($('setKey'));
+    var kept = {};
+    try { kept = JSON.parse(localStorage.getItem('inkling.model') || '{}') || {}; } catch (e) {}
+    $('setModel').value = (d && kept[d]) || '';
+    $('setChaRow').hidden = !d || paidOpen(d);
+  }
+  function setOpen(why, how) {
+    $('set').hidden = false;
+    document.body.classList.add('setting');
+    setFill(); setDiag(); setSay(why || '', how || '');
+  }
+  function setClose() {
+    $('set').hidden = true;
+    document.body.classList.remove('setting');
+  }
+  /* the say box's placeholder follows the key: a kept key, Squatch listens; no key, the mouth is shut */
+  function seatLine() {
+    $('line').placeholder = phoneKey() ? 'Say it to Squatch.' : 'The council’s mouth is shut. Your words are kept.';
+  }
+  /* the one key line, three doors: a chat key goes in the shared box; a vck_ stamp goes in the
+     voiceless door's own box (JEV-INSTALL §4.8); a relay address#pass becomes the door's url. */
+  function decideKeep(patch) {
+    try {
+      var slot = decideLoad();
+      for (var k in patch) slot[k] = patch[k];
+      localStorage.setItem(DECIDE_BOX, JSON.stringify(slot));
+    } catch (e) {}
+    jevSeat();
+  }
+  var SET_BUSY = false;
+  function setTest() {
+    if (SET_BUSY) return;
+    var v = scrub($('setKey').value.trim());
+    if (!v) { setSay('Paste your key on the key line first.', 'bad'); return; }
+    if (/^vck_/.test(v)) {
+      decideKeep({ key: v, door: 'vercel' });
+      $('setKey').value = ''; grow($('setKey'));
+      setSay('The voiceless door has its key. The tape will ask it.', 'good');
+      return;
+    }
+    if (/^https?:\/\/.+#.+/.test(v)) {
+      var cut = v.split('#');
+      decideKeep({ url: cut[0], pass: cut.slice(1).join('#'), door: 'relay' });
+      $('setKey').value = ''; grow($('setKey'));
+      setSay('The relay has its address and its pass. The tape will ask it.', 'good');
+      return;
+    }
+    SET_BUSY = true;
+    var btn = $('setTest'), word = btn.textContent;
+    btn.textContent = '…';
+    setSay('Trying the doors…', '');
+    var guess = keyDoor(v);
+    var order = SET_TRY.slice();
+    if (guess) order = [guess].concat(order.filter(function (d) { return d !== guess; }));
+    var found = null, chain = Promise.resolve();
+    order.forEach(function (d) {
+      chain = chain.then(function () {
+        if (found) return null;
+        return fetchT(SET_LIST[d], { headers: setHeaders(d, v) })
+          .then(function (r) { if (r.ok) found = d; }, function () {});
+      });
+    });
+    chain.then(function () {
+      if (!found) { setSay('No door knew that key. The key line is unchanged.', 'bad'); return null; }
+      var before = setBox();
+      var swapped = before.apiKey && before.apiKey !== v;
+      try {
+        localStorage.setItem(SET_BOX, JSON.stringify({ apiKey: v, door: found }));
+        localStorage.setItem('inkling.keyAt', new Date().toISOString());
+        localStorage.removeItem('squatch.room.key');
+      } catch (e) {}
+      /* the phone sometimes refuses to keep; read the box back before believing it */
+      if (setBox().apiKey !== v) { setSay('The phone refused to keep the key. Try once more.', 'bad'); return null; }
+      if (swapped) {
+        try { var km = JSON.parse(localStorage.getItem('inkling.model') || '{}') || {}; delete km[found]; localStorage.setItem('inkling.model', JSON.stringify(km)); } catch (e) {}
+      }
+      setFill(); seatLine(); jevSeat();
+      if (found !== 'anthropic') {
+        setSay('✓ ' + found + ' keeps the key. Squatch himself speaks through Anthropic — an sk-ant- key on this line wakes him.'
+          + (found === 'groq' ? ' The ear hears with it.' : ''), 'good');
+        return null;
+      }
+      if (!paidOpen('anthropic')) {
+        setSay('That is an Anthropic key — Squatch’s own door, and it costs coin. Type Cha-ching on the coin line, then test again.', '');
+        return null;
+      }
+      setSay('The coin is law. Waking Squatch…', '');
+      return anthropicModel(v).then(function (m) {
+        return mouth(v, [{ role: 'user', content: 'Squatch, can you hear me? Answer in one short line, in your voice.' }], m)
+          .then(function (text) {
+            state.log.push({ t: now(), kind: 'tested', door: 'anthropic', model: m });
+            save();
+            setSay('✓ Works. anthropic · ' + m + '\nSquatch: ' + text, 'good');
+            setTimeout(function () { setClose(); show(smallGlass() ? 'talk' : 'script'); try { $('line').focus(); } catch (e) {} }, 2200);
+          });
+      }).catch(function (e) {
+        setSay('The door took the key, but Squatch did not answer: ' + ((e && e.message) || 'silence.'), 'bad');
+      });
+    }).then(done, done);
+    function done() { SET_BUSY = false; btn.textContent = word; setDiag(); }
+  }
+
   function seatCig() {
     var cg = $('cig'); if (!cg) return;
     var CIG = ['ffgggggggggR', 'ffgggggggggR'], CPAL = { f: '#BF6A40', g: '#888888', R: '#FF0000' }, CS = 4, top = 5;
@@ -1493,7 +1773,7 @@
     };
     cig();
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(function () { if (!cg.hidden) { sp = (sp + 1) % top; cig(); } }, 260);
-    var tog = function () { $('set').hidden = !$('set').hidden; };
+    var tog = function () { if ($('set').hidden) setOpen(); else setClose(); };
     cg.addEventListener('click', tog);
     cg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
   }
@@ -1663,7 +1943,7 @@
     state.script = ''; state.chat = [];
     $('page').readOnly = true;
     $('sendnote').textContent = 'send back';
-    $('noteline').placeholder = 'A note on this scene. It goes back to him.';
+    $('noteline').placeholder = 'Say it to Squatch — it goes straight to him.';
     $('sendnote').addEventListener('click', sendBack);
     show('script');
     pull();
@@ -1706,11 +1986,13 @@
       save(); paint();
     }).catch(function () {});
     if ($('page').value !== state.script) $('page').value = state.script;
-    show('script');
+    /* on the small glass with an empty page, the room opens on the talk; everywhere else, the script */
+    show(smallGlass() && !String(state.script || '').trim() ? 'talk' : 'script');
     paint();
     /* the focus wakes the caret but also scrolls the page to some remembered middle — the pen
-       starts at the top of a fresh-opened page, always */
-    $('page').focus();
+       starts at the top of a fresh-opened page, always. On the small glass, when the talk is the
+       open room, the page keeps its sleep: focusing it would drag the glass back to the script. */
+    if (!smallGlass() || screen === 'script') $('page').focus();
     $('page').scrollTop = 0;
     $('fmt').scrollTop = 0;
     seatSquatch();
@@ -1718,43 +2000,69 @@
     jevSeat();
     $('setScene').addEventListener('click', function () { share('scene'); });
     $('setFollow').addEventListener('click', function () { share('follow'); });
-    try { $('key').value = phoneKey(); } catch (e) {}
-    if (phoneKey()) $('line').placeholder = 'Say it to Squatch.';
-    /* the one key line, three doors: a chat key goes in the shared box; a vck_ stamp goes in the
-       voiceless door's own box (JEV-INSTALL §4.8); a relay address#pass becomes the door's url. */
-    function decideKeep(patch) {
+    seatLine();
+    /* the cigarette's scene: the test keeps the key (typing never does), the coin line speaks
+       the word, Esc folds the scene away */
+    $('setTest').addEventListener('click', setTest);
+    $('setKey').addEventListener('input', function () { grow($('setKey')); });
+    $('setKey').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); setTest(); } });
+    $('setKey').addEventListener('change', function () {
+      var v = $('setKey').value.trim();
+      if (v) return;   /* a fresh key is kept by the test, never by the typing */
       try {
-        var slot = decideLoad();
-        for (var k in patch) slot[k] = patch[k];
-        localStorage.setItem(DECIDE_BOX, JSON.stringify(slot));
-      } catch (e) {}
-      jevSeat();
-    }
-    $('key').addEventListener('change', function () {
-      var v = scrub($('key').value.trim());
-      if (/^vck_/.test(v)) {
-        decideKeep({ key: v, door: 'vercel' });
-        $('key').value = '';
-        $('kept').textContent = 'The voiceless door has its key. The tape will ask it.';
-        return;
-      }
-      if (/^https?:\/\/.+#.+/.test(v)) {
-        var cut = v.split('#');
-        decideKeep({ url: cut[0], pass: cut.slice(1).join('#'), door: 'relay' });
-        $('key').value = '';
-        $('kept').textContent = 'The relay has its address and its pass. The tape will ask it.';
-        return;
-      }
-      try {
-        var b = JSON.parse(localStorage.getItem('monomyth.focus.byok.v1') || '{}') || {};
-        if (v) b.apiKey = v; else delete b.apiKey;
-        localStorage.setItem('monomyth.focus.byok.v1', JSON.stringify(b));
+        var b = setBox(); delete b.apiKey; delete b.door;
+        localStorage.setItem(SET_BOX, JSON.stringify(b));
         localStorage.removeItem('squatch.room.key');
+        localStorage.removeItem('inkling.keyAt');
       } catch (e) {}
-      $('line').placeholder = v ? 'Say it to Squatch.' : "The council's mouth is shut. Your words are kept.";
-      $('kept').textContent = v ? 'The key is in the box this phone shares with Inkling.' : 'No key on this phone.';
-      jevSeat();
+      setFill(); seatLine(); jevSeat();
+      setSay('No key on this phone.', '');
     });
+    $('setCha').addEventListener('change', function () {
+      var w = $('setCha').value.trim().toLowerCase();
+      $('setCha').value = '';
+      var d = setBox().door || keyDoor(setBox().apiKey || '');
+      if (!d) { setSay('No key on the key line.', 'bad'); return; }
+      if (w !== 'cha-ching') { setSay('The word was not said.', 'bad'); return; }
+      try {
+        var p = JSON.parse(localStorage.getItem('inkling.paid') || '{}') || {};
+        p[d] = new Date().toISOString();
+        localStorage.setItem('inkling.paid', JSON.stringify(p));
+      } catch (e) {}
+      state.log.push({ t: now(), kind: 'cha-ching', door: d });
+      save();
+      setFill();
+      setSay('Cha-ching. The coin line is fed.', 'good');
+      setTest();
+    });
+    $('setModel').addEventListener('change', function () {
+      var want = $('setModel').value.trim();
+      var b = setBox(), d = b.door || keyDoor(b.apiKey || '');
+      var kept = {};
+      try { kept = JSON.parse(localStorage.getItem('inkling.model') || '{}') || {}; } catch (e) {}
+      if (!want) {
+        if (d) { delete kept[d]; try { localStorage.setItem('inkling.model', JSON.stringify(kept)); } catch (e) {} }
+        setSay('The choice is the door’s again.', '');
+        return;
+      }
+      if (!d || !b.apiKey) { setSay('Keep a key first; the model line names one of its models.', 'bad'); return; }
+      fetchT(SET_LIST[d], { headers: setHeaders(d, b.apiKey) })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (o) {
+          if (!o) { setSay('The door did not give its list.', 'bad'); return; }
+          var ids = (o.data || o.models || []).map(function (m) { return String(m.id || m.name || '').replace(/^models\//, ''); }).filter(Boolean);
+          var low = want.toLowerCase();
+          var pick = ids.filter(function (id) { return id.toLowerCase() === low; })[0]
+                  || ids.filter(function (id) { return id.toLowerCase().indexOf(low) >= 0; })[0];
+          if (!pick) { setSay('The door knows no model by that name.', 'bad'); return; }
+          kept[d] = pick;
+          try { localStorage.setItem('inkling.model', JSON.stringify(kept)); } catch (e) {}
+          $('setModel').value = pick;
+          setSay('Squatch will think with ' + pick + '. Tap test to hear him.', 'good');
+        })
+        .catch(function () { setSay('The door did not give its list.', 'bad'); });
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('set').hidden) setClose(); });
     /* the lamp: WriterDuet's other light, kept in the drawer for the room's next waking */
     var applyLamp = function (t) {
       document.documentElement.setAttribute('data-theme', t);
@@ -1767,6 +2075,7 @@
     });
     applyLamp(document.documentElement.getAttribute('data-theme') || 'light');
     paint();   /* the lamp just set the day; the inks must take it before the first face */
+    bellLoad(); bellRing();   /* any guest words that waited in the drawer light the sky's hexagon */
     $('ghost').addEventListener('change', function () {
       var v = $('ghost').value.trim().replace(/\/+$/, '');
       if (v && v.indexOf('http') !== 0) v = 'https://' + v;

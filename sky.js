@@ -8,6 +8,11 @@
    Drag the ball: it follows the finger a little way, each star on its own spring so the ball wobbles, and settles home when let go.
    (The lattice constellation it replaces is kept in git: a0e5c17.) The data comes only inside the King's link (#k=…, its "sq"
    part), never from this repository.
+   2026-10-04 (the SnakeMother, at his word): ① draw(host, sq, knobs) — a room may hand its own sizes (the King: the ball was
+   too small); the defaults below are untouched, so the Inkling app's ball stands as it was. ② THE BELL — a word from a guest
+   lights a hexagon at the sky's edge, blinking until he taps the constellation; then the words pop up. SKY.setUnread(host, n,
+   onTap). His word: "those messages will pop up when I click on the constellation, which will signify any new messages with a
+   blinking color on the hexagon."
    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 (function (root) {
   'use strict';
@@ -27,6 +32,9 @@
     fadeMs: 140,                 // the words come out in a split second
     top: 30                      // px of sky above the ball, for the words
   };
+
+  /* the bell's hexagon, pixel by pixel (nine wide, six tall) */
+  const HEX = ['  ###  ', ' ##### ', '#######', '#######', ' ##### ', '  ###  '];
 
   /* ── the colour: the Magic's name law into the phone's own twelve (magic.html hashIdx) ── */
   const WHEEL = ['#FF7A12', '#FF12A1', '#FA12FF', '#9212FF', '#2A12FF', '#126EFF', '#12D6FF', '#12FFC2', '#12FF5A', '#22FF12', '#8AFF12', '#F2FF12'];
@@ -72,13 +80,13 @@
 
   /* ═══ THE BALL: the stars at home, packed by the sunflower's own turn (the places first, so they are its core) ═══ */
   const GOLD = Math.PI * (3 - Math.sqrt(5));
-  function build(W) {
+  function build(W, K) {
     const stars = W.places.map(n => ({ id: 'place:' + n, name: n, kind: 'place' })).concat(W.people.map(n => ({ id: 'person:' + n, name: n, kind: 'person' })));
-    const N = stars.length, R0 = Math.max(10, Math.round(KNOBS.spacing * Math.sqrt(N / Math.PI)));
+    const N = stars.length, R0 = Math.max(10, Math.round(K.spacing * Math.sqrt(N / Math.PI)));
     stars.forEach((s, i) => {
       const r = R0 * Math.sqrt((i + 0.5) / N), a = i * GOLD - Math.PI / 2;
       s.hx = Math.round(r * Math.cos(a)); s.hy = Math.round(r * Math.sin(a)); s.x = s.hx; s.y = s.hy; s.vx = 0; s.vy = 0;
-      s.k = KNOBS.stiff[0] + (KNOBS.stiff[1] - KNOBS.stiff[0]) * ((hashOf(s.id) % 100) / 99);
+      s.k = K.stiff[0] + (K.stiff[1] - K.stiff[0]) * ((hashOf(s.id) % 100) / 99);
       s.lum = 0.55 + 0.45 * ((hashOf(s.name + '*') % 100) / 99);
       s.partners = s.kind === 'place' ? (W.who[s.name] || []).map(n => 'person:' + n) : (W.where[s.name] || []).map(n => 'place:' + n);
     });
@@ -90,7 +98,7 @@
   function aim(S, s) {
     let x = s.hx, y = s.hy;
     if (S.sel && (s.id === S.sel || S.touched.has(s.id))) { let l = Math.hypot(x, y), ux = x / (l || 1), uy = y / (l || 1); if (l < 1) { ux = 0; uy = -1; }
-      const o = KNOBS.out * (s.id === S.sel ? 1.4 : 1); x += ux * o; y += uy * o; }
+      const o = S.knobs.out * (s.id === S.sel ? 1.4 : 1); x += ux * o; y += uy * o; }
     return [x + S.off.x, y + S.off.y];
   }
 
@@ -98,7 +106,8 @@
   function pline(x, a, b, c, d) { const n = Math.max(1, Math.round(Math.max(Math.abs(c - a), Math.abs(d - b)))); for (let i = 0; i <= n; i++) x.fillRect(Math.round(a + (c - a) * i / n), Math.round(b + (d - b) * i / n), 1, 1); }
   function paint(S) {
     const x = S.ctx; if (!x || !S.w) return;
-    const G = greys(), now = Date.now(), B = S.ball, cx = S.cx, cy = S.cy, fade = S.sel ? Math.min(1, (now - S.selAt) / KNOBS.fadeMs) : 0;
+    const K = S.knobs || KNOBS;
+    const G = greys(), now = Date.now(), B = S.ball, cx = S.cx, cy = S.cy, fade = S.sel ? Math.min(1, (now - S.selAt) / K.fadeMs) : 0;
     x.setTransform(S.dpr, 0, 0, S.dpr, 0, 0); x.clearRect(0, 0, S.w, S.h);
     const P = s => [cx + s.x, cy + s.y], sel = S.sel && B.byId.get(S.sel);
     /* the lines: faint at rest; when a star is tapped, its own lines in its colour, the rest almost gone */
@@ -109,15 +118,15 @@
     /* the stars */
     B.stars.forEach((s, i) => {
       const on = sel && s.id === sel.id, near = sel && S.touched.has(s.id), quiet = sel && !on && !near, flare = S.flare.i === i && now < S.flare.until && !sel;
-      const z = on ? KNOBS.star.sel : near ? KNOBS.star.out : KNOBS.star[s.kind];
+      const z = on ? K.star.sel : near ? K.star.out : K.star[s.kind];
       x.globalAlpha = quiet ? 0.28 : on || near || flare ? 1 : s.lum; x.fillStyle = on || near || flare ? colourOf(s.name) : G.ink;
       const [px, py] = P(s); x.fillRect(Math.round(px - z / 2), Math.round(py - z / 2), z, z); });
     /* the words that come out, each away from the ball's heart, a ground-coloured rim so they read over the stars */
     S.hits = []; x.globalAlpha = fade;
     if (sel) [sel].concat(sel.partners.map(id => B.byId.get(id)).filter(Boolean)).forEach(s => {
-      const big = s === sel, px = big ? KNOBS.label : KNOBS.small, [sx, sy] = P(s);
-      x.font = px + 'px ' + KNOBS.font; x.textBaseline = 'middle'; x.lineJoin = 'round';
-      const w = Math.ceil(x.measureText(s.name).width), right = s.x - S.off.x >= 0, gap = (big ? KNOBS.star.sel : KNOBS.star.out) / 2 + 4;
+      const big = s === sel, px = big ? K.label : K.small, [sx, sy] = P(s);
+      x.font = px + 'px ' + K.font; x.textBaseline = 'middle'; x.lineJoin = 'round';
+      const w = Math.ceil(x.measureText(s.name).width), right = s.x - S.off.x >= 0, gap = (big ? K.star.sel : K.star.out) / 2 + 4;
       let tx = right ? sx + gap : sx - gap - w; tx = Math.max(2, Math.min(S.w - 2 - w, tx));
       /* no word lands on another: it steps a line down, or up, until it stands clear */
       const lo = px / 2 + 1, hi = S.h - px / 2 - 1, clear = y => !S.hits.some(h => tx < h.x1 && tx + w > h.x0 && y - px / 2 - 2 < h.y1 - 4 && y + px / 2 + 2 > h.y0 + 4);
@@ -125,15 +134,22 @@
       for (let k = 1, y0 = ty; !clear(ty) && k < 12; k++) { const y = y0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (px + 3); if (y >= lo && y <= hi) ty = y; }
       x.strokeStyle = G.ground; x.lineWidth = 3; x.strokeText(s.name, tx, ty); x.fillStyle = big ? textOf(s.name) : G.ink; x.fillText(s.name, tx, ty);
       S.hits.push({ id: s.id, x0: tx - 3, x1: tx + w + 3, y0: ty - px / 2 - 4, y1: ty + px / 2 + 4 }); });
+    /* THE BELL: words came back from a guest — a hexagon at the sky's right edge blinks until he taps the constellation */
+    if (S.unread > 0) {
+      const bx = S.w - 30, by = 10, on = Math.floor(now / 600) % 2 === 0;
+      x.globalAlpha = on ? 1 : 0.22; x.fillStyle = '#FF7A12';
+      HEX.forEach((row, yy) => Array.from(row).forEach((ch, xx) => { if (ch === '#') x.fillRect(bx + xx * 2, by + yy * 2, 2, 2); }));
+      S.bellHit = { x0: bx - 10, y0: 0, x1: S.w, y1: by + HEX.length * 2 + 10 };
+    } else S.bellHit = null;
     x.globalAlpha = 1;
   }
   function step(S) {
-    S.raf = 0; let moving = false;
+    S.raf = 0; let moving = false; const K = S.knobs || KNOBS;
     S.ball.stars.forEach(s => { const [tx, ty] = aim(S, s);
-      s.vx = (s.vx + (tx - s.x) * s.k) * KNOBS.damp; s.vy = (s.vy + (ty - s.y) * s.k) * KNOBS.damp; s.x += s.vx; s.y += s.vy;
+      s.vx = (s.vx + (tx - s.x) * s.k) * K.damp; s.vy = (s.vy + (ty - s.y) * s.k) * K.damp; s.x += s.vx; s.y += s.vy;
       if (Math.abs(tx - s.x) > 0.15 || Math.abs(ty - s.y) > 0.15 || Math.abs(s.vx) + Math.abs(s.vy) > 0.05) moving = true; else { s.x = tx; s.y = ty; } });
     paint(S);
-    if (moving || S.drag || (S.sel && Date.now() - S.selAt < KNOBS.fadeMs + 40)) kick(S);
+    if (moving || S.drag || (S.sel && Date.now() - S.selAt < K.fadeMs + 40)) kick(S);
   }
   function kick(S) { if (!S.raf && root.requestAnimationFrame) S.raf = root.requestAnimationFrame(() => step(S)); }
 
@@ -151,30 +167,34 @@
     facts(S); fit(S); kick(S);
   }
   function size(S) {
+    const K = S.knobs || KNOBS;
     const host = S.host, hs = root.getComputedStyle(host), w = Math.floor(host.clientWidth - (parseFloat(hs.paddingLeft) || 0) - (parseFloat(hs.paddingRight) || 0) - 2);
     S.lastCW = host.clientWidth; if (w < 40) { S.w = 0; return; }
     const R = S.ball.R0, dpr = Math.min(3, root.devicePixelRatio || 1);
-    S.w = w; S.h = KNOBS.top + 2 * (R + KNOBS.out * 1.4 + KNOBS.reach / 2) + 18; S.cx = Math.round(w / 2); S.cy = Math.round(KNOBS.top + R + KNOBS.out);
+    S.w = w; S.h = K.top + 2 * (R + K.out * 1.4 + K.reach / 2) + 18; S.cx = Math.round(w / 2); S.cy = Math.round(K.top + R + K.out);
     S.dpr = dpr; S.cv.width = Math.round(w * dpr); S.cv.height = Math.round(S.h * dpr); S.cv.style.width = w + 'px'; S.cv.style.height = S.h + 'px';
     paint(S); fit(S);
   }
 
-  /* ═══ the hand: tap a star (or its word) · tap the sky beside the ball to let go · drag to tug the ball ═══ */
+  /* ═══ the hand: tap a star (or its word) · tap the sky beside the ball to let go · drag to tug the ball · the bell, when it blinks ═══ */
   function hands(S) {
-    const cv = S.cv; let down = null;
+    const cv = S.cv; let down = null; const K = () => S.knobs || KNOBS;
     const at = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     cv.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, p: at(e) }; S.drag = false; try { cv.setPointerCapture(e.pointerId); } catch (x) {} });
     cv.addEventListener('pointermove', e => { if (!down) return; const dx = e.clientX - down.x, dy = e.clientY - down.y;
       if (!S.drag && Math.hypot(dx, dy) > 6) S.drag = true;
-      if (S.drag) { let ox = dx * KNOBS.give, oy = dy * KNOBS.give; const l = Math.hypot(ox, oy); if (l > KNOBS.reach) { ox *= KNOBS.reach / l; oy *= KNOBS.reach / l; }
+      if (S.drag) { let ox = dx * K().give, oy = dy * K().give; const l = Math.hypot(ox, oy); if (l > K().reach) { ox *= K().reach / l; oy *= K().reach / l; }
         S.off = { x: ox, y: oy }; kick(S); } });
     const up = () => { if (!down) return; const was = S.drag, p = down.p; down = null; S.drag = false; S.off = { x: 0, y: 0 }; kick(S);
       if (was) return;
+      /* the bell first: a tap on the blinking hexagon pops the guests' words up */
+      if (S.bellHit && p[0] >= S.bellHit.x0 && p[0] <= S.bellHit.x1 && p[1] >= S.bellHit.y0 && p[1] <= S.bellHit.y1) {
+        if (S.onBeacon) S.onBeacon(); return; }
       const hit = S.hits.find(h => p[0] >= h.x0 && p[0] <= h.x1 && p[1] >= h.y0 && p[1] <= h.y1);
       if (hit) return choose(S, hit.id === S.sel ? null : hit.id);
       let best = null, bd = 1e9; S.ball.stars.forEach(s => { const d = Math.hypot(S.cx + s.x - p[0], S.cy + s.y - p[1]); if (d < bd) { bd = d; best = s; } });
-      const onBall = Math.hypot(p[0] - S.cx, p[1] - S.cy) <= S.ball.R0 + KNOBS.out * 1.4 + 10;
-      if (best && (bd <= KNOBS.spacing || onBall)) choose(S, best.id === S.sel ? null : best.id); else if (S.sel) choose(S, null); };
+      const onBall = Math.hypot(p[0] - S.cx, p[1] - S.cy) <= S.ball.R0 + K().out * 1.4 + 10;
+      if (best && (bd <= K().spacing || onBall)) choose(S, best.id === S.sel ? null : best.id); else if (S.sel) choose(S, null); };
     cv.addEventListener('pointerup', up);
     cv.addEventListener('pointercancel', () => { down = null; S.drag = false; S.off = { x: 0, y: 0 }; kick(S); });
     cv.addEventListener('keydown', e => { const L = S.ball.stars; if (!L.length) return; const i = L.findIndex(s => s.id === S.sel);
@@ -183,13 +203,16 @@
       if (e.key === 'Escape') choose(S, null); });
   }
 
-  /* draw(host, sq): the ball into host */
-  async function draw(host, sq) {
-    const S = host._sky || (host._sky = { host, book: null, W: null, ball: null, sel: null, touched: new Set(), selAt: 0, off: { x: 0, y: 0 }, drag: false, raf: 0, hits: [], flare: { i: -1, until: 0 }, w: 0 });
+  /* draw(host, sq, knobs): the ball into host. knobs (a room's own sizes) fold over the defaults; the Inkling app calls
+     with two arguments and keeps the little ball exactly as it was. */
+  async function draw(host, sq, knobs) {
+    const S = host._sky || (host._sky = { host, book: null, W: null, ball: null, sel: null, touched: new Set(), selAt: 0, off: { x: 0, y: 0 }, drag: false, raf: 0, hits: [], flare: { i: -1, until: 0 }, w: 0, unread: 0, onBeacon: null, bellHit: null });
+    S.knobs = Object.assign({}, KNOBS, knobs || {});
+    if (host._bell) { S.unread = host._bell.n; S.onBeacon = host._bell.onTap; }
     if (!sq || !Array.isArray(sq.c)) { host.textContent = ''; S.book = null; S.cv = null; const p = root.document.createElement('p'); p.className = 'sky-facts'; p.textContent = 'his constellation comes with your link'; host.appendChild(p); return; }
-    const key = JSON.stringify(sq);
+    const key = JSON.stringify(sq) + '|' + JSON.stringify({ sp: S.knobs.spacing, st: S.knobs.star, o: S.knobs.out, tp: S.knobs.top });
     if (S.book !== key || !S.cv) {
-      S.book = key; S.W = fromSq(sq); S.ball = build(S.W); S.sel = null; S.touched = new Set();
+      S.book = key; S.W = fromSq(sq); S.ball = build(S.W, S.knobs); S.sel = null; S.touched = new Set();
       host.textContent = '';
       const wrap = root.document.createElement('div'); wrap.className = 'sky';
       S.cv = root.document.createElement('canvas'); S.cv.tabIndex = 0; S.cv.setAttribute('role', 'img');
@@ -206,11 +229,19 @@
       S.ro = new root.ResizeObserver(() => { clearTimeout(t); t = setTimeout(() => { if (S.cv && Math.abs(S.host.clientWidth - (S.lastCW || 0)) > 2) size(S); }, 120); });
       S.ro.observe(host);
     }
-    if (!S.tw) S.tw = root.setInterval(() => {   // once a second, one star flares (only while the sky is seen)
-      if (!S.cv || !S.host.offsetParent || S.sel || !S.ball.stars.length) return;
+    if (!S.tw) S.tw = root.setInterval(() => {   // once a second, one star flares; the bell blinks (only while the sky is seen)
+      if (!S.cv || !S.host.offsetParent || !S.ball.stars.length) return;
       if (root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      S.flare = { i: Math.floor(Math.random() * S.ball.stars.length), until: Date.now() + KNOBS.flareMs }; paint(S);
-      root.setTimeout(() => paint(S), KNOBS.flareMs + 20); }, KNOBS.twinkleMs);
+      if (!S.sel) {
+        S.flare = { i: Math.floor(Math.random() * S.ball.stars.length), until: Date.now() + KNOBS.flareMs }; paint(S);
+        root.setTimeout(() => paint(S), KNOBS.flareMs + 20);
+      } else if (S.unread > 0) paint(S); }, KNOBS.twinkleMs);
   }
-  root.SKY = { draw, colourOf, KNOBS };
+  /* the bell, from the room: n words wait from guests; a tap on the hexagon calls onTap. Survives re-draws (rides the host). */
+  function setUnread(host, n, onTap) {
+    host._bell = { n: n | 0, onTap: onTap || null };
+    const S = host._sky;
+    if (S) { S.unread = host._bell.n; S.onBeacon = host._bell.onTap; paint(S); }
+  }
+  root.SKY = { draw, setUnread, colourOf, KNOBS };
 })(window);

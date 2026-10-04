@@ -10,7 +10,12 @@ The King's app on the phone, at https://leevzo.github.io/monomyth-inkling/ (a cl
 - The kingdom travels only inside links, after the `#` (`#k=…`), which a phone never sends to any server. Nothing personal
   is in this repository. The app keeps its own drawer on the phone (`inkling.*`), apart from Orv's (`orv.*`); the key box is shared.
 - `vendor/qrcode.js` — node-qrcode 1.5.4, MIT (`vendor/qrcode.LICENSE`).
-- `squatch.html` — the writing inkling (2026-10-03). The script, the talk, and the sky. Squatch's own sprite, and the cigarette for settings.
+- `squatch.html` — the writing inkling (2026-10-04). The script, the talk, and the sky. Squatch's own sprite, and the cigarette for settings.
+  On the phone the room is three swiped screens: the script (its menu slides in from the left), the talk (its history pulls down),
+  and the sky over the story — the plot folded into its summary, tapped open like Vellum's. On the desk the talk steps back;
+  the script and the sky stand side by side. A guest's word waits as a blinking hexagon on the constellation until the King
+  taps the sky; then the waiting words pop up. The cigarette opens the Inkling app's own settings scene — key, coin, model,
+  test, say-back, diagnostics — worn in this room's paper and gold.
   Hosted with the app, at https://leevzo.github.io/monomyth-inkling/squatch.html — it is a page, nothing on a server holds his words.
   The mouth is his own key's own door: the page calls Anthropic straight from the phone (anthropic-dangerous-direct-browser-access),
   the key read from the shared key box (monomyth.focus.byok.v1), never sent anywhere else. A key inside a sentence becomes [a key].
