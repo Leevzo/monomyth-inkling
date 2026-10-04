@@ -37,43 +37,55 @@
   @font-face { font-family: 'AqMono'; src: url('fonts/aquarius-mono.ttf') format('truetype'); font-display: block; }
   @font-face { font-family: 'Scream'; src: url('fonts/scream.ttf') format('truetype'); font-display: block; }
   :root, html[data-theme="light"] {
-    --bg: #F2EAD8; --paper: #FBF6EA; --ink: #141414; --dim: #3A352E; --faint: #8A8279;
-    --line: #C9C1B4; --edge: #141414;
-    --teal: #9E5A00; --teal-dim: #B4700A; --ghost: rgba(158, 90, 0, .26);
-    --hover: rgba(20, 20, 20, .06); --wash: rgba(158, 90, 0, .10);
-    --grid: rgba(20, 20, 20, .055);
+    /* the old Scriptorium's day: paper white, dither checks, ink black, quiet grey, gold the one accent */
+    --bg: #FBFAF6; --paper: #FFFFFF; --ink: #000000; --dim: #3D3A34; --faint: #6B6B6B;
+    --line: #D8D2C4; --edge: #000000;
+    --dither: #ECE7DC;
+    --teal: #9E5A00; --teal-dim: #BF7B0D; --ghost: rgba(158, 90, 0, .26);
+    --hover: rgba(0, 0, 0, .05); --wash: rgba(158, 90, 0, .10);
     --gold: #B8862F; --red: #B4211F;
     --side-w: 280px;
     --pad: 14px;
+    --top-h: 52px;
   }
   html[data-theme="dark"] {
+    /* vellum's night, kept: warm black, paper panel, the same gold lit bright */
     --bg: #141414; --paper: #1F1D1A; --ink: #F2EAD8; --dim: #C9C1B4; --faint: #8A8279;
     --line: #33302B; --edge: #F2EAD8;
+    --dither: rgba(242, 234, 216, .055);
     --teal: #FFA512; --teal-dim: #BF7B0D; --ghost: rgba(255, 165, 18, .26);
     --hover: rgba(242, 234, 216, .07); --wash: rgba(255, 165, 18, .10);
-    --grid: rgba(242, 234, 216, .05);
     --gold: #FFA512; --red: #FF3D12;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { background: var(--bg); }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
-    font-family: ui-monospace, 'W95FA', monospace; -webkit-font-smoothing: none; }
+    font: 13px/1.5 Monaco, Geneva, 'Lucida Console', ui-monospace, monospace; -webkit-font-smoothing: none; }
   body { display: flex; flex-direction: column;
-    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 26px 26px;
+    background-image: repeating-conic-gradient(var(--dither) 0 25%, transparent 0 50%);
+    background-size: 4px 4px;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-  header { display: flex; align-items: baseline; gap: 10px 14px; padding: 10px var(--pad) 6px; flex: 0 0 auto; flex-wrap: wrap; }
-  #title { font-family: 'Scream', 'DarkByte', ui-monospace, monospace; font-size: 19px; letter-spacing: .04em; color: var(--ink);
-    background: transparent; border: 0; padding: 0; flex: 1 1 100%; width: 100%; min-width: 0; max-width: 100%;
+  /* the top bar, the old Scriptorium's: one fixed row, the name left in DarkByte, the quiet words right */
+  header { position: fixed; z-index: 20; top: 10px; left: 22px; right: 22px; display: flex; align-items: baseline; gap: 14px; }
+  #title { font-family: 'DarkByte', Monaco, monospace; font-size: 24px; line-height: 1.15; letter-spacing: 1px;
+    caret-color: var(--teal); color: var(--ink);
+    background: transparent; border: 0; padding: 0; flex: 0 1 auto; min-width: 0; width: auto;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #count { color: var(--faint); font-size: 11px; font-family: 'AqMono', ui-monospace, monospace; }
-  header button, #switch button, #note button, #say button, #lamp {
-    font-family: 'AqBold', 'AqMono', ui-monospace, monospace; font-size: 11px; color: var(--dim);
-    background: transparent; border: 0; padding: 6px 2px; cursor: pointer; }
-  header button { color: var(--teal); }
-  #switch { display: flex; gap: 16px; padding: 0 var(--pad) 8px; }
-  #switch button.on { color: var(--ink); }
-  #main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  #count { color: var(--faint); font-size: 11px; font-family: 'AqMono', ui-monospace, monospace; flex: 0 0 auto; }
+  #quiet { margin-left: auto; display: flex; align-items: baseline; gap: 16px; flex: 0 0 auto; }
+  #quiet button, #menu button, #note button, #say button {
+    font-family: 'AqBold', 'AqMono', ui-monospace, monospace; font-size: 12px; letter-spacing: .3px;
+    color: var(--faint); background: transparent; border: 0; padding: 0; cursor: pointer; }
+  #quiet button:hover, #menu button:hover { color: var(--ink); }
+  /* the file drawer, Scriptorium's: paper, one ink line, soft drop — new, open, export, the rest */
+  #menu { position: fixed; z-index: 30; top: calc(env(safe-area-inset-top, 0px) + 46px); right: 22px;
+    min-width: 208px; background: var(--paper); border: 1px solid var(--edge);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .12); padding: 10px 14px 12px; }
+  #menu [hidden] { display: none; }
+  #menu button { display: block; text-align: left; padding: 7px 0; font-size: 12px; }
+  #menu .sep { border-top: 1px solid var(--line); margin: 6px 0 2px; }
+  #main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
+    margin-top: calc(env(safe-area-inset-top, 0px) + var(--top-h)); }
   section { display: none; flex: 1 1 auto; min-height: 0; flex-direction: column; padding: 0 var(--pad) 10px; }
   section.on { display: flex; }
   /* the page and its twin: the page writes invisible ink over the formatter's face, so the
@@ -117,10 +129,10 @@
   #story li, #plot li { padding: 7px 8px 7px 12px; cursor: pointer; border-left: 3px solid var(--line); border-radius: 0 6px 6px 0; }
   #story li:hover, #plot li:hover { background: var(--hover); }
   #story li.on { border-left-color: var(--teal); background: var(--wash); }
-  #story .h { font-size: 14px; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .04em; }
-  #story .b { color: var(--dim); font-size: 12px; white-space: pre-line; font-family: inherit; }
+  #story .h { font-size: 14px; line-height: 1.4; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .04em; }
+  #story .b { color: var(--dim); font-size: 12px; line-height: 1.5; white-space: pre-line; font-family: Georgia, 'Times New Roman', serif; }
   #plot .n { font-family: 'AqMono', ui-monospace, monospace; font-size: 10px; color: var(--faint); margin-right: 8px; }
-  #plot .t { font-size: 13px; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .02em; color: var(--dim); }
+  #plot .t { font-size: 13px; line-height: 1.5; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .02em; color: var(--dim); }
   #empty { color: var(--dim); padding: 12px 0; }
   #known { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
   /* the desk: the page and its chapter outline, one on the phone stacked, two across on the glass */
@@ -128,7 +140,7 @@
   #outline { flex: 0 0 auto; max-height: 32%; overflow-y: auto; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   .mlabel { color: var(--teal-dim); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; font-weight: 600;
     margin: 10px 0 4px; font-family: 'AqBold', 'AqMono', ui-monospace, monospace; }
-  .who-line { padding: 3px 0; font-size: 13px; }
+  .who-line { padding: 3px 0; font-size: 13px; line-height: 1.5; }
   .who-line .q { color: var(--faint); font-size: 12px; }
   /* the wheel's front spot: his centre sits 44px in and 70px up from the lower right,
      the same corner he takes in the Inkling app. The drop into that app is this seat. */
@@ -137,10 +149,10 @@
   /* in the warm dark his black fur sinks into the desk — the moon he keeps on the icon rises behind him */
   html[data-theme="dark"] #sprite { background: radial-gradient(ellipse 62% 46% at 50% 54%, #FBF6EA 94%, transparent 99%); }
   #cig { image-rendering: pixelated; cursor: pointer; background: transparent; flex: 0 0 auto; }
-  #set { position: fixed; z-index: 30; top: 64px; right: 12px; width: min(320px, calc(100vw - 24px));
+  #set { position: fixed; z-index: 30; top: calc(env(safe-area-inset-top, 0px) + 46px); right: 22px; width: min(320px, calc(100vw - 24px));
     max-height: calc(100vh - 80px); overflow: auto;
     background: var(--paper); color: var(--ink); padding: 12px 14px 14px;
-    border: 1px solid var(--line); box-shadow: 4px 4px 0 rgba(0, 0, 0, .35); }
+    border: 1px solid var(--edge); box-shadow: 0 6px 20px rgba(0, 0, 0, .12); }
   #set[hidden] { display: none; }
   #set h2 { font-family: 'DarkByte', ui-monospace, monospace; font-size: 14px; font-weight: normal; margin: 0 0 8px; }
   #set p, #set button { font-size: 13px; }
@@ -152,15 +164,21 @@
   #key, #castcode, #ghost { background: transparent; border: 0; border-bottom: 1px solid var(--line);
     color: var(--ink); font: inherit; font-size: 14px; padding: 6px 0; outline: none; }
   #key, #ghost { width: 100%; }
-  #castword { font-size: 22px; letter-spacing: 0.14em; color: var(--ink); }
-  html.guest #roomtalk, html.guest #cig, html.guest #set, html.guest #anew, html.guest #share, html.guest #keep, html.guest #bring,
+  #castword { font-family: 'DarkByte', ui-monospace, monospace; font-size: 20px; letter-spacing: 0.14em; color: var(--ink); }
+  html.guest #roomtalk, html.guest #cig, html.guest #set, html.guest #menu, html.guest #menuBtn, html.guest #anew,
+  html.guest #share, html.guest #keep, html.guest #bring, html.guest #xport,
   html.guest #hold, html.guest #tape, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode { display: none !important; }
-  html.guest #switch button[data-screen="talk"] { display: none; }
   /* the pager: two dots for two rooms, the phone's own tell of where the swipe stands */
   #pager { display: none; gap: 9px; justify-content: center; padding: 2px 0 calc(8px + env(safe-area-inset-bottom)); flex: 0 0 auto; }
   #pager i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); opacity: .55; }
   #pager i.on { background: var(--teal); opacity: 1; }
   @media (max-width: 700px) {
+    header { left: 14px; right: 14px; gap: 10px; }
+    #title { font-size: 19px; flex: 1 1 0; }
+    #quiet { gap: 12px; flex: 0 0 auto; }
+    #count { display: none; }
+    /* the cigarette's door lives in the drawer on the small glass */
+    #cig { display: none; }
     #note { flex-wrap: wrap; }
     #note input { flex: 1 1 100%; }
   }
@@ -169,12 +187,12 @@
        each room tall enough to hold its own scroll */
     #main { flex-direction: row; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }
     #main section { display: flex; flex: 0 0 100%; width: 100%; min-width: 0; scroll-snap-align: start; overflow-y: auto; padding-bottom: 148px; }
-    #switch { display: none; }
     #pager { display: flex; }
+    /* he keeps the corner, smaller, above the pager */
+    #sprite { transform: scale(.6); transform-origin: bottom right; bottom: 26px; }
   }
   @media (min-width: 980px) {
-    #switch { display: none; }
-    #title { flex: 0 1 auto; width: auto; font-size: 17px; }
+    #title { font-size: 24px; }
     #main { flex-direction: row; }
     html.guest #main section { width: 50%; }
     html.guest #spine { display: none !important; }
@@ -194,16 +212,18 @@
   }
   /* ── the SQUATCH spine: the seam between the page and the side panel, as Scriptorium's —
      the word stands on its end, the ticks run above and below, and the drag resizes the panel.
-     The word wears the wheel, one colour a beat; the lit moment (a hand on the seam) is gold. ── */
+     The word wears the wheel's own colours, one a beat, bright in both lights; the ticks take
+     the word's colour; the lit moment (a hand on the seam) is gold. ── */
   #spine { display: none; position: fixed; top: 0; bottom: 0; right: var(--side-w); width: 30px; z-index: 6; cursor: ew-resize; touch-action: none; }
-  #spine::before, #spine::after { content: ""; position: absolute; left: 50%; width: 1px; transform: translateX(-50%); background: var(--line); }
+  #spine::before, #spine::after { content: ""; position: absolute; left: 50%; width: 1px; transform: translateX(-50%);
+    background: var(--tick, var(--line)); opacity: .8; transition: background .25s; }
   #spine::before { top: 0; bottom: calc(50% + 110px); }
   #spine::after { top: calc(50% + 110px); bottom: 0; }
   #spine span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(180deg); writing-mode: vertical-rl;
     font-family: 'AqBold', 'AqMono', ui-monospace, monospace; font-size: 12px; letter-spacing: .32em; color: var(--dim);
     user-select: none; -webkit-user-select: none; transition: color .25s; }
   #spine:hover span, #spine.dragging span { color: var(--ink); text-shadow: 0 0 8px rgba(255, 165, 18, .55); }
-  #spine:hover::before, #spine:hover::after, #spine.dragging::before, #spine.dragging::after { background: var(--gold); }
+  #spine:hover::before, #spine:hover::after, #spine.dragging::before, #spine.dragging::after { background: var(--gold); opacity: 1; }
   #spine.dragging { cursor: grabbing; }
 </style>
 <script>
@@ -215,23 +235,26 @@
 <header>
   <input id="title" aria-label="The name of this project" placeholder="Name this project" spellcheck="false" autocomplete="off">
   <span id="count"></span>
-  <button type="button" id="anew">new</button>
-  <button type="button" id="cast">cast</button>
   <span id="castword" hidden></span>
   <input id="castcode" hidden aria-label="The word on the computer" placeholder="the word on the computer" autocomplete="off" autocapitalize="characters" spellcheck="false">
-  <button type="button" id="share">share</button>
-  <button type="button" id="keep">copy</button>
-  <button type="button" id="bring">open</button>
-  <button type="button" id="lamp" title="the desk's other light">light</button>
-  <canvas id="cig" role="button" tabindex="0" aria-label="settings, the cigarette"></canvas>
+  <span id="quiet">
+    <button type="button" id="menuBtn">menu</button>
+    <button type="button" id="lamp" title="the desk's other light">light</button>
+    <canvas id="cig" role="button" tabindex="0" aria-label="settings, the cigarette"></canvas>
+  </span>
   <input id="file" type="file" accept="application/json,.json,.inkling" hidden>
   <input id="voicetape" type="file" accept="audio/*,.m4a,.mp3,.webm,.wav,.ogg,.txt,.fountain,.md" hidden>
 </header>
-<nav id="switch">
-  <button type="button" data-screen="script" class="on">script</button>
-  <button type="button" data-screen="talk">talk</button>
-  <button type="button" data-screen="tools">sky</button>
-</nav>
+<div id="menu" hidden role="menu" aria-label="the file drawer">
+  <button type="button" id="anew">new</button>
+  <button type="button" id="bring">open…</button>
+  <button type="button" id="xport">export fountain</button>
+  <button type="button" id="keep">copy shelf</button>
+  <button type="button" id="share">share</button>
+  <div class="sep"></div>
+  <button type="button" id="cast">cast</button>
+  <button type="button" id="menuSet">the cigarette — settings</button>
+</div>
 <div id="main">
   <section id="scriptsec" class="on" data-name="script">
     <div id="desk">
@@ -615,7 +638,8 @@
     state.title = t; save(); paint();
   });
 
-  document.getElementById('switch').addEventListener('click', function (e) {
+  var swEl = document.getElementById('switch');
+  if (swEl) swEl.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return; show(b.getAttribute('data-screen'));
   });
 
@@ -1089,11 +1113,33 @@
     var safe = state.title.replace(/[^\w]+/g, ' ').trim() || 'Squatch';
     download(safe + '.inkling.json', new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }));
   });
+  /* the export: the page goes out as plain fountain, the bytes as they stand */
+  $('xport').addEventListener('click', function () {
+    var safe = (state.title || '').replace(/[^\w]+/g, ' ').trim() || 'Squatch';
+    download(safe + '.fountain', new Blob([state.script], { type: 'text/plain' }));
+    $('kept').textContent = 'The script went out as a fountain.';
+  });
+  /* the file drawer: one button opens it; a choice or a click elsewhere folds it */
+  var menuEl = $('menu');
+  function closeMenu() { if (menuEl) menuEl.hidden = true; }
+  if ($('menuBtn') && menuEl) {
+    $('menuBtn').addEventListener('click', function () { menuEl.hidden = !menuEl.hidden; });
+    document.addEventListener('click', function (e) {
+      if (menuEl.hidden) return;
+      if (e.target.closest && (e.target.closest('#menu') || e.target.closest('#menuBtn'))) return;
+      closeMenu();
+    });
+  }
+  var menuSetBtn = $('menuSet');
+  if (menuSetBtn) menuSetBtn.addEventListener('click', function () {
+    closeMenu();
+    $('set').hidden = false;
+  });
   function replayOk() {
     var back = R.replay(state.log, '');
     return back === state.script;
   }
-  $('bring').addEventListener('click', function () { $('file').click(); });
+  $('bring').addEventListener('click', function () { closeMenu(); $('file').click(); });
   $('file').addEventListener('change', function () {
     var f = $('file').files && $('file').files[0]; $('file').value = ''; if (!f) return;
     var reader = new FileReader();
@@ -1292,12 +1338,21 @@
   (function () {
     try { var sw = localStorage.getItem('squatch.room.sidew'); if (sw) document.documentElement.style.setProperty('--side-w', sw); } catch (e) {}
     var sp = $('spine'), word = $('spineword'), dragging = false, ci = 0;
-    if (word && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setInterval(function () {
-        if (dragging || !word) return;
-        ci = (ci + 1) % R.WHEEL.length;
-        word.style.color = lampHue(R.WHEEL[ci]);
-      }, 900);
+    /* the wheel's own colours, bright in both lights; the word starts lit even for a still room */
+    var wear = function () {
+      var c = R.WHEEL[ci];
+      word.style.color = c;
+      sp.style.setProperty('--tick', c);
+    };
+    if (word) {
+      wear();
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setInterval(function () {
+          if (dragging || !word) return;
+          ci = (ci + 1) % R.WHEEL.length;
+          wear();
+        }, 900);
+      }
     }
     if (!sp) return;
     sp.addEventListener('pointerdown', function (e) {
@@ -1487,7 +1542,11 @@
     if ($('page').value !== state.script) $('page').value = state.script;
     show('script');
     paint();
+    /* the focus wakes the caret but also scrolls the page to some remembered middle — the pen
+       starts at the top of a fresh-opened page, always */
     $('page').focus();
+    $('page').scrollTop = 0;
+    $('fmt').scrollTop = 0;
     seatSquatch();
     seatCig();
     $('setScene').addEventListener('click', function () { share('scene'); });
