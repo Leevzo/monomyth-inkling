@@ -136,7 +136,7 @@
   #say button { flex: 0 0 auto; font-size: 12px; padding: 0 0 5px; line-height: 1; }
 
   /* ——— the constellation's window: her whisper-panel's frame — paper, one ink line, radius 2 — */
-  #sky { min-height: 150px; aspect-ratio: 1.618 / 1; max-width: 330px; width: 100%; margin: 2px auto 10px;
+  #sky { min-height: 150px; max-width: 330px; width: 100%; margin: 2px auto 10px;
     background: var(--panel); border: 1px solid var(--ink); border-radius: 2px; }
   #sky:empty { display: none; }
   .sky-facts { color: var(--grey); font-size: 13px; }
@@ -152,15 +152,12 @@
   #plot .n { font-size: 11px; color: var(--grey); margin-right: 8px; }
   #plot .t { font-size: 13px; line-height: 1.5; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .02em; color: var(--ink); }
   #empty { color: var(--grey); padding: 12px 0; }
-  #known { color: var(--ink); font-size: 13px; margin: 8px 0 0; }
 
   /* the desk: the page and its chapter outline, one on the phone stacked, two across on the glass */
   #desk { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; }
   #outline { flex: 0 0 auto; max-height: 32%; overflow-y: auto; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   /* her lists-drawer's hand for the small headings */
   .mlabel { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--grey); margin: 14px 0 6px; }
-  .who-line { padding: 3px 0; font-size: 13px; line-height: 1.5; }
-  .who-line .q { color: var(--grey); font-size: 12px; }
 
   /* his corner: nothing frames him */
   #sprite { position: fixed; z-index: 5; right: 9px; bottom: 5px;
@@ -320,8 +317,6 @@
     <p id="empty">Write a scene. The stars come out of the page.</p>
     <p class="mlabel">plot</p>
     <ol id="plot"></ol>
-    <p class="mlabel">characters</p>
-    <div id="known" hidden></div>
     <div id="roomtalk">
       <div id="talk"></div>
       <form id="say">
@@ -549,7 +544,6 @@
     paintSky(parsed);
     paintStory(parsed);
     paintPlot();
-    paintKnown();
     paintProjects();
   }
   /* the page's screenplay face: the tape stays plain fountain, the glass wears the conventions —
@@ -602,25 +596,6 @@
         if (smallGlass()) show('script');
       });
       el.appendChild(li);
-    });
-  }
-  function paintKnown() {
-    var el = $('known');
-    if (!el) return;
-    var names = shelf && shelf.people ? Object.keys(shelf.people) : [];
-    el.textContent = '';
-    if (!names.length) { el.hidden = true; return; }
-    el.hidden = false;
-    names.forEach(function (n) {
-      var d = document.createElement('div'), s = document.createElement('span'), q = document.createElement('span');
-      d.className = 'who-line';
-      s.style.color = inkOf(n);
-      s.textContent = n;
-      var first = shelf.people[n] && shelf.people[n].lines && shelf.people[n].lines[0];
-      q.className = 'q';
-      q.textContent = first ? ' — ' + first : '';
-      d.appendChild(s); d.appendChild(q);
-      el.appendChild(d);
     });
   }
   function paintProjects() {
