@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Squatch">
-<meta name="theme-color" content="#17232E">
+<meta name="theme-color" content="#1a1a1a">
 <title>Squatch</title>
 <link rel="stylesheet" href="/fonts.css">
 <link rel="apple-touch-icon" href="/squatch-icon.png">
@@ -29,9 +29,16 @@
   Notes have no intelligence. A voice note is kept whole; it is not transcribed.
 -->
 <style>
+  /* the ground speaks Scriptorium now (2026-10-03, his word): true grey chrome — R=G=B, never pure
+     white or black — the 23's teal for content and state, hearth-gold only for the lit moment.
+     Colour stays off the chrome and on the story: the wheel lives in the scene headings,
+     the constellation, and the spine's word. */
   :root {
-    --bg: #17232E; --paper: #1F2E3B; --ink: #E1E8ED; --dim: #8899A6; --faint: #5B6D7C;
-    --ground: #17232E; --line: #2C3D4C; --teal: #4A9FD8;
+    --bg: #1a1a1a; --ink: #ededed; --dim: #949494; --faint: #666666;
+    --line: #3a3a3a; --paper: #242424;
+    --teal: #12ffc2; --teal-dim: #0dbf91; --gold: #ffa512; --red: #ff1239;
+    --ghost: rgba(18, 255, 194, .34);
+    --side-w: 280px;
     --pad: 14px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -56,7 +63,7 @@
   #page { flex: 1 1 auto; min-height: 0; width: 100%; resize: none; border: 0; outline: none;
     background: transparent; color: var(--ink); caret-color: var(--teal);
     font-family: 'Courier New', Courier, monospace; font-size: 16px; line-height: 1.45; padding: 4px 0 12px; }
-  #page::selection { background: rgba(74,159,216,.30); }
+  #page::selection { background: rgba(18, 255, 194, .22); }
   #note { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; padding-top: 6px; }
   #note input { flex: 1 1 auto; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line);
     color: var(--ink); font: inherit; font-size: 14px; padding: 6px 0; outline: none; }
@@ -77,10 +84,12 @@
   .sky-facts { color: var(--dim); font-size: 13px; }
   .sky-facts .h { color: var(--ink); }
   #story { list-style: none; margin: 8px 0 0; padding: 0; }
-  #story li { padding: 7px 0 7px 12px; cursor: pointer; border-left: 3px solid var(--line); }
-  #story li.on { border-left-color: var(--teal); }
-  #story .h { font-size: 14px; }
-  #story .b { color: var(--dim); font-size: 12px; white-space: pre-line; }
+  #story li { padding: 7px 8px 7px 12px; cursor: pointer; border-left: 3px solid var(--line); border-radius: 0 6px 6px 0; }
+  #story li:hover { background: rgba(255, 255, 255, .035); }
+  #story li.on { border-left-color: var(--teal); background: rgba(18, 255, 194, .05); }
+  /* scene lines wear the serif, Scriptorium's hand for chapters and slugs */
+  #story .h { font-size: 14px; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .04em; }
+  #story .b { color: var(--dim); font-size: 12px; white-space: pre-line; font-family: inherit; }
   #empty { color: var(--dim); padding: 12px 0; }
   #known { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
   /* the wheel's front spot: his centre sits 44px in and 70px up from the lower right,
@@ -90,7 +99,8 @@
   #cig { image-rendering: pixelated; cursor: pointer; background: transparent; flex: 0 0 auto; }
   #set { position: fixed; z-index: 30; top: 64px; right: 12px; width: min(320px, calc(100vw - 24px));
     max-height: calc(100vh - 80px); overflow: auto;
-    background: #1F2E3B; color: var(--ink); padding: 12px 14px 14px; }
+    background: var(--paper); color: var(--ink); padding: 12px 14px 14px;
+    border: 1px solid var(--line); box-shadow: 4px 4px 0 rgba(0, 0, 0, .35); }
   #set[hidden] { display: none; }
   #set h2 { font-family: 'Dogica', ui-monospace, monospace; font-size: 12px; font-weight: normal; margin: 0 0 8px; }
   #set p, #set button { font-size: 13px; }
@@ -115,13 +125,32 @@
   }
   @media (min-width: 980px) {
     #switch { display: none; }
-    #title { flex: 0 1 auto; width: auto; font-family: 'Dogica', ui-monospace, monospace; font-size: 13px; }
+    #title { flex: 0 1 auto; width: auto; font-family: 'Dogica', ui-monospace, monospace; font-size: 13px; letter-spacing: .06em; }
     #main { flex-direction: row; }
     html.guest #main section { width: 50%; }
+    html.guest #spine { display: none !important; }
+    /* the talk stays on the phone (his word): the desk holds the page and the side panel only */
+    #talksec { display: none !important; }
     section { display: flex; width: 28%; }
-    #talksec { width: 44%; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
-    #toolsec { padding-bottom: 148px; }
+    #scriptsec { flex: 1 1 auto; width: auto; min-width: 0; padding-right: 30px; padding-bottom: 140px; }
+    #toolsec { width: var(--side-w); flex: 0 0 var(--side-w); padding: 0 18px 20px 18px; }
+    /* his seat is left of the seam now, at the page's lower right, the same corner he keeps on the phone */
+    #sprite { right: calc(var(--side-w) + 26px) !important; }
+    #spine { display: block !important; }
   }
+  /* ── the SQUATCH spine: the seam between the page and the side panel, as Scriptorium's —
+     the word stands on its end, the ticks run above and below, and the drag resizes the panel.
+     The word wears the wheel, one colour a beat; the lit moment (a hand on the seam) is gold. ── */
+  #spine { display: none; position: fixed; top: 0; bottom: 0; right: var(--side-w); width: 30px; z-index: 6; cursor: ew-resize; touch-action: none; }
+  #spine::before, #spine::after { content: ""; position: absolute; left: 50%; width: 1px; transform: translateX(-50%); background: var(--line); }
+  #spine::before { top: 0; bottom: calc(50% + 110px); }
+  #spine::after { top: calc(50% + 110px); bottom: 0; }
+  #spine span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(180deg); writing-mode: vertical-rl;
+    font-family: 'Dogica', ui-monospace, monospace; font-size: 12px; letter-spacing: .32em; color: var(--dim);
+    user-select: none; -webkit-user-select: none; transition: color .25s; }
+  #spine:hover span, #spine.dragging span { color: var(--ink); text-shadow: 0 0 8px rgba(255, 165, 18, .55); }
+  #spine:hover::before, #spine:hover::after, #spine.dragging::before, #spine.dragging::after { background: var(--gold); }
+  #spine.dragging { cursor: grabbing; }
 </style>
 </head>
 <body>
@@ -170,6 +199,7 @@
   </section>
 </div>
 <canvas id="sprite" aria-label="Squatch"></canvas>
+<div id="spine" title="drag: the side panel's width"><span id="spineword">SQUATCH</span></div>
 <div id="set" hidden role="dialog" aria-label="settings">
   <h2>the cigarette</h2>
   <div id="setProjects"></div>
@@ -1063,6 +1093,43 @@
     cg.addEventListener('click', tog);
     cg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
   }
+
+  /* the SQUATCH spine: drag the seam, the side panel follows; the width is kept in this drawer.
+     The word wears the wheel one colour a beat — the bead-pattern's twelve, climbing like the ember —
+     and goes quiet-gold while a hand is on the seam. */
+  (function () {
+    try { var sw = localStorage.getItem('squatch.room.sidew'); if (sw) document.documentElement.style.setProperty('--side-w', sw); } catch (e) {}
+    var sp = $('spine'), word = $('spineword'), dragging = false, ci = 0;
+    if (word && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setInterval(function () {
+        if (dragging || !word) return;
+        ci = (ci + 1) % R.WHEEL.length;
+        word.style.color = R.WHEEL[ci];
+      }, 900);
+    }
+    if (!sp) return;
+    sp.addEventListener('pointerdown', function (e) {
+      dragging = true;
+      sp.classList.add('dragging');
+      document.body.style.userSelect = 'none';
+      try { sp.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
+    });
+    sp.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      var w = Math.max(200, Math.min(520, window.innerWidth - e.clientX - 15));
+      document.documentElement.style.setProperty('--side-w', w + 'px');
+    });
+    var drop = function () {
+      if (!dragging) return;
+      dragging = false;
+      sp.classList.remove('dragging');
+      document.body.style.userSelect = '';
+      try { localStorage.setItem('squatch.room.sidew', getComputedStyle(document.documentElement).getPropertyValue('--side-w')); } catch (e) {}
+    };
+    sp.addEventListener('pointerup', drop);
+    sp.addEventListener('pointercancel', drop);
+  })();
 
   function showCode(code) {
     $('castword').hidden = false;
