@@ -29,30 +29,45 @@
   Notes have no intelligence. A voice note is kept whole; it is not transcribed.
 -->
 <style>
-  /* the ground speaks Scriptorium now (2026-10-03, his word): true grey chrome — R=G=B, never pure
-     white or black — the 23's teal for content and state, hearth-gold only for the lit moment.
-     Colour stays off the chrome and on the story: the wheel lives in the scene headings,
-     the constellation, and the spine's word. */
-  :root {
-    --bg: #1a1a1a; --ink: #ededed; --dim: #949494; --faint: #666666;
-    --line: #3a3a3a; --paper: #242424;
-    --teal: #12ffc2; --teal-dim: #0dbf91; --gold: #ffa512; --red: #ff1239;
-    --ghost: rgba(18, 255, 194, .34);
+  /* the desk wears WriterDuet's two lights now (the King's notes, 2026-10-01), on Scriptorium's
+     light grid like the old room: slate desk both ways, the page white or slate, the ink following.
+     The highlight is the door blue, .34 at rest; colour stays on content, never chrome. */
+  @font-face { font-family: 'DarkByte'; src: url('fonts/DarkByte.ttf') format('truetype'); font-display: block; }
+  @font-face { font-family: 'AqBold'; src: url('fonts/aquarius-bold.ttf') format('truetype'); font-display: block; }
+  @font-face { font-family: 'AqMono'; src: url('fonts/aquarius-mono.ttf') format('truetype'); font-display: block; }
+  @font-face { font-family: 'Scream'; src: url('fonts/scream.ttf') format('truetype'); font-display: block; }
+  :root, html[data-theme="dark"] {
+    --bg: #17232E; --paper: #1F2E3B; --ink: #E1E8ED; --dim: #8899A6; --faint: #5B6D7C;
+    --line: #2C3D4C; --edge: #E1E8ED;
+    --teal: #4A9FD8; --teal-dim: #2F6F9E; --ghost: rgba(74, 159, 216, .34);
+    --hover: rgba(138, 155, 168, .10); --wash: rgba(74, 159, 216, .09);
+    --grid: rgba(136, 153, 166, .09);
+    --gold: #FFA512; --red: #FF3D12;
     --side-w: 280px;
     --pad: 14px;
   }
+  html[data-theme="light"] {
+    --bg: #E1E8ED; --paper: #FFFFFF; --ink: #14171A; --dim: #657786; --faint: #AAB8C2;
+    --line: #CCD6DD; --edge: #14171A;
+    --teal: #1F6FAE; --teal-dim: #4A9FD8; --ghost: rgba(31, 111, 174, .28);
+    --hover: rgba(101, 119, 134, .12); --wash: rgba(31, 111, 174, .08);
+    --grid: rgba(101, 119, 134, .16);
+  }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
     font-family: ui-monospace, 'W95FA', monospace; -webkit-font-smoothing: none; }
   body { display: flex; flex-direction: column;
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
   header { display: flex; align-items: baseline; gap: 10px 14px; padding: 10px var(--pad) 6px; flex: 0 0 auto; flex-wrap: wrap; }
-  #title { font-family: ui-monospace, monospace; font-size: 17px; color: var(--ink);
+  #title { font-family: 'Scream', 'DarkByte', ui-monospace, monospace; font-size: 19px; letter-spacing: .04em; color: var(--ink);
     background: transparent; border: 0; padding: 0; flex: 1 1 100%; width: 100%; min-width: 0; max-width: 100%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #count { color: var(--faint); font-size: 12px; }
-  header button, #switch button, #note button, #say button {
-    font-family: 'Dogica', ui-monospace, monospace; font-size: 11px; color: var(--dim);
+  #count { color: var(--faint); font-size: 11px; font-family: 'AqMono', ui-monospace, monospace; }
+  header button, #switch button, #note button, #say button, #lamp {
+    font-family: 'AqBold', 'AqMono', ui-monospace, monospace; font-size: 11px; color: var(--dim);
     background: transparent; border: 0; padding: 6px 2px; cursor: pointer; }
   header button { color: var(--teal); }
   #switch { display: flex; gap: 16px; padding: 0 var(--pad) 8px; }
@@ -60,10 +75,21 @@
   #main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
   section { display: none; flex: 1 1 auto; min-height: 0; flex-direction: column; padding: 0 var(--pad) 10px; }
   section.on { display: flex; }
+  /* the page and its twin: the page writes invisible ink over the formatter's face, so the
+     screenplay keeps its conventions on the glass — headings bold in their place's colour, cues
+     bold, parentheticals dim — while the bytes on the tape stay the plain fountain they are. */
+  #paper { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+  #fmt { position: absolute; inset: 0; margin: 0; padding: 4px 0 12px; overflow: hidden; pointer-events: none;
+    font-family: 'Courier New', Courier, monospace; font-size: 16px; line-height: 1.45; color: var(--ink);
+    white-space: pre-wrap; overflow-wrap: break-word; }
+  #fmt .fc-paren { color: var(--dim); }
+  #fmt .fc-trans { font-weight: bold; color: var(--dim); }
+  #fmt .fc-scene, #fmt .fc-cue { font-weight: bold; }
   #page { flex: 1 1 auto; min-height: 0; width: 100%; resize: none; border: 0; outline: none;
-    background: transparent; color: var(--ink); caret-color: var(--teal);
+    background: transparent; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--teal);
     font-family: 'Courier New', Courier, monospace; font-size: 16px; line-height: 1.45; padding: 4px 0 12px; }
-  #page::selection { background: rgba(18, 255, 194, .22); }
+  #page::placeholder { color: var(--faint); -webkit-text-fill-color: var(--faint); }
+  #page::selection { background: var(--ghost); color: transparent; -webkit-text-fill-color: transparent; }
   #note { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; padding-top: 6px; }
   #note input { flex: 1 1 auto; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line);
     color: var(--ink); font: inherit; font-size: 14px; padding: 6px 0; outline: none; }
@@ -74,33 +100,33 @@
   .zip { color: var(--faint); font-size: 13px; padding: 8px 0; }
   .chunk { color: var(--dim); font-size: 13px; padding: 3px 0 3px 10px; }
   #last { font-size: 22px; line-height: 1.35; padding: 18px 0 24px; white-space: pre-wrap; }
-  #last .who { display: block; font-family: 'Dogica', ui-monospace, monospace; font-size: 11px; color: var(--teal); margin-bottom: 8px; }
+  #last .who { display: block; font-family: 'AqBold', 'AqMono', ui-monospace, monospace; font-size: 11px; color: var(--teal); margin-bottom: 8px; }
   #say { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
   #say input { flex: 1 1 auto; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line);
     color: var(--ink); font: inherit; font-size: 16px; padding: 8px 0; outline: none; }
   #tools { overflow-y: auto; }
-  #sky { min-height: 160px; aspect-ratio: 1.618 / 1; }
+  /* the constellation's window: a solid pane of the page's paper, centred over the desk's grid */
+  #sky { min-height: 150px; aspect-ratio: 1.618 / 1; max-width: 330px; width: 100%; margin: 2px auto 10px;
+    background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
   #sky:empty { display: none; }
   .sky-facts { color: var(--dim); font-size: 13px; }
   .sky-facts .h { color: var(--ink); }
-  #story { list-style: none; margin: 8px 0 0; padding: 0; }
-  #story li { padding: 7px 8px 7px 12px; cursor: pointer; border-left: 3px solid var(--line); border-radius: 0 6px 6px 0; }
-  #story li:hover { background: rgba(255, 255, 255, .035); }
-  #story li.on { border-left-color: var(--teal); background: rgba(18, 255, 194, .05); }
-  /* scene lines wear the serif, Scriptorium's hand for chapters and slugs */
+  /* chapters and plot wear the same row, vellum's story hand: the rail on the left, the serif inside */
+  #story, #plot { list-style: none; margin: 8px 0 0; padding: 0; }
+  #story li, #plot li { padding: 7px 8px 7px 12px; cursor: pointer; border-left: 3px solid var(--line); border-radius: 0 6px 6px 0; }
+  #story li:hover, #plot li:hover { background: var(--hover); }
+  #story li.on { border-left-color: var(--teal); background: var(--wash); }
   #story .h { font-size: 14px; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .04em; }
   #story .b { color: var(--dim); font-size: 12px; white-space: pre-line; font-family: inherit; }
+  #plot .n { font-family: 'AqMono', ui-monospace, monospace; font-size: 10px; color: var(--faint); margin-right: 8px; }
+  #plot .t { font-size: 13px; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .02em; color: var(--dim); }
   #empty { color: var(--dim); padding: 12px 0; }
   #known { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
   /* the desk: the page and its chapter outline, one on the phone stacked, two across on the glass */
   #desk { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; }
   #outline { flex: 0 0 auto; max-height: 32%; overflow-y: auto; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   .mlabel { color: var(--teal-dim); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; font-weight: 600;
-    margin: 10px 0 4px; font-family: 'Dogica', ui-monospace, monospace; }
-  /* the plot: the story's beats in order, numbered, who speaks first */
-  #plot { list-style: none; margin: 0; padding: 0; }
-  #plot li { display: flex; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--dim); border-bottom: 1px solid rgba(255, 255, 255, .04); }
-  #plot .n { color: var(--faint); flex: 0 0 18px; }
+    margin: 10px 0 4px; font-family: 'AqBold', 'AqMono', ui-monospace, monospace; }
   .who-line { padding: 3px 0; font-size: 13px; }
   .who-line .q { color: var(--faint); font-size: 12px; }
   /* the wheel's front spot: his centre sits 44px in and 70px up from the lower right,
@@ -113,9 +139,9 @@
     background: var(--paper); color: var(--ink); padding: 12px 14px 14px;
     border: 1px solid var(--line); box-shadow: 4px 4px 0 rgba(0, 0, 0, .35); }
   #set[hidden] { display: none; }
-  #set h2 { font-family: 'Dogica', ui-monospace, monospace; font-size: 12px; font-weight: normal; margin: 0 0 8px; }
+  #set h2 { font-family: 'DarkByte', ui-monospace, monospace; font-size: 14px; font-weight: normal; margin: 0 0 8px; }
   #set p, #set button { font-size: 13px; }
-  #set button { font-family: 'Dogica', ui-monospace, monospace; font-size: 11px; color: var(--teal);
+  #set button { font-family: 'AqBold', 'AqMono', ui-monospace, monospace; font-size: 11px; color: var(--teal);
     background: transparent; border: 0; padding: 6px 0; cursor: pointer; display: block; }
   #setLink, #setHouse { color: var(--teal); word-break: break-all; }
   #setNotes { color: var(--dim); }
@@ -124,36 +150,44 @@
     color: var(--ink); font: inherit; font-size: 14px; padding: 6px 0; outline: none; }
   #key, #ghost { width: 100%; }
   #castword { font-size: 22px; letter-spacing: 0.14em; color: var(--ink); }
-  html.guest #talksec, html.guest #cig, html.guest #set, html.guest #anew, html.guest #share, html.guest #keep, html.guest #bring,
+  html.guest #roomtalk, html.guest #cig, html.guest #set, html.guest #anew, html.guest #share, html.guest #keep, html.guest #bring,
   html.guest #hold, html.guest #tape, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode { display: none !important; }
   html.guest #switch button[data-screen="talk"] { display: none; }
+  /* the pager: two dots for two rooms, the phone's own tell of where the swipe stands */
+  #pager { display: none; gap: 9px; justify-content: center; padding: 2px 0 calc(8px + env(safe-area-inset-bottom)); flex: 0 0 auto; }
+  #pager i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); opacity: .55; }
+  #pager i.on { background: var(--teal); opacity: 1; }
   @media (max-width: 700px) {
     #note { flex-wrap: wrap; }
     #note input { flex: 1 1 100%; }
   }
   @media (max-width: 979px) {
-    section { padding-bottom: 148px; }
+    /* two rooms, one swipe apart, the script on the left: the phone scrolls sideways between them,
+       each room tall enough to hold its own scroll */
+    #main { flex-direction: row; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; }
+    #main section { display: flex; flex: 0 0 100%; width: 100%; min-width: 0; scroll-snap-align: start; overflow-y: auto; padding-bottom: 148px; }
+    #switch { display: none; }
+    #pager { display: flex; }
   }
   @media (min-width: 980px) {
     #switch { display: none; }
-    #title { flex: 0 1 auto; width: auto; font-family: 'Dogica', ui-monospace, monospace; font-size: 13px; letter-spacing: .06em; }
+    #title { flex: 0 1 auto; width: auto; font-size: 17px; }
     #main { flex-direction: row; }
     html.guest #main section { width: 50%; }
     html.guest #spine { display: none !important; }
     /* the talk stays on the phone (his word): the desk holds the page and the side panel only */
-    #talksec { display: none !important; }
+    #roomtalk { display: none !important; }
     section { display: flex; width: 28%; }
     #scriptsec { flex: 1 1 auto; width: auto; min-width: 0; padding-right: 30px; padding-bottom: 140px; }
     #toolsec { width: var(--side-w); flex: 0 0 var(--side-w); padding: 0 18px 20px 18px; }
     /* his seat is left of the seam now, at the page's lower right, the same corner he keeps on the phone */
     #sprite { right: calc(var(--side-w) + 26px) !important; }
     #spine { display: block !important; }
-    /* the sky stays on the phone; the desk carries the outline beside the page */
+    /* the desk carries the outline beside the page */
     #desk { flex-direction: row; }
     #outline { width: 220px; flex: 0 0 220px; max-height: none; overflow-y: auto;
       border-bottom: 0; border-right: 1px solid var(--line); margin: 0 14px 0 0; }
     #page { flex: 1; }
-    #sky, #empty { display: none; }
   }
   /* ── the SQUATCH spine: the seam between the page and the side panel, as Scriptorium's —
      the word stands on its end, the ticks run above and below, and the drag resizes the panel.
@@ -163,12 +197,16 @@
   #spine::before { top: 0; bottom: calc(50% + 110px); }
   #spine::after { top: calc(50% + 110px); bottom: 0; }
   #spine span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(180deg); writing-mode: vertical-rl;
-    font-family: 'Dogica', ui-monospace, monospace; font-size: 12px; letter-spacing: .32em; color: var(--dim);
+    font-family: 'AqBold', 'AqMono', ui-monospace, monospace; font-size: 12px; letter-spacing: .32em; color: var(--dim);
     user-select: none; -webkit-user-select: none; transition: color .25s; }
   #spine:hover span, #spine.dragging span { color: var(--ink); text-shadow: 0 0 8px rgba(255, 165, 18, .55); }
   #spine:hover::before, #spine:hover::after, #spine.dragging::before, #spine.dragging::after { background: var(--gold); }
   #spine.dragging { cursor: grabbing; }
 </style>
+<script>
+  /* the lamp before the room wakes: the saved light, if there was one */
+  try { var savedLamp = localStorage.getItem('squatch.room.theme'); if (savedLamp) document.documentElement.setAttribute('data-theme', savedLamp); } catch (e) {}
+</script>
 </head>
 <body>
 <header>
@@ -181,6 +219,7 @@
   <button type="button" id="share">share</button>
   <button type="button" id="keep">copy</button>
   <button type="button" id="bring">open</button>
+  <button type="button" id="lamp" title="the desk's other light">light</button>
   <canvas id="cig" role="button" tabindex="0" aria-label="settings, the cigarette"></canvas>
   <input id="file" type="file" accept="application/json,.json,.inkling" hidden>
   <input id="voicetape" type="file" accept="audio/*,.m4a,.mp3,.webm,.wav,.ogg,.txt,.fountain,.md" hidden>
@@ -197,7 +236,10 @@
         <p class="mlabel">chapters</p>
         <ol id="story"></ol>
       </div>
-      <textarea id="page" spellcheck="true" aria-label="The script" placeholder="INT.  — name the place. Then a person, in capitals, and they step into the sky."></textarea>
+      <div id="paper">
+        <pre id="fmt" aria-hidden="true"></pre>
+        <textarea id="page" spellcheck="true" aria-label="The script" placeholder="INT.  — name the place. Then a person, in capitals, and they step into the sky."></textarea>
+      </div>
     </div>
     <div id="note">
       <input id="noteline" aria-label="A note, kept for you, with no one else reading it" placeholder="A note for you. Tap a scene to pin it." autocomplete="off">
@@ -207,13 +249,6 @@
     </div>
     <div id="kept"></div>
   </section>
-  <section id="talksec" data-name="talk">
-    <div id="talk"></div>
-    <form id="say">
-      <input id="line" aria-label="Say it to Squatch" placeholder="The council's mouth is shut. Your words are kept." autocomplete="off">
-      <button type="submit">say</button>
-    </form>
-  </section>
   <section id="toolsec" data-name="tools">
     <div id="sky" aria-label="The constellation of this script"></div>
     <p id="empty">Write a scene. The stars come out of the page.</p>
@@ -221,14 +256,22 @@
     <ol id="plot"></ol>
     <p class="mlabel">characters</p>
     <div id="known" hidden></div>
+    <div id="roomtalk">
+      <div id="talk"></div>
+      <form id="say">
+        <input id="line" aria-label="Say it to Squatch" placeholder="The council's mouth is shut. Your words are kept." autocomplete="off">
+        <button type="submit">say</button>
+      </form>
+    </div>
   </section>
 </div>
+<div id="pager" aria-hidden="true"><i class="on"></i><i></i></div>
 <canvas id="sprite" aria-label="Squatch"></canvas>
 <div id="spine" title="drag: the side panel's width"><span id="spineword">SQUATCH</span></div>
 <div id="set" hidden role="dialog" aria-label="settings">
   <h2>the cigarette</h2>
   <div id="setProjects"></div>
-  <input id="key" type="password" aria-label="Your key, on this phone" placeholder="Your key, on this phone" autocomplete="off" spellcheck="false">
+  <input id="key" type="password" aria-label="Your key, on this phone" placeholder="Your key on this phone — gsk_…, or the voiceless door's vck_…" autocomplete="off" spellcheck="false">
   <input id="ghost" aria-label="The ghost's address" placeholder="The ghost's address — https://….workers.dev (the wide-world seat)" autocomplete="off" spellcheck="false">
   <p id="setHouse"></p>
   <button type="button" id="setScene">share this scene</button>
@@ -273,14 +316,39 @@
   }
   function now() { return Date.now(); }
 
+  function smallGlass() { return window.matchMedia('(max-width: 979px)').matches; }
+  /* the wheel's word-colours were chosen to read on the grey; on the white page they pull
+     deeper, same hue, so no name ever washes out in the light. */
+  function deepen(hex) {
+    var n = parseInt(String(hex).slice(1), 16) || 0;
+    var r = (n >> 16 & 255), g = (n >> 8 & 255), b = (n & 255);
+    r = Math.round(r * .55); g = Math.round(g * .62); b = Math.round(b * .55);
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+  function inkOf(name) {
+    var c = R.textOf(name);
+    return document.documentElement.getAttribute('data-theme') === 'light' ? deepen(c) : c;
+  }
   function show(name) {
     screen = name;
+    var mobile = smallGlass();
     Array.prototype.forEach.call(document.querySelectorAll('section'), function (s) {
-      s.classList.toggle('on', s.getAttribute('data-name') === name);
+      if (mobile) s.classList.add('on');
+      else s.classList.toggle('on', s.getAttribute('data-name') === name);
     });
     Array.prototype.forEach.call(document.querySelectorAll('#switch button'), function (b) {
       b.classList.toggle('on', b.getAttribute('data-screen') === name);
     });
+    paintPager(name);
+    if (mobile) {
+      var el = document.querySelector('section[data-name="' + name + '"]'), main = $('main');
+      if (el && main && Math.round(main.scrollLeft) !== el.offsetLeft) main.scrollTo({ left: el.offsetLeft });
+    }
+  }
+  function paintPager(name) {
+    var dots = document.querySelectorAll('#pager i'); if (!dots.length) return;
+    var idx = name === 'tools' ? 1 : 0;
+    Array.prototype.forEach.call(dots, function (d, i) { d.classList.toggle('on', i === idx); });
   }
 
   function paintTalk() {
@@ -338,7 +406,7 @@
       li.style.borderLeftColor = R.colourOf(sc.place);
       var h = document.createElement('div');
       h.className = 'h';
-      h.style.color = R.textOf(sc.place);
+      h.style.color = inkOf(sc.place);
       h.textContent = sc.heading;
       var b = document.createElement('div');
       b.className = 'b';
@@ -400,6 +468,7 @@
     $('title').readOnly = !!glass;
     if (document.activeElement !== $('title') && $('title').value !== title) $('title').value = title;
     if (document.activeElement !== $('page') && $('page').value !== script) $('page').value = script;
+    paintFmt();
     if (!glass) paintTalk();
     paintSky(parsed);
     paintStory(parsed);
@@ -407,19 +476,55 @@
     paintKnown();
     paintProjects();
   }
-  /* the plot: every beat of the page in order, numbered, the speaker in their colour */
+  /* the page's screenplay face: the tape stays plain fountain, the glass wears the conventions —
+     headings bold in their place's colour, cues bold, parentheticals dim, transitions marked.
+     The bytes never change; only the face above them does. */
+  function escH(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function paintFmt() {
+    var ta = $('page'), fmt = $('fmt');
+    if (!ta || !fmt) return;
+    var lines = ta.value.split('\n'), out = [], inDialog = false, i, t, s, cls, style;
+    for (i = 0; i < lines.length; i++) {
+      t = lines[i]; s = t.trim();
+      if (!s) { inDialog = false; out.push(''); continue; }
+      style = '';
+      if (R.isScene(s)) { cls = 'fc-scene'; inDialog = false; style = ' style="color:' + inkOf(s) + '"'; }
+      else if (/^(CUT TO:|FADE|SMASH|DISSOLVE|MATCH CUT|BACK TO:)/i.test(s)) { cls = 'fc-trans'; inDialog = false; }
+      else if (R.isCue(s)) { cls = 'fc-cue'; inDialog = true; }
+      else if (/^\(.*\)$/.test(s)) cls = 'fc-paren';
+      else if (inDialog) cls = 'fc-dialog';
+      else cls = 'fc-action';
+      out.push('<span class="' + cls + '"' + style + '>' + escH(t) + '</span>');
+    }
+    fmt.innerHTML = out.join('\n');
+    fmt.scrollTop = ta.scrollTop; fmt.scrollLeft = ta.scrollLeft;
+  }
+  /* the plot: every beat of the page in order, numbered, who speaks first — vellum's story row,
+     and a press walks the page to the scene the beat belongs to */
   function paintPlot() {
     var el = $('plot');
     if (!el) return;
     el.textContent = '';
     if (guest || glass) return;
-    var beats = R.plotOf(pageScript()) || [];
+    var script = pageScript(), beats = R.plotOf(script) || [];
+    var scenes = R.parse(script).scenes;
     beats.forEach(function (b, i) {
       var li = document.createElement('li'), n = document.createElement('span'), t = document.createElement('span');
       n.className = 'n'; n.textContent = i + 1;
-      t.textContent = (b.who ? '' : b.text);
-      if (b.who) { t.style.color = R.textOf(b.who); t.textContent = b.who + ' — ' + b.text; }
+      t.className = 't';
+      t.textContent = b.who ? b.who + ' — ' + b.text : b.text;
+      if (b.who) t.style.color = inkOf(b.who);
       li.appendChild(n); li.appendChild(t);
+      li.addEventListener('click', function () {
+        var sc = null, k;
+        for (k = 0; k < scenes.length; k++) if (scenes[k].heading === b.heading) { sc = scenes[k]; break; }
+        if (!sc || glass) return;
+        var pos = script.split('\n').slice(0, sc.line).join('\n').length;
+        var ta = $('page');
+        ta.focus(); ta.setSelectionRange(pos, pos);
+        ta.scrollTop = sc.line * (parseFloat(getComputedStyle(ta).lineHeight) || 24);
+        if (smallGlass()) show('script');
+      });
       el.appendChild(li);
     });
   }
@@ -433,7 +538,7 @@
     names.forEach(function (n) {
       var d = document.createElement('div'), s = document.createElement('span'), q = document.createElement('span');
       d.className = 'who-line';
-      s.style.color = R.textOf(n);
+      s.style.color = inkOf(n);
       s.textContent = n;
       var first = shelf.people[n] && shelf.people[n].lines && shelf.people[n].lines[0];
       q.className = 'q';
@@ -476,6 +581,7 @@
   }
 
   function onPage() {
+    paintFmt();
     if (glass) return;
     clearTimeout(timer);
     timer = setTimeout(function () {
@@ -484,6 +590,10 @@
   }
 
   $('page').addEventListener('input', onPage);
+  $('page').addEventListener('scroll', function () {
+    var fmt = $('fmt'); if (!fmt) return;
+    fmt.scrollTop = $('page').scrollTop; fmt.scrollLeft = $('page').scrollLeft;
+  });
   $('title').addEventListener('change', function () {
     if (glass) return;
     var t = $('title').value.trim();
@@ -495,6 +605,29 @@
   document.getElementById('switch').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return; show(b.getAttribute('data-screen'));
   });
+
+  /* the swipe tells the room which screen it stands on; a crossing of the seam re-lays the rooms */
+  var wasSmall = smallGlass();
+  window.addEventListener('resize', function () {
+    var isSmall = smallGlass();
+    if (isSmall !== wasSmall) { wasSmall = isSmall; show(screen); }
+  });
+  (function () {
+    var main = $('main'); if (!main) return;
+    main.addEventListener('scroll', function () {
+      if (!smallGlass()) return;
+      var w = main.clientWidth; if (!w) return;
+      var idx = Math.round(main.scrollLeft / w);
+      var name = idx === 0 ? 'script' : 'tools';
+      if (name !== screen) {
+        screen = name;
+        Array.prototype.forEach.call(document.querySelectorAll('#switch button'), function (b) {
+          b.classList.toggle('on', b.getAttribute('data-screen') === name);
+        });
+        paintPager(name);
+      }
+    });
+  })();
 
   var py = 0;
   $('talk').addEventListener('pointerdown', function (e) { py = e.clientY; });
@@ -1034,7 +1167,7 @@
       if (sc.open) li.className = 'on';
       li.style.borderLeftColor = R.colourOf(sc.place || sc.heading);
       var h = document.createElement('div');
-      h.className = 'h'; h.style.color = R.textOf(sc.place || sc.heading); h.textContent = sc.heading;
+      h.className = 'h'; h.style.color = inkOf(sc.place || sc.heading); h.textContent = sc.heading;
       var b = document.createElement('div');
       b.className = 'b';
       b.textContent = sc.open ? (sc.people || []).join(', ') + (sc.beat ? ' — ' + sc.beat : '') : 'another part';
@@ -1348,8 +1481,30 @@
     $('setFollow').addEventListener('click', function () { share('follow'); });
     try { $('key').value = phoneKey(); } catch (e) {}
     if (phoneKey()) $('line').placeholder = 'Say it to Squatch.';
+    /* the one key line, three doors: a chat key goes in the shared box; a vck_ stamp goes in the
+       voiceless door's own box (JEV-INSTALL §4.8); a relay address#pass becomes the door's url. */
+    function decideKeep(patch) {
+      try {
+        var slot = decideLoad();
+        for (var k in patch) slot[k] = patch[k];
+        localStorage.setItem(DECIDE_BOX, JSON.stringify(slot));
+      } catch (e) {}
+    }
     $('key').addEventListener('change', function () {
       var v = scrub($('key').value.trim());
+      if (/^vck_/.test(v)) {
+        decideKeep({ key: v, door: 'vercel' });
+        $('key').value = '';
+        $('kept').textContent = 'The voiceless door has its key. The tape will ask it.';
+        return;
+      }
+      if (/^https?:\/\/.+#.+/.test(v)) {
+        var cut = v.split('#');
+        decideKeep({ url: cut[0], pass: cut.slice(1).join('#'), door: 'relay' });
+        $('key').value = '';
+        $('kept').textContent = 'The relay has its address and its pass. The tape will ask it.';
+        return;
+      }
       try {
         var b = JSON.parse(localStorage.getItem('monomyth.focus.byok.v1') || '{}') || {};
         if (v) b.apiKey = v; else delete b.apiKey;
@@ -1359,6 +1514,17 @@
       $('line').placeholder = v ? 'Say it to Squatch.' : "The council's mouth is shut. Your words are kept.";
       $('kept').textContent = v ? 'The key is in the box this phone shares with Inkling.' : 'No key on this phone.';
     });
+    /* the lamp: WriterDuet's other light, kept in the drawer for the room's next waking */
+    var applyLamp = function (t) {
+      document.documentElement.setAttribute('data-theme', t);
+      try { localStorage.setItem('squatch.room.theme', t); } catch (e) {}
+      var lamp = $('lamp'); if (lamp) lamp.textContent = t === 'light' ? 'dark' : 'light';
+    };
+    $('lamp').addEventListener('click', function () {
+      applyLamp(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+      paint();
+    });
+    applyLamp(document.documentElement.getAttribute('data-theme') || 'dark');
     $('ghost').addEventListener('change', function () {
       var v = $('ghost').value.trim().replace(/\/+$/, '');
       if (v && v.indexOf('http') !== 0) v = 'https://' + v;

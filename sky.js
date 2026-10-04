@@ -33,7 +33,13 @@
   function hashOf(name) { let h = 0; const s = String(name == null ? '' : name); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
   const colourOf = name => WHEEL[hashOf(name) % WHEEL.length];
   const TEXT = ['#12D6FF', '#12FFC2', '#12FF5A', '#22FF12', '#8AFF12', '#F2FF12'];   // a word wears only a colour that reads on the grey (4.5:1); stars and lines keep all twelve
-  const textOf = name => TEXT[hashOf(name) % TEXT.length];
+  const textOf = name => {
+    const c = TEXT[hashOf(name) % TEXT.length];
+    if (root.document.documentElement.getAttribute('data-theme') !== 'light') return c;
+    const n = parseInt(c.slice(1), 16);
+    const ch = v => Math.round(v * .58).toString(16).padStart(2, '0');
+    return '#' + ch(n >> 16 & 255) + ch(n >> 8 & 255) + ch(n & 255);
+  };
 
   /* ── the greys (the room's own, read live) ── */
   function greys() {

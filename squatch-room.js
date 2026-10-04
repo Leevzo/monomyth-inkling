@@ -90,6 +90,8 @@
     var letters = t.replace(/[^A-Za-z]/g, '');
     return letters.length > 0 && letters === letters.toUpperCase();
   }
+  /* montage and intercut markers: stage directions, never a beat, never a person, never the scene's first line */
+  var SERIES = /^(A MONTAGE|A SERIES OF SHOTS|MONTAGE|SERIES OF SHOTS|BEGIN MONTAGE|END MONTAGE|END OF MONTAGE|INTERCUT WITH|BACK TO:)\b/i;
 
   /* fountain, the plain kind. A scene keeps its heading, its place, the people who speak in it, and the first action line. */
   function parse(script) {
@@ -121,6 +123,7 @@
         add(people, name);
         continue;
       }
+      if (SERIES.test(t)) continue;
       if (!cur.beat && !/^\(.*\)$/.test(t)) cur.beat = t;
     }
     return { scenes: scenes, people: people, places: places };
@@ -277,6 +280,20 @@
       if (!t) { if (out[out.length - 1] !== '') out.push(''); prev = ''; continue; }
       if (t === prev) continue;
       prev = t;
+      /* "Name. their line" on one wrapped breath: the name holds the cue, the rest is their line.
+         A chain of bare names ("Jarvis. Kairos. Tag.") is a roll call, not a cue — it falls through. */
+      m = t.match(/^([A-Z][a-z'-]{1,28})\.(\s+.+)$/);
+      if (m && names[m[1].toUpperCase()] && !/^([A-Z][a-z'-]{1,28}\.\s*)+$/.test(m[2].trim())) {
+        out.push('', m[1].toUpperCase(), m[2].trim());
+        cued[m[1].toUpperCase()] = 1;
+        continue;
+      }
+      m = t.match(/^([A-Z][a-z'-]{1,28}):\s*(.+)$/);
+      if (m && names[m[1].toUpperCase()]) {
+        out.push('', m[1].toUpperCase(), m[2].trim());
+        cued[m[1].toUpperCase()] = 1;
+        continue;
+      }
       m = t.match(/^([A-Z][a-z'-]{1,28})\.$/);
       if (m && names[m[1].toUpperCase()]) { out.push('', m[1].toUpperCase()); cued[m[1].toUpperCase()] = 1; continue; }
       out.push(t);
@@ -317,6 +334,7 @@
         if (!t || /^CAST\b/i.test(t)) continue;
         if (isCue(t)) { flush(sc.place, sc.heading); who = t.replace(/\s*\(.*\)\s*$/, '').trim(); continue; }
         if (/^\(.*\)$/.test(t)) continue;
+        if (SERIES.test(t)) continue;
         buf.push(t);
       }
       flush(sc.place, sc.heading);
@@ -516,7 +534,8 @@
     OPENING: OPENING, ETHOS: ETHOS, WHEEL: WHEEL,
     hashOf: hashOf, colourOf: colourOf, textOf: textOf,
     blank: blank, diff: diff, applyScript: applyScript, replay: replay,
-    parse: parse, toSky: toSky, chunk: chunk, say: say, note: note, sceneKey: sceneKey,
+    parse: parse, isScene: isScene, isCue: isCue, placeOf: placeOf,
+    toSky: toSky, chunk: chunk, say: say, note: note, sceneKey: sceneKey,
     spans: spans, joinSpans: joinSpans, scenePack: scenePack, fromTape: fromTape,
     plotOf: plotOf, skyFrom: skyFrom, construct: construct,
     pack: pack, unpack: unpack, project: project, freshShelf: freshShelf, shelfFrom: shelfFrom,
