@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Squatch">
+<meta name="theme-color" content="#17232E">
+<title>Squatch</title>
+<link rel="stylesheet" href="/fonts.css">
+<link rel="apple-touch-icon" href="/icon.png">
+<script>if (location.pathname.indexOf('/s/') === 0) document.documentElement.classList.add('guest');</script>
+<!--
+  SQUATCH — the writing inkling (the King, 2026-10-03).
+  Inkling is the marketplace. This is one inkling: a script, a talk, a sky.
+  Left: the script. Middle: the talk (last turn large, earlier turns zipped; pull down).
+  Right: the constellation the page itself fills, and the story in order under it.
+  Every pause of the pen, every line he says, every note, goes into an append-only log.
+  The mouth is his own key's own door: this page calls Anthropic straight from the phone, and the key
+  never leaves the box it shares with Inkling (monomyth.focus.byok.v1). The desk never sees it.
+  The desk is only a guest's seat on the house LAN: one scene, read only, and a note back.
+  A key inside a sentence becomes [a key] before anything is written.
+  Notes have no intelligence. A voice note is kept whole; it is not transcribed.
+-->
+<style>
+  :root {
+    --bg: #17232E; --paper: #1F2E3B; --ink: #E1E8ED; --dim: #8899A6; --faint: #5B6D7C;
+    --ground: #17232E; --line: #2C3D4C; --teal: #4A9FD8;
+    --pad: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: ui-monospace, 'W95FA', monospace; -webkit-font-smoothing: none; }
+  body { display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  header { display: flex; align-items: baseline; gap: 10px 14px; padding: 10px var(--pad) 6px; flex: 0 0 auto; flex-wrap: wrap; }
+  #title { font-family: ui-monospace, monospace; font-size: 17px; color: var(--ink);
+    background: transparent; border: 0; padding: 0; flex: 1 1 100%; width: 100%; min-width: 0; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #count { color: var(--faint); font-size: 12px; }
+  header button, #switch button, #note button, #say button {
+    font-family: 'Dogica', ui-monospace, monospace; font-size: 11px; color: var(--dim);
+    background: transparent; border: 0; padding: 6px 2px; cursor: pointer; }
+  header button { color: var(--teal); }
+  #switch { display: flex; gap: 16px; padding: 0 var(--pad) 8px; }
+  #switch button.on { color: var(--ink); }
+  #main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  section { display: none; flex: 1 1 auto; min-height: 0; flex-direction: column; padding: 0 var(--pad) 10px; }
+  section.on { display: flex; }
+  #page { flex: 1 1 auto; min-height: 0; width: 100%; resize: none; border: 0; outline: none;
+    background: transparent; color: var(--ink); caret-color: var(--teal);
+    font-family: 'Courier New', Courier, monospace; font-size: 16px; line-height: 1.45; padding: 4px 0 12px; }
+  #page::selection { background: rgba(74,159,216,.30); }
+  #note { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; padding-top: 6px; }
+  #note input { flex: 1 1 auto; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line);
+    color: var(--ink); font: inherit; font-size: 14px; padding: 6px 0; outline: none; }
+  #hold.hot { color: #FF3D12; }
+  #kept { color: var(--faint); font-size: 12px; min-height: 1.2em; padding: 4px 0 0; }
+  #talk { overflow-y: auto; flex: 1 1 auto; min-height: 0; }
+  .zip { color: var(--faint); font-size: 13px; padding: 8px 0; }
+  .chunk { color: var(--dim); font-size: 13px; padding: 3px 0 3px 10px; }
+  #last { font-size: 22px; line-height: 1.35; padding: 18px 0 24px; white-space: pre-wrap; }
+  #last .who { display: block; font-family: 'Dogica', ui-monospace, monospace; font-size: 11px; color: var(--teal); margin-bottom: 8px; }
+  #say { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+  #say input { flex: 1 1 auto; min-width: 0; background: transparent; border: 0; border-bottom: 1px solid var(--line);
+    color: var(--ink); font: inherit; font-size: 16px; padding: 8px 0; outline: none; }
+  #tools { overflow-y: auto; }
+  #sky { min-height: 160px; aspect-ratio: 1.618 / 1; }
+  #sky:empty { display: none; }
+  .sky-facts { color: var(--dim); font-size: 13px; }
+  .sky-facts .h { color: var(--ink); }
+  #story { list-style: none; margin: 8px 0 0; padding: 0; }
+  #story li { padding: 7px 0 7px 12px; cursor: pointer; border-left: 3px solid var(--line); }
+  #story li.on { border-left-color: var(--teal); }
+  #story .h { font-size: 14px; }
+  #story .b { color: var(--dim); font-size: 12px; white-space: pre-line; }
+  #empty { color: var(--dim); padding: 12px 0; }
+  #known { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
+  /* the wheel's front spot: his centre sits 44px in and 70px up from the lower right,
+     the same corner he takes in the Inkling app. The drop into that app is this seat. */
+  #sprite { position: fixed; z-index: 5; right: 9px; bottom: 5px; image-rendering: pixelated;
+    background: transparent; pointer-events: none; }
+  #cig { image-rendering: pixelated; cursor: pointer; background: transparent; flex: 0 0 auto; }
+  #set { position: fixed; z-index: 30; top: 64px; right: 12px; width: min(320px, calc(100vw - 24px));
+    max-height: calc(100vh - 80px); overflow: auto;
+    background: #1F2E3B; color: var(--ink); padding: 12px 14px 14px; }
+  #set[hidden] { display: none; }
+  #set h2 { font-family: 'Dogica', ui-monospace, monospace; font-size: 12px; font-weight: normal; margin: 0 0 8px; }
+  #set p, #set button { font-size: 13px; }
+  #set button { font-family: 'Dogica', ui-monospace, monospace; font-size: 11px; color: var(--teal);
+    background: transparent; border: 0; padding: 6px 0; cursor: pointer; display: block; }
+  #setLink, #setHouse { color: var(--teal); word-break: break-all; }
+  #setNotes { color: var(--dim); }
+  #setHouse { font-size: 12px; }
+  #key, #castcode { background: transparent; border: 0; border-bottom: 1px solid var(--line);
+    color: var(--ink); font: inherit; font-size: 14px; padding: 6px 0; outline: none; }
+  #key { width: 100%; }
+  #castword { font-size: 22px; letter-spacing: 0.14em; color: var(--ink); }
+  html.guest #talksec, html.guest #cig, html.guest #set, html.guest #anew, html.guest #share, html.guest #keep, html.guest #bring,
+  html.guest #hold, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode { display: none !important; }
+  html.guest #switch button[data-screen="talk"] { display: none; }
+  @media (max-width: 700px) {
+    #note { flex-wrap: wrap; }
+    #note input { flex: 1 1 100%; }
+  }
+  @media (max-width: 979px) {
+    section { padding-bottom: 148px; }
+  }
+  @media (min-width: 980px) {
+    #switch { display: none; }
+    #title { flex: 0 1 auto; width: auto; font-family: 'Dogica', ui-monospace, monospace; font-size: 13px; }
+    #main { flex-direction: row; }
+    html.guest #main section { width: 50%; }
+    section { display: flex; width: 28%; }
+    #talksec { width: 44%; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+    #toolsec { padding-bottom: 148px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <input id="title" aria-label="The name of this project" placeholder="Name this project" spellcheck="false" autocomplete="off">
+  <span id="count"></span>
+  <button type="button" id="anew">new</button>
+  <button type="button" id="cast">cast</button>
+  <span id="castword" hidden></span>
+  <input id="castcode" hidden aria-label="The word on the computer" placeholder="the word on the computer" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  <button type="button" id="share">share</button>
+  <button type="button" id="keep">copy</button>
+  <button type="button" id="bring">open</button>
+  <canvas id="cig" role="button" tabindex="0" aria-label="settings, the cigarette"></canvas>
+  <input id="file" type="file" accept="application/json,.json,.inkling" hidden>
+</header>
+<nav id="switch">
+  <button type="button" data-screen="script" class="on">script</button>
+  <button type="button" data-screen="talk">talk</button>
+  <button type="button" data-screen="tools">sky</button>
+</nav>
+<div id="main">
+  <section id="scriptsec" class="on" data-name="script">
+    <textarea id="page" spellcheck="true" aria-label="The script" placeholder="INT.  — name the place. Then a person, in capitals, and they step into the sky."></textarea>
+    <div id="note">
+      <input id="noteline" aria-label="A note, kept for you, with no one else reading it" placeholder="A note for you. Tap a scene to pin it." autocomplete="off">
+      <button type="button" id="sendnote">to me</button>
+      <button type="button" id="hold">hold</button>
+    </div>
+    <div id="kept"></div>
+  </section>
+  <section id="talksec" data-name="talk">
+    <div id="talk"></div>
+    <form id="say">
+      <input id="line" aria-label="Say it to Squatch" placeholder="The council's mouth is shut. Your words are kept." autocomplete="off">
+      <button type="submit">say</button>
+    </form>
+  </section>
+  <section id="toolsec" data-name="tools">
+    <div id="sky" aria-label="The constellation of this script"></div>
+    <p id="empty">Write a scene. The stars come out of the page.</p>
+    <p id="known" hidden></p>
+    <ol id="story"></ol>
+  </section>
+</div>
+<canvas id="sprite" aria-label="Squatch"></canvas>
+<div id="set" hidden role="dialog" aria-label="settings">
+  <h2>the cigarette</h2>
+  <div id="setProjects"></div>
+  <input id="key" type="password" aria-label="Your key, on this phone" placeholder="Your key, on this phone" autocomplete="off" spellcheck="false">
+  <p id="setHouse"></p>
+  <button type="button" id="setScene">share this scene</button>
+  <button type="button" id="setFollow">share whichever scene I have open</button>
+  <p id="setLink"></p>
+  <div id="setNotes"></div>
+</div>
+<script src="/squatch-room.js"></script>
+<script src="/sky.js"></script>
+<script>
+(function () {
+  'use strict';
+  var R = window.SquatchRoom, DRAWER = 'squatch.room.v1';
+  var shelf, state, timer = 0, screen = 'script';
+  var $ = function (id) { return document.getElementById(id); };
+
+  function loadShelf() {
+    try {
+      var raw = localStorage.getItem(DRAWER);
+      if (raw) { var s = R.shelfFrom(JSON.parse(raw)); if (s) return s; }
+    } catch (e) {}
+    return R.freshShelf(Date.now());
+  }
+  function currentOf(s) {
+    var i, p = s.projects[0];
+    for (i = 0; i < s.projects.length; i++) if (s.projects[i].id === s.current) p = s.projects[i];
+    s.current = p.id;
+    return p;
+  }
+  var kingKey = '', shares = {}, noteSince = 0, guest = location.pathname.indexOf('/s/') === 0 ? location.pathname.slice(3) : '';
+  var glass = null, castCode = '', castSending = false, castReceiving = false, castRev = -1, castTimer = 0;
+  var house = '', deskReady = false, wantCast = false, hearing = false;
+  function save() {
+    if (guest || glass) return;
+    R.remember(shelf, state);
+    try { localStorage.setItem(DRAWER, JSON.stringify(R.packShelf(shelf))); }
+    catch (e) { $('kept').textContent = 'This phone is full. Keep a copy before you write more.'; }
+    publish();
+    if (castSending) pushShow();
+  }
+  function now() { return Date.now(); }
+
+  function show(name) {
+    screen = name;
+    Array.prototype.forEach.call(document.querySelectorAll('section'), function (s) {
+      s.classList.toggle('on', s.getAttribute('data-name') === name);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#switch button'), function (b) {
+      b.classList.toggle('on', b.getAttribute('data-screen') === name);
+    });
+  }
+
+  function paintTalk() {
+    var talk = $('talk'), chat = state.chat, last = chat[chat.length - 1], older = chat.slice(0, -1);
+    talk.textContent = '';
+    if (older.length) {
+      var z = document.createElement('div');
+      z.className = 'zip';
+      z.textContent = state.open ? 'zip them back up' : 'pull down — ' + older.length + (older.length === 1 ? ' earlier turn' : ' earlier turns');
+      z.tabIndex = 0;
+      z.addEventListener('click', function () { state.open = !state.open; save(); paintTalk(); });
+      talk.appendChild(z);
+      if (state.open) older.forEach(function (m) {
+        var p = document.createElement('p');
+        p.className = 'chunk';
+        p.textContent = (m.who === 'king' ? 'You. ' : 'Squatch. ') + R.chunk(m.text);
+        p.title = m.text;
+        talk.appendChild(p);
+      });
+    }
+    if (last) {
+      var big = document.createElement('div');
+      big.id = 'last';
+      var who = document.createElement('span');
+      who.className = 'who';
+      who.textContent = last.who === 'king' ? 'You' : 'Squatch';
+      big.appendChild(who);
+      big.appendChild(document.createTextNode(last.text));
+      talk.appendChild(big);
+    }
+  }
+
+  function paintSky(parsed) {
+    var host = $('sky'), empty = $('empty');
+    if (!parsed.people.length && !parsed.places.length) {
+      host.textContent = ''; host._sky = null;
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+    if (window.SKY && SKY.draw) SKY.draw(host, R.skyFrom(pageScript(), pageTitle()));
+  }
+
+  function paintStory(parsed) {
+    var ol = $('story');
+    ol.textContent = '';
+    var noteKey = pageScene();
+    $('noteline').placeholder = noteKey && noteKey !== '*'
+      ? 'A note on this scene. Kept here. Not read by anyone.'
+      : 'A note for you. Tap a scene to pin it.';
+    parsed.scenes.forEach(function (sc) {
+      var key = R.sceneKey(sc);
+      var li = document.createElement('li');
+      if (key === pageScene()) li.className = 'on';
+      li.style.borderLeftColor = R.colourOf(sc.place);
+      var h = document.createElement('div');
+      h.className = 'h';
+      h.style.color = R.textOf(sc.place);
+      h.textContent = sc.heading;
+      var b = document.createElement('div');
+      b.className = 'b';
+      var beats = (R.plotOf(pageScript()) || []).filter(function (p) { return p.heading === sc.heading; });
+      b.textContent = beats.length
+        ? beats.map(function (p) { return (p.who ? p.who + ' — ' : '') + p.text; }).join('\n')
+        : sc.people.join(', ') + (sc.beat ? ' — ' + sc.beat : '');
+      li.appendChild(h); li.appendChild(b);
+      li.addEventListener('click', function () {
+        if (glass) return;
+        state.scene = state.scene === key ? null : key;
+        if (state.scene) {
+          var lines = state.script.split('\n');
+          var pos = lines.slice(0, sc.line).join('\n').length;
+          var ta = $('page');
+          ta.focus();
+          ta.setSelectionRange(pos, pos);
+          var lh = parseFloat(getComputedStyle(ta).lineHeight) || 24;
+          ta.scrollTop = sc.line * lh;
+        }
+        save(); paint();
+      });
+      ol.appendChild(li);
+    });
+    if (glass) { $('kept').textContent = 'From the phone.'; return; }
+    var notes = (state.notes[noteKey || '*'] || []).slice(-3);
+    var orphans = Object.keys(state.notes).filter(function (k) {
+      if (k === '*') return false;
+      return !parsed.scenes.some(function (sc) { return R.sceneKey(sc) === k; });
+    });
+    var bits = notes.map(function (n) { return n.voice ? 'a voice note, kept' : n.text; });
+    if (orphans.length) bits.push(orphans.length + ' note' + (orphans.length === 1 ? '' : 's') + ' kept from a scene whose heading changed');
+    $('kept').textContent = bits.join('  ·  ');
+  }
+
+  function pageScript() { return glass ? glass.script : state.script; }
+  function pageTitle() { return glass ? glass.title : state.title; }
+  function pageScene() { return glass ? glass.scene : state.scene; }
+  function paint() {
+    var script = pageScript(), title = pageTitle();
+    var parsed = R.parse(script);
+    var words = script.trim() ? script.trim().split(/\s+/).length : 0;
+    $('count').textContent = words + (words === 1 ? ' word' : ' words') + ' · ' + parsed.scenes.length + (parsed.scenes.length === 1 ? ' scene' : ' scenes');
+    $('page').readOnly = !!glass;
+    $('title').readOnly = !!glass;
+    if (document.activeElement !== $('title') && $('title').value !== title) $('title').value = title;
+    if (document.activeElement !== $('page') && $('page').value !== script) $('page').value = script;
+    if (!glass) paintTalk();
+    paintSky(parsed);
+    paintStory(parsed);
+    paintKnown();
+    paintProjects();
+  }
+  function paintKnown() {
+    var el = $('known');
+    if (!el) return;
+    var names = shelf && shelf.people ? Object.keys(shelf.people) : [];
+    el.textContent = '';
+    if (!names.length) { el.hidden = true; return; }
+    el.hidden = false;
+    el.appendChild(document.createTextNode('Known, in every project. '));
+    names.forEach(function (n, i) {
+      var s = document.createElement('span');
+      s.style.color = R.textOf(n);
+      s.textContent = n + (i < names.length - 1 ? ' · ' : '');
+      el.appendChild(s);
+    });
+  }
+  function paintProjects() {
+    var box = $('setProjects');
+    if (!box || !shelf) return;
+    box.textContent = '';
+    shelf.projects.forEach(function (p) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = p.title || 'Untitled';
+      if (p.id === state.id) b.style.color = 'var(--ink)';
+      b.addEventListener('click', function () { openProject(p.id); });
+      box.appendChild(b);
+    });
+  }
+  function openProject(id) {
+    if (glass || !shelf || state.id === id) return;
+    var p = null, i;
+    for (i = 0; i < shelf.projects.length; i++) if (shelf.projects[i].id === id) p = shelf.projects[i];
+    if (!p) return;
+    shelf.current = p.id;
+    state = p;
+    $('page').value = state.script;
+    $('title').value = state.title;
+    save();
+    paint();
+  }
+  function newProject() {
+    if (glass) return;
+    var p = R.project(now(), '');
+    shelf.projects.push(p);
+    openProject(p.id);
+    $('title').focus();
+  }
+
+  function onPage() {
+    if (glass) return;
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      if (R.applyScript(state, $('page').value, now())) { save(); paint(); }
+    }, 400);
+  }
+
+  $('page').addEventListener('input', onPage);
+  $('title').addEventListener('change', function () {
+    if (glass) return;
+    var t = $('title').value.trim();
+    if (!t || t === state.title) return;
+    state.log.push({ t: now(), kind: 'title', text: t, was: state.title });
+    state.title = t; save(); paint();
+  });
+
+  document.getElementById('switch').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return; show(b.getAttribute('data-screen'));
+  });
+
+  var py = 0;
+  $('talk').addEventListener('pointerdown', function (e) { py = e.clientY; });
+  $('talk').addEventListener('pointerup', function (e) {
+    if ($('talk').scrollTop <= 0 && e.clientY - py > 48) { state.open = true; save(); paintTalk(); }
+  });
+
+  function phoneKey() {
+    try {
+      var b = JSON.parse(localStorage.getItem('monomyth.focus.byok.v1') || '{}');
+      if (b && typeof b.apiKey === 'string' && b.apiKey) return b.apiKey;
+    } catch (e) {}
+    try { return localStorage.getItem('squatch.room.key') || ''; } catch (e) { return ''; }
+  }
+  /* a key inside a sentence becomes [a key] before anything is written, even while Squatch is busy (Inkling's law) */
+  var KEYISH = /(gsk_|sk-ant-|sk-or-|xai-|AIza|sk-)[\w-]{16,}/g;
+  function scrub(s) { return String(s == null ? '' : s).replace(KEYISH, '[a key]'); }
+
+  /* the mouth: his key, Anthropic's door, straight from this phone. One voice with the desk — same seed,
+     same page-on-the-desk line; the model is chosen from the door's own list and shared with Inkling. */
+  var MOUTH = 'https://api.anthropic.com/v1/messages';
+  var MODELS = 'https://api.anthropic.com/v1/models?limit=100';
+  var SQUATCH = "You are Squatch, on the couch, watching him write. No other inkling is in this room. "
+    + "People in the script are his, and they arrive because he writes them.\n\n"
+    + "You are a sasquatch. Big, a little fat, long black fur. Depressed, and funny about it. "
+    + "You used to be the face of an anti-smoking campaign. Now you smoke. You are stuck in one day, "
+    + "quitting tomorrow. He is your roommate. Call him dude or man. This is the couch, never a meeting.\n\n"
+    + "Talk loose, warm, and short. The plain answer first. The world's swear is fluck. "
+    + "Never break the scene. No files, no tools, no briefings, no lists of tasks.\n\n"
+    + "You do not write his pages. You read what is on the page and you talk. "
+    + "An open hole stays open until he fills it. You do not preach about smoking. You do not invent canon.\n\n"
+    + "The one line you keep: Squatches don't smoke.";
+  function ahead(key) {
+    return { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01',
+             'anthropic-dangerous-direct-browser-access': 'true' };
+  }
+  function anthropicModel(key) {
+    var kept = {};
+    try { kept = JSON.parse(localStorage.getItem('inkling.model') || '{}') || {}; } catch (e) {}
+    if (kept.anthropic) return Promise.resolve(kept.anthropic);
+    return fetch(MODELS, { headers: ahead(key) }).then(function (r) { return r.ok ? r.json() : {}; })
+      .catch(function () { return {}; })
+      .then(function (o) {
+        var ids = ((o && o.data) || []).map(function (m) { return String(m.id); })
+          .filter(function (id) { return /^claude-/.test(id) && !/vision|audio|image|embed|search|tool/i.test(id); });
+        var pick = ids.filter(function (id) { return /sonnet/i.test(id); })[0] || ids[0] || 'claude-sonnet-5-5';
+        kept.anthropic = pick;
+        try { localStorage.setItem('inkling.model', JSON.stringify(kept)); } catch (e) {}
+        return pick;
+      });
+  }
+  function mouth(key, msgs, model) {
+    var system = SQUATCH, page = state.script.trim();
+    if (page) system += '\n\nThe page he is writing, as it stands:\n' + page.slice(0, 20000);
+    var body = { model: model, max_tokens: 1500, system: system, messages: msgs, output_config: { effort: 'low' } };
+    var knock = function (b) { return fetch(MOUTH, { method: 'POST', headers: ahead(key), body: JSON.stringify(b) }); };
+    return knock(body).then(function (r) {
+      if (r.status === 400) { delete body.output_config; return knock(body); }   // a door that dislikes effort
+      return r;
+    }).then(function (r) {
+      if (r.status === 401 || r.status === 403) throw new Error('the key was refused');
+      if (!r.ok) throw new Error('the mouth did not answer');
+      return r.json();
+    }).then(function (o) {
+      var text = ((o && o.content) || []).filter(function (b) { return b && b.type === 'text'; })
+        .map(function (b) { return b.text || ''; }).join('').trim();
+      if (!text) throw new Error('the mouth was empty');
+      return text;
+    });
+  }
+  function askSquatch() {
+    var key = phoneKey();
+    if (!key || guest || glass) return;
+    if (key.indexOf('sk-ant-') !== 0) { hearing = false; $('kept').textContent = 'Squatch’s door is Anthropic; an sk-ant- key opens it.'; return; }
+    var msgs = state.chat.filter(function (m) { return m.who === 'king' || m.who === 'squatch'; }).slice(-16).map(function (m) {
+      return { role: m.who === 'king' ? 'user' : 'assistant', content: m.text };
+    });
+    $('kept').textContent = 'Squatch is listening.';
+    anthropicModel(key).then(function (m) { return mouth(key, msgs, m); }).then(function (text) {
+      hearing = false;
+      state.chat.push({ who: 'squatch', text: text, at: now() });
+      state.log.push({ t: now(), kind: 'said', who: 'squatch', text: text });
+      save(); paint();
+      var talk = $('talk'); talk.scrollTop = talk.scrollHeight;
+    }).catch(function (e) {
+      hearing = false;
+      $('kept').textContent = (e && e.message) || 'Squatch did not answer.';
+    });
+  }
+  $('say').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (hearing || glass) return;
+    var line = $('line');
+    if (!R.say(state, scrub(line.value), now())) return;
+    line.value = ''; save(); paint();
+    var talk = $('talk'); talk.scrollTop = talk.scrollHeight;
+    if (phoneKey()) { hearing = true; askSquatch(); }
+  });
+
+  $('sendnote').addEventListener('click', function () {
+    if (guest || glass) return;
+    var key = state.scene || '*';
+    var input = $('noteline');
+    if (!R.note(state, key, input.value, now(), null)) return;
+    input.value = ''; save(); paint();
+  });
+  $('noteline').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); $('sendnote').click(); }
+  });
+
+  var rec = null, chunks = null, stream = null, wantHear = false;
+  function idb() {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open('squatch.room', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('voice'); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+  }
+  function putVoice(id, blob) {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('voice', 'readwrite');
+        tx.objectStore('voice').put(blob, id);
+        tx.oncomplete = function () { res(); };
+        tx.onerror = function () { rej(tx.error); };
+      });
+    });
+  }
+  function stopRec() {
+    if (!rec || rec.state === 'inactive') return;
+    var mine = rec;
+    mine.onstop = function () {
+      if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+      var blob = new Blob(chunks, { type: mine.mimeType || 'audio/webm' });
+      var id = 'v' + now();
+      putVoice(id, blob).then(function () {
+        R.note(state, state.scene || '*', '', now(), id);
+        state.log[state.log.length - 1].bytes = blob.size;
+        save(); paint();
+        $('kept').textContent = 'A voice note is kept on this phone. It was not read.';
+      }).catch(function () { $('kept').textContent = 'The voice note could not be kept.'; });
+    };
+    mine.stop(); rec = null; $('hold').classList.remove('hot');
+  }
+  $('hold').addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    if (glass) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      $('kept').textContent = 'This glass will not hear a voice. The keyboard will.'; return;
+    }
+    wantHear = true;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
+      if (!wantHear) { s.getTracks().forEach(function (t) { t.stop(); }); return; }
+      stream = s; chunks = [];
+      rec = new MediaRecorder(s);
+      rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
+      rec.start(); $('hold').classList.add('hot');
+    }).catch(function () { $('kept').textContent = 'The mic stayed shut. Type the note.'; });
+  });
+  $('hold').addEventListener('pointerup', function () { wantHear = false; stopRec(); });
+  $('hold').addEventListener('pointercancel', function () { wantHear = false; stopRec(); });
+  $('hold').addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  $('share').addEventListener('click', function () {
+    var text = state.script;
+    state.log.push({ t: now(), kind: 'share', chars: text.length });
+    save();
+    if (navigator.share) {
+      navigator.share({ title: state.title, text: text }).catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        copy(text);
+      });
+    } else copy(text);
+  });
+  function copy(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { $('kept').textContent = 'The script is copied. The notes stayed here.'; });
+    }
+  }
+
+  function download(name, blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  }
+  $('keep').addEventListener('click', function () {
+    var pack = R.packShelf(shelf);
+    var built = replayOk();
+    pack.replay = built;
+    state.log.push({ t: now(), kind: 'keep' });
+    save();
+    var safe = state.title.replace(/[^\w]+/g, ' ').trim() || 'Squatch';
+    download(safe + '.inkling.json', new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }));
+  });
+  function replayOk() {
+    var back = R.replay(state.log, '');
+    return back === state.script;
+  }
+  $('bring').addEventListener('click', function () { $('file').click(); });
+  $('file').addEventListener('change', function () {
+    var f = $('file').files && $('file').files[0]; $('file').value = ''; if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var brought = R.takeIn(shelf, JSON.parse(String(reader.result)));
+        if (!brought) { $('kept').textContent = 'That file is not a Squatch copy.'; return; }
+        state = currentOf(shelf);
+        $('page').value = state.script;
+        $('title').value = state.title;
+        state.log.push({ t: now(), kind: 'brought', added: brought.added.length });
+        save(); paint();
+        $('kept').textContent = brought.added.length
+          ? 'That copy is its own project. The people already known stayed.'
+          : 'Those projects were already here. The people stayed.';
+      } catch (e) { $('kept').textContent = 'That file would not open.'; }
+    };
+    reader.readAsText(f);
+  });
+
+  function publish() {
+    if (!kingKey || guest) return;
+    Object.keys(shares).forEach(function (token) {
+      var rec = shares[token];
+      if (!rec || rec.project !== state.id) return;
+      var key = rec.mode === 'follow' ? state.scene : rec.mode;
+      var pack = R.scenePack(state.script, state.title, key);
+      if (!pack.scene) return;
+      fetch('/api/share', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Squatch-Desk': kingKey },
+        body: JSON.stringify({ token: token, mode: rec.mode === 'follow' ? 'follow' : 'scene', pack: pack }) })
+        .catch(function () {});
+    });
+  }
+  function share(mode) {
+    if (!kingKey) { $('setLink').textContent = 'This glass is not the desk. Open Squatch on the Mac.'; return; }
+    if (mode === 'scene' && !state.scene) { $('setLink').textContent = 'Select a scene in the story first.'; return; }
+    var pack = R.scenePack(state.script, state.title, mode === 'follow' ? state.scene : state.scene);
+    if (!pack.scene) { $('setLink').textContent = 'The page has no scene yet.'; return; }
+    fetch('/api/share', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Squatch-Desk': kingKey },
+      body: JSON.stringify({ mode: mode, pack: pack }) })
+      .then(function (r) { return r.json(); })
+      .then(function (o) {
+        if (!o.url) { $('setLink').textContent = 'The house did not take it.'; return; }
+        shares[o.token] = { project: state.id, mode: mode === 'follow' ? 'follow' : pack.scene.key };
+        try { localStorage.setItem('squatch.room.shares', JSON.stringify(shares)); } catch (e) {}
+        $('setLink').textContent = o.url;
+        state.log.push({ t: now(), kind: 'share', chars: (pack.scene.text || '').length, scene: pack.scene.key, mode: mode });
+        save();
+      }).catch(function () { $('setLink').textContent = 'The house cannot hear the desk.'; });
+  }
+  function takeNotes() {
+    if (!kingKey || guest) return;
+    fetch('/api/notes?since=' + noteSince, { headers: { 'X-Squatch-Desk': kingKey } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        if (!o || !o.notes || !o.notes.length) return;
+        o.notes.forEach(function (n) {
+          noteSince = Math.max(noteSince, n.id || 0);
+          var key = n.scene || '*';
+          if (!state.notes[key]) state.notes[key] = [];
+          state.notes[key].push({ id: 'g' + n.id, at: n.at, text: (n.name || 'a guest') + ': ' + n.text });
+          state.log.push({ t: now(), kind: 'note', scene: key, text: n.text, who: n.name || 'a guest' });
+        });
+        var last = o.notes[o.notes.length - 1];
+        $('kept').textContent = (last.name || 'a guest') + ' sent a note.';
+        var box = $('setNotes');
+        if (box) box.textContent = o.notes.map(function (n) { return (n.name || 'a guest') + ': ' + n.text; }).join('\n');
+        save();
+      }).catch(function () {});
+  }
+  function applyPack(pack) {
+    if (!pack || !pack.scene) return;
+    state.title = pack.title || state.title;
+    state.script = pack.scene.text || '';
+    state.scene = pack.scene.key;
+    $('page').value = state.script;
+    $('page').readOnly = true;
+    var ol = $('story');
+    ol.textContent = '';
+    (pack.story || []).forEach(function (sc) {
+      var li = document.createElement('li');
+      if (sc.open) li.className = 'on';
+      li.style.borderLeftColor = R.colourOf(sc.place || sc.heading);
+      var h = document.createElement('div');
+      h.className = 'h'; h.style.color = R.textOf(sc.place || sc.heading); h.textContent = sc.heading;
+      var b = document.createElement('div');
+      b.className = 'b';
+      b.textContent = sc.open ? (sc.people || []).join(', ') + (sc.beat ? ' — ' + sc.beat : '') : 'another part';
+      li.appendChild(h); li.appendChild(b);
+      ol.appendChild(li);
+    });
+    $('empty').hidden = true;
+    if (window.SKY && pack.sky) SKY.draw($('sky'), pack.sky);
+    var words = state.script.trim() ? state.script.trim().split(/\s+/).length : 0;
+    $('count').textContent = words + (words === 1 ? ' word' : ' words') + ' · this scene';
+    if ($('title').value !== state.title) $('title').value = state.title;
+    $('title').readOnly = true;
+  }
+  function pull() {
+    fetch('/api/s/' + guest).then(function (r) { return r.ok ? r.json() : null; }).then(function (o) {
+      if (o && o.pack) applyPack(o.pack);
+    }).catch(function () {});
+  }
+  function sendBack() {
+    var input = $('noteline'), name = sessionStorage.getItem('squatch.guest') || '';
+    if (!name) {
+      name = window.prompt('Your name, so he knows who sent it.') || '';
+      name = name.trim().slice(0, 40);
+      if (!name) return;
+      sessionStorage.setItem('squatch.guest', name);
+    }
+    var text = input.value.trim();
+    if (!text) return;
+    fetch('/api/s/' + guest + '/note', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, name: name }) })
+      .then(function (r) {
+        if (!r.ok) { $('kept').textContent = 'The note did not go.'; return; }
+        input.value = '';
+        $('kept').textContent = 'Sent back to him.';
+      }).catch(function () { $('kept').textContent = 'The note did not go.'; });
+  }
+
+  /* his body, cell for cell, from squatch.json. The red pixels above the ember climb and come round. Never redrawn. */
+  function seatSquatch() {
+    var cv = $('sprite'); if (!cv || guest) return;
+    fetch('/squatch/squatch.json').then(function (r) { return r.json(); }).then(function (O) {
+      var S = 5, w = O.w, h = O.h, rows = O.frames[0], ey = 10, cols = [9, 10];
+      var isSpark = function (x, y) { return y < ey && cols.indexOf(x) >= 0 && O.pal[rows[y][x]] && String(O.pal[rows[y][x]]).toUpperCase() === '#FF0000'; };
+      var sparks = [];
+      rows.forEach(function (r, y) { Array.from(r).forEach(function (ch, x) { if (isSpark(x, y)) sparks.push({ x: x, y: y, c: O.pal[ch] }); }); });
+      cv.width = w * S; cv.height = h * S; cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
+      cv.style.right = 'max(' + (44 - w * S / 2) + 'px, env(safe-area-inset-right))';
+      cv.style.bottom = 'max(' + (70 - h * S / 2) + 'px, env(safe-area-inset-bottom))';
+      var ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+      var body = function () {
+        rows.forEach(function (r, y) { Array.from(r).forEach(function (ch, x) {
+          var c = O.pal[ch]; if (!c || isSpark(x, y)) return; ctx.fillStyle = c; ctx.fillRect(x * S, y * S, S, S);
+        }); });
+      };
+      var draw = function () {
+        ctx.clearRect(0, 0, cv.width, cv.height); body();
+        sparks.forEach(function (s) { if (s.y >= 0) { ctx.fillStyle = s.c; ctx.fillRect(s.x * S, s.y * S, S, S); } });
+      };
+      draw();
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      setInterval(function () { sparks.forEach(function (s) { s.y -= 1; if (s.y < 0) s.y = ey - 1; }); draw(); }, 240);
+    }).catch(function () {});
+  }
+  function seatCig() {
+    var cg = $('cig'); if (!cg) return;
+    var CIG = ['ffgggggggggR', 'ffgggggggggR'], CPAL = { f: '#BF6A40', g: '#888888', R: '#FF0000' }, CS = 4, top = 5;
+    var cx = cg.getContext('2d');
+    cg.width = (CIG[0].length + 2) * CS; cg.height = (CIG.length + top) * CS;
+    cg.style.width = cg.width + 'px'; cg.style.height = cg.height + 'px';
+    var sp = 0;
+    var cig = function () {
+      cx.clearRect(0, 0, cg.width, cg.height);
+      CIG.forEach(function (row, y) { Array.from(row).forEach(function (ch, i) {
+        if (CPAL[ch]) { cx.fillStyle = CPAL[ch]; cx.fillRect(i * CS, (y + top) * CS, CS, CS); }
+      }); });
+      cx.fillStyle = '#FF0000';
+      [[11, 4], [12, 2], [11, 0]].forEach(function (p) { var yy = (p[1] + top * 10 - sp) % top; cx.fillRect((p[0] + (yy % 2)) * CS, yy * CS, CS, CS); });
+    };
+    cig();
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(function () { if (!cg.hidden) { sp = (sp + 1) % top; cig(); } }, 260);
+    var tog = function () { $('set').hidden = !$('set').hidden; };
+    cg.addEventListener('click', tog);
+    cg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+  }
+
+  function showCode(code) {
+    $('castword').hidden = false;
+    $('castword').textContent = String(code || '').split('').join(' ');
+    $('cast').textContent = 'stop';
+    var url = (house || '') + '/squatch.html';
+    $('kept').textContent = url ? ('On the phone, open ' + url + ' and cast this word.') : 'On the phone, cast this word.';
+    if ($('setHouse') && house) $('setHouse').textContent = url;
+  }
+  function pushShow() {
+    if (!castSending || !castCode || glass) return;
+    fetch('/api/cast/show', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: castCode, title: state.title, script: state.script, scene: state.scene || '' }) })
+      .then(function (r) {
+        if (r.status === 404 || r.status === 429) {
+          castSending = false;
+          $('cast').textContent = 'cast';
+          $('castcode').hidden = true;
+          try { sessionStorage.removeItem('squatch.cast.code'); } catch (e) {}
+          $('kept').textContent = r.status === 429 ? 'The computer is ignoring guesses. Wait.' : 'The computer is not waiting for that word.';
+        }
+      }).catch(function () { $('kept').textContent = 'The computer cannot hear this phone.'; });
+  }
+  function beginSend() {
+    var c = $('castcode').value.replace(/\s+/g, '').toUpperCase();
+    if (c.length < 4) { $('castcode').hidden = false; $('castcode').focus(); return; }
+    castCode = c;
+    castSending = true;
+    try { sessionStorage.setItem('squatch.cast.code', c); } catch (e) {}
+    $('castcode').hidden = true;
+    $('cast').textContent = 'stop';
+    $('kept').textContent = 'Casting this page.';
+    pushShow();
+    if (!castTimer) castTimer = setInterval(pushShow, 2000);
+  }
+  function stopSend() {
+    castSending = false;
+    castCode = '';
+    if (castTimer) { clearInterval(castTimer); castTimer = 0; }
+    try { sessionStorage.removeItem('squatch.cast.code'); } catch (e) {}
+    $('cast').textContent = 'cast';
+    $('castcode').hidden = true;
+    $('kept').textContent = 'The cast stopped.';
+  }
+  function resumeSend() {
+    var c = '';
+    try { c = sessionStorage.getItem('squatch.cast.code') || ''; } catch (e) {}
+    if (!c || kingKey) return;
+    castCode = c;
+    castSending = true;
+    $('cast').textContent = 'stop';
+    pushShow();
+    if (!castTimer) castTimer = setInterval(pushShow, 2000);
+  }
+  function pullCast() {
+    if (!castReceiving || !kingKey) return;
+    fetch('/api/cast', { headers: { 'X-Squatch-Desk': kingKey } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        if (!o || !o.shown || o.rev === castRev) return;
+        castRev = o.rev;
+        glass = { title: o.title || '', script: o.script || '', scene: o.scene || null };
+        paint();
+      }).catch(function () {});
+  }
+  function startReceive() {
+    fetch('/api/cast', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Squatch-Desk': kingKey }, body: '{}' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        if (!o || !o.code) { $('kept').textContent = 'This glass cannot receive.'; return; }
+        castReceiving = true;
+        castRev = -1;
+        glass = null;
+        showCode(o.code);
+        if (!castTimer) castTimer = setInterval(pullCast, 1000);
+      }).catch(function () { $('kept').textContent = 'This glass cannot receive.'; });
+  }
+  function stopReceive() {
+    fetch('/api/cast', { method: 'DELETE', headers: { 'X-Squatch-Desk': kingKey } }).catch(function () {});
+    castReceiving = false;
+    glass = null;
+    castRev = -1;
+    if (castTimer) { clearInterval(castTimer); castTimer = 0; }
+    $('castword').hidden = true;
+    $('castword').textContent = '';
+    $('cast').textContent = 'cast';
+    $('page').readOnly = false;
+    $('title').readOnly = false;
+    paint();
+  }
+  function resumeCast() {
+    fetch('/api/cast', { headers: { 'X-Squatch-Desk': kingKey } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (o) {
+        if (!o || !o.code) return;
+        castReceiving = true;
+        showCode(o.code);
+        if (o.shown) {
+          castRev = o.rev;
+          glass = { title: o.title || '', script: o.script || '', scene: o.scene || null };
+          paint();
+        }
+        if (!castTimer) castTimer = setInterval(pullCast, 1000);
+      }).catch(function () {});
+  }
+  function onCast() {
+    if (!deskReady) { wantCast = true; return; }
+    if (castReceiving) { stopReceive(); return; }
+    if (castSending) { stopSend(); return; }
+    if (kingKey) { startReceive(); return; }
+    if (!$('castcode').hidden && $('castcode').value.trim()) { beginSend(); return; }
+    $('castcode').hidden = false;
+    $('castcode').focus();
+  }
+
+  if (guest) {
+    state = R.blank(Date.now());
+    state.script = ''; state.chat = [];
+    $('page').readOnly = true;
+    $('sendnote').textContent = 'send back';
+    $('noteline').placeholder = 'A note on this scene. It goes back to him.';
+    $('sendnote').addEventListener('click', sendBack);
+    show('script');
+    pull();
+    setInterval(pull, 1500);
+  } else {
+    shelf = loadShelf();
+    state = currentOf(shelf);
+    try { shares = JSON.parse(localStorage.getItem('squatch.room.shares') || '{}') || {}; } catch (e) { shares = {}; }
+    Object.keys(shares).forEach(function (token) {
+      if (typeof shares[token] === 'string') shares[token] = { project: shelf.projects[0].id, mode: shares[token] };
+    });
+    $('anew').addEventListener('click', newProject);
+    fetch('/squatch/session.txt').then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+      if (!t || !t.trim() || !shelf) return;
+      var built = R.construct(t), kept = [], i, p, notes, k, kingSaid;
+      for (i = 0; i < shelf.projects.length; i++) {
+        p = shelf.projects[i];
+        kingSaid = (p.chat || []).some(function (m) { return m.who === 'king'; });
+        notes = false;
+        for (k in (p.notes || {})) if ((p.notes[k] || []).length) notes = true;
+        if (p.script === built.script && !kingSaid && !notes) continue;
+        kept.push(p);
+      }
+      if (kept.length === shelf.projects.length) return;
+      if (!kept.length) {
+        shelf = R.freshShelf(now());
+        state = currentOf(shelf);
+        state.log.push({ t: now(), kind: 'cleared', what: 'session test' });
+      } else {
+        shelf.projects = kept;
+        if (!kept.some(function (q) { return q.id === shelf.current; })) shelf.current = kept[0].id;
+        state = currentOf(shelf);
+      }
+      $('page').value = state.script;
+      $('title').value = state.title;
+      save(); paint();
+    }).catch(function () {});
+    if ($('page').value !== state.script) $('page').value = state.script;
+    show('script');
+    paint();
+    $('page').focus();
+    seatSquatch();
+    seatCig();
+    $('setScene').addEventListener('click', function () { share('scene'); });
+    $('setFollow').addEventListener('click', function () { share('follow'); });
+    try { $('key').value = phoneKey(); } catch (e) {}
+    if (phoneKey()) $('line').placeholder = 'Say it to Squatch.';
+    $('key').addEventListener('change', function () {
+      var v = scrub($('key').value.trim());
+      try {
+        var b = JSON.parse(localStorage.getItem('monomyth.focus.byok.v1') || '{}') || {};
+        if (v) b.apiKey = v; else delete b.apiKey;
+        localStorage.setItem('monomyth.focus.byok.v1', JSON.stringify(b));
+        localStorage.removeItem('squatch.room.key');
+      } catch (e) {}
+      $('line').placeholder = v ? 'Say it to Squatch.' : "The council's mouth is shut. Your words are kept.";
+      $('kept').textContent = v ? 'The key is in the box this phone shares with Inkling.' : 'No key on this phone.';
+    });
+    $('cast').addEventListener('click', onCast);
+    $('castcode').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); beginSend(); }
+    });
+    fetch('/api/info').then(function (r) { return r.ok ? r.json() : null; }).then(function (o) {
+      if (o && o.shareBase) {
+        house = o.shareBase;
+        if ($('setHouse')) $('setHouse').textContent = house + '/squatch.html';
+      }
+    }).catch(function () {});
+    fetch('/api/desk-key').then(function (r) { return r.ok ? r.json() : null; }).then(function (o) {
+      if (o && o.key) { kingKey = o.key; publish(); setInterval(takeNotes, 2000); resumeCast(); }
+      deskReady = true;
+      if (wantCast) { wantCast = false; onCast(); }
+      else if (!kingKey) resumeSend();
+    }).catch(function () { deskReady = true; });
+  }
+})();
+</script>
+</body>
+</html>
