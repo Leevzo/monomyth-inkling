@@ -92,6 +92,17 @@
   #story .b { color: var(--dim); font-size: 12px; white-space: pre-line; font-family: inherit; }
   #empty { color: var(--dim); padding: 12px 0; }
   #known { color: var(--dim); font-size: 13px; margin: 8px 0 0; }
+  /* the desk: the page and its chapter outline, one on the phone stacked, two across on the glass */
+  #desk { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; }
+  #outline { flex: 0 0 auto; max-height: 32%; overflow-y: auto; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  .mlabel { color: var(--teal-dim); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; font-weight: 600;
+    margin: 10px 0 4px; font-family: 'Dogica', ui-monospace, monospace; }
+  /* the plot: the story's beats in order, numbered, who speaks first */
+  #plot { list-style: none; margin: 0; padding: 0; }
+  #plot li { display: flex; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--dim); border-bottom: 1px solid rgba(255, 255, 255, .04); }
+  #plot .n { color: var(--faint); flex: 0 0 18px; }
+  .who-line { padding: 3px 0; font-size: 13px; }
+  .who-line .q { color: var(--faint); font-size: 12px; }
   /* the wheel's front spot: his centre sits 44px in and 70px up from the lower right,
      the same corner he takes in the Inkling app. The drop into that app is this seat. */
   #sprite { position: fixed; z-index: 5; right: 9px; bottom: 5px; image-rendering: pixelated;
@@ -137,6 +148,12 @@
     /* his seat is left of the seam now, at the page's lower right, the same corner he keeps on the phone */
     #sprite { right: calc(var(--side-w) + 26px) !important; }
     #spine { display: block !important; }
+    /* the sky stays on the phone; the desk carries the outline beside the page */
+    #desk { flex-direction: row; }
+    #outline { width: 220px; flex: 0 0 220px; max-height: none; overflow-y: auto;
+      border-bottom: 0; border-right: 1px solid var(--line); margin: 0 14px 0 0; }
+    #page { flex: 1; }
+    #sky, #empty { display: none; }
   }
   /* ── the SQUATCH spine: the seam between the page and the side panel, as Scriptorium's —
      the word stands on its end, the ticks run above and below, and the drag resizes the panel.
@@ -175,7 +192,13 @@
 </nav>
 <div id="main">
   <section id="scriptsec" class="on" data-name="script">
-    <textarea id="page" spellcheck="true" aria-label="The script" placeholder="INT.  — name the place. Then a person, in capitals, and they step into the sky."></textarea>
+    <div id="desk">
+      <div id="outline">
+        <p class="mlabel">chapters</p>
+        <ol id="story"></ol>
+      </div>
+      <textarea id="page" spellcheck="true" aria-label="The script" placeholder="INT.  — name the place. Then a person, in capitals, and they step into the sky."></textarea>
+    </div>
     <div id="note">
       <input id="noteline" aria-label="A note, kept for you, with no one else reading it" placeholder="A note for you. Tap a scene to pin it." autocomplete="off">
       <button type="button" id="sendnote">to me</button>
@@ -194,8 +217,10 @@
   <section id="toolsec" data-name="tools">
     <div id="sky" aria-label="The constellation of this script"></div>
     <p id="empty">Write a scene. The stars come out of the page.</p>
-    <p id="known" hidden></p>
-    <ol id="story"></ol>
+    <p class="mlabel">plot</p>
+    <ol id="plot"></ol>
+    <p class="mlabel">characters</p>
+    <div id="known" hidden></div>
   </section>
 </div>
 <canvas id="sprite" aria-label="Squatch"></canvas>
@@ -378,8 +403,25 @@
     if (!glass) paintTalk();
     paintSky(parsed);
     paintStory(parsed);
+    paintPlot();
     paintKnown();
     paintProjects();
+  }
+  /* the plot: every beat of the page in order, numbered, the speaker in their colour */
+  function paintPlot() {
+    var el = $('plot');
+    if (!el) return;
+    el.textContent = '';
+    if (guest || glass) return;
+    var beats = R.plotOf(pageScript()) || [];
+    beats.forEach(function (b, i) {
+      var li = document.createElement('li'), n = document.createElement('span'), t = document.createElement('span');
+      n.className = 'n'; n.textContent = i + 1;
+      t.textContent = (b.who ? '' : b.text);
+      if (b.who) { t.style.color = R.textOf(b.who); t.textContent = b.who + ' — ' + b.text; }
+      li.appendChild(n); li.appendChild(t);
+      el.appendChild(li);
+    });
   }
   function paintKnown() {
     var el = $('known');
@@ -388,12 +430,16 @@
     el.textContent = '';
     if (!names.length) { el.hidden = true; return; }
     el.hidden = false;
-    el.appendChild(document.createTextNode('Known, in every project. '));
-    names.forEach(function (n, i) {
-      var s = document.createElement('span');
+    names.forEach(function (n) {
+      var d = document.createElement('div'), s = document.createElement('span'), q = document.createElement('span');
+      d.className = 'who-line';
       s.style.color = R.textOf(n);
-      s.textContent = n + (i < names.length - 1 ? ' · ' : '');
-      el.appendChild(s);
+      s.textContent = n;
+      var first = shelf.people[n] && shelf.people[n].lines && shelf.people[n].lines[0];
+      q.className = 'q';
+      q.textContent = first ? ' — ' + first : '';
+      d.appendChild(s); d.appendChild(q);
+      el.appendChild(d);
     });
   }
   function paintProjects() {
