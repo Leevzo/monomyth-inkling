@@ -48,7 +48,7 @@
     --ink: #000000; --grey: #6B6B6B; --line: #6B6B6B;
     --star: #FFA512; --star-d: #BF7B0D; --star-l: #FFEDCF;
     --ghost: #FBE3B8; --red: #BF0D2A;
-    --top-h: 84px; --speak-h: 52px;
+    --top-h: 84px; --speak-h: 52px; --menu-w: 192px;
     --side-w: 280px;
   }
   html[data-theme="dark"] {
@@ -181,14 +181,10 @@
   /* the middle screen: the talk fills it, the history pulls down over it */
   #roomtalk { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 
-  /* the desk: the rail of file-words on top (Vellum's own law), the page and its
-     chapter outline below — one on the phone stacked, two across on the glass */
+  /* the desk: the page and its chapter outline — one on the phone stacked, two across on
+     the glass; the file words live in the side column now (the elders' law, 2026-10-04) */
   #desk { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
   #deskrow { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-  /* her rail: the file words, grey until a hand passes, exactly her quiet row's law */
-  #rail { flex: 0 0 auto; display: flex; gap: 16px; align-items: baseline;
-    padding: 0 0 8px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
-  #rail button { font-size: 12px; letter-spacing: .3px; color: var(--grey); user-select: none; }
   #outline { flex: 0 0 auto; max-height: 32%; overflow-y: auto; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   /* her lists-drawer's hand for the small headings */
   .mlabel { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--grey); margin: 14px 0 6px; }
@@ -235,24 +231,29 @@
   #set p { font-size: 13px; margin: 6px 0; }
   /* while the scene stands, the room steps back and only the cigarette stays lit (the salmon's law) */
   body.setting #main, body.setting #note, body.setting #sprite, body.setting #pager,
-  body.setting header, body.setting #spine { visibility: hidden; }
+  body.setting header, body.setting #spine, body.setting #menu { visibility: hidden; }
   body.setting #quiet { z-index: 16; }
   body.setting #menuBtn, body.setting #lamp { visibility: hidden; }
   @media (max-width: 700px) { body.setting #cig { display: block; } }
-  /* the menu: her whisper panel, a breath under the quiet words — on the glass; on the phone
-     it is the drawer that comes in from the left (his word, 2026-10-04) */
-  #menu { position: fixed; z-index: 15; top: calc(44px + env(safe-area-inset-top, 0px)); right: 22px;
-    min-width: 216px; background: var(--panel); color: var(--ink);
-    border: 1px solid var(--ink); border-radius: 2px; padding: 10px 14px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, .08); }
+  /* the menu: THE ELDERS' OWN IDIOM (Scriptorium's and Vellum's, 2026-10-04) — a side column of
+     big text buttons, full width, left-aligned, grey until a hand passes. On the desk it always
+     stands at the right edge; on the phone it is the drawer that comes in from the left (his word) */
+  #menu { position: fixed; z-index: 15; top: 0; right: 0; height: 100vh; width: var(--menu-w);
+    display: flex; flex-direction: column; gap: 4px; background: var(--paper); color: var(--ink);
+    border-left: 1px solid var(--line);
+    padding: calc(56px + env(safe-area-inset-top, 0px)) 14px 20px; }
   #menu[hidden] { display: none; }
   #menu [hidden] { display: none; }
-  #menu button { display: block; text-align: left; padding: 6px 0; font-size: 13px; }
+  #menu button { display: block; width: 100%; text-align: left; padding: 10px 12px;
+    font-size: 13px; letter-spacing: .10em; text-transform: uppercase; color: var(--grey);
+    border: 0; background: transparent; cursor: pointer; border-radius: 0; user-select: none; }
+  #menu button:hover { color: var(--ink); background: var(--ghost); }
+  #menu button:active { background: var(--ink); color: var(--paper); }
   #menu .sep { border-top: 1px solid var(--line); margin: 6px 0 2px; opacity: .5; }
   html.guest #roomtalk, html.guest #talksec, html.guest #cig, html.guest #set, html.guest #menu, html.guest #menuBtn, html.guest #anew,
   html.guest #share, html.guest #keep, html.guest #bring, html.guest #xport,
   html.guest #hold, html.guest #tape, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode,
-  html.guest #saytape, html.guest #hear, html.guest #rail { display: none !important; }
+  html.guest #saytape, html.guest #hear, html.guest #menuTape { display: none !important; }
   html.guest #pager i:nth-child(2) { display: none; }   /* a guest holds two screens: the scene and its sky */
 
   /* the pager: three dots for three rooms, the phone's own tell of where the swipe stands —
@@ -265,7 +266,6 @@
     header { left: 14px; right: 14px; }
     #quiet { right: 14px; gap: 12px; }
     #quiet button { font-size: 11px; }
-    #menu { right: 14px; }
     #count, #kept { max-width: 60vw; }
     /* the speak bar's words must all keep their seat on the small glass */
     #note { gap: 6px; }
@@ -273,9 +273,6 @@
     #note button { font-size: 11px; letter-spacing: 0; }
     /* the cigarette's door lives in the drawer on the small glass */
     #cig { display: none; }
-    /* the rail's words crowd gracefully on the small glass */
-    #rail { gap: 10px; }
-    #rail button { font-size: 11px; letter-spacing: 0; }
   }
   @media (max-width: 979px) {
     /* three rooms, one swipe apart, the script on the left, the talk in the middle, the sky and
@@ -286,9 +283,9 @@
     #pager { display: flex; }
     /* the note's bar belongs to the page; it steps aside on the talk and the sky */
     body:not([data-screen="script"]) #note { display: none; }
-    /* the menu comes in from the left (his word) */
-    #menu { left: 0; right: auto; top: 0; bottom: 0; min-width: min(260px, 76vw); border: 0;
-      border-right: 1px solid var(--ink); border-radius: 0; box-shadow: 6px 0 20px rgba(0, 0, 0, .10);
+    /* the menu comes in from the left (his word) — the same big text buttons as the desk's column */
+    #menu { left: 0; right: auto; top: 0; bottom: 0; width: auto; min-width: min(260px, 76vw);
+      border-left: 0; border-right: 1px solid var(--line); box-shadow: 6px 0 20px rgba(0, 0, 0, .10);
       padding: calc(20px + env(safe-area-inset-top, 0px)) 18px 18px; animation: menuIn .22s ease; }
     @keyframes menuIn { from { transform: translateX(-104%); } to { transform: translateX(0); } }
     /* he keeps the corner, smaller, above the pager */
@@ -300,7 +297,13 @@
     #title { font-size: 22px; }
   }
   @media (min-width: 980px) {
-    #main { flex-direction: row; }
+    #main { flex-direction: row; right: var(--menu-w); }   /* the menu column holds the right edge */
+    #menu[hidden] { display: flex; }                       /* on the desk the column always stands */
+    #menuBtn { display: none; }                            /* the word 'menu' is the phone's key */
+    header { right: calc(var(--menu-w) + 20px); }
+    /* the quiet words and the note bar keep clear of the column */
+    #quiet { right: calc(var(--menu-w) + 14px); }
+    #note { right: calc(var(--menu-w) + 22px); }
     html.guest #main section { width: 50%; }
     html.guest #spine { display: none !important; }
     /* the talk stays on the phone (his word): the desk holds the page and the side panel only */
@@ -309,9 +312,9 @@
     #scriptsec { flex: 1 1 auto; width: auto; min-width: 0; padding-right: 30px; }
     #toolsec { width: var(--side-w); flex: 0 0 var(--side-w); padding: 0 16px 20px 16px; }
     /* his seat is left of the seam now, at the page's lower right, standing on the note bar */
-    #sprite { right: calc(var(--side-w) + 26px) !important; bottom: calc(var(--speak-h) + 10px); }
-    #spine { display: block !important; }
-    /* the desk carries the outline beside the page, the rail spanning above both */
+    #sprite { right: calc(var(--menu-w) + var(--side-w) + 26px) !important; bottom: calc(var(--speak-h) + 10px); }
+    #spine { display: block !important; right: calc(var(--menu-w) + var(--side-w)); }
+    /* the desk carries the outline beside the page */
     #deskrow { flex-direction: row; }
     #outline { width: 220px; flex: 0 0 220px; max-height: none; overflow-y: auto;
       border-bottom: 0; border-right: 1px solid var(--line); margin: 0 14px 0 0; }
@@ -320,18 +323,19 @@
   }
   /* ── the SQUATCH spine: the seam between the page and the side panel —
      the word stands on its end, the ticks run above and below, and the drag resizes the panel.
-     The word wears the wheel's own colours, one a beat; the ticks take the word's colour;
-     the lit moment (a hand on the seam) is gold. ── */
+     THE ELDERS' LAW (Scriptorium · Vellum, his ruling 2026-10-04): the line is ONE QUIET COLOUR,
+     always — it does not spark; the lit moment (a hand on the seam) is gold, and 2px wide.
+     The word alone keeps the wheel's colours, one a beat, climbing like the ember. ── */
   #spine { display: none; position: fixed; top: 0; bottom: 0; right: var(--side-w); width: 30px; z-index: 6; cursor: ew-resize; touch-action: none; }
   #spine::before, #spine::after { content: ""; position: absolute; left: 50%; width: 1px; transform: translateX(-50%);
-    background: var(--tick, var(--line)); opacity: .8; transition: background .25s; }
+    background: var(--line); opacity: .75; transition: background .25s, width .15s; }
   #spine::before { top: 0; bottom: calc(50% + 110px); }
   #spine::after { top: calc(50% + 110px); bottom: 0; }
   #spine span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(180deg); writing-mode: vertical-rl;
     font-size: 11px; letter-spacing: .35em; color: var(--grey);
     user-select: none; -webkit-user-select: none; transition: color .25s; }
   #spine:hover span, #spine.dragging span { color: var(--ink); text-shadow: 0 0 8px rgba(255, 165, 18, .55); }
-  #spine:hover::before, #spine:hover::after, #spine.dragging::before, #spine.dragging::after { background: var(--star-d); opacity: 1; }
+  #spine:hover::before, #spine:hover::after, #spine.dragging::before, #spine.dragging::after { background: var(--star-d); opacity: 1; width: 2px; }
   #spine.dragging { cursor: grabbing; }
 </style>
 <script>
@@ -360,6 +364,7 @@
   <button type="button" id="bring">open…</button>
   <button type="button" id="xport">export fountain</button>
   <button type="button" id="keep">copy shelf</button>
+  <button type="button" id="menuTape">tape</button>
   <button type="button" id="share">share</button>
   <div class="sep"></div>
   <button type="button" id="cast">cast</button>
@@ -368,13 +373,6 @@
 <div id="main">
   <section id="scriptsec" class="on" data-name="script">
     <div id="desk">
-      <div id="rail">
-        <button type="button" id="railNew">new</button>
-        <button type="button" id="railOpen">open…</button>
-        <button type="button" id="railExport">export…</button>
-        <button type="button" id="railKeep">keep</button>
-        <button type="button" id="railTape">tape</button>
-      </div>
       <div id="deskrow">
         <div id="outline">
           <p class="mlabel">chapters</p>
@@ -1379,11 +1377,7 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
-  $('railNew').addEventListener('click', function () { $('anew').click(); });
-  $('railOpen').addEventListener('click', function () { $('bring').click(); });
-  $('railExport').addEventListener('click', function () { $('xport').click(); });
-  $('railKeep').addEventListener('click', function () { $('keep').click(); });
-  $('railTape').addEventListener('click', function () { if (!guest && !glass) $('voicetape').click(); });
+  $('menuTape').addEventListener('click', function () { closeMenu(); if (!guest && !glass) $('voicetape').click(); });
   $('keep').addEventListener('click', function () {
     var pack = R.packShelf(shelf);
     var built = replayOk();
@@ -1810,7 +1804,8 @@
     });
     sp.addEventListener('pointermove', function (e) {
       if (!dragging) return;
-      var w = Math.max(200, Math.min(520, window.innerWidth - e.clientX - 15));
+      var mw = $('menu') ? $('menu').getBoundingClientRect().width : 0;
+      var w = Math.max(200, Math.min(520, window.innerWidth - e.clientX - mw - 15));
       document.documentElement.style.setProperty('--side-w', w + 'px');
     });
     var drop = function () {
