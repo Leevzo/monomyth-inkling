@@ -158,10 +158,18 @@
   #story .b { color: var(--grey); font-size: 12px; line-height: 1.5; white-space: pre-line; font-family: Georgia, 'Times New Roman', serif; }
   #plot .n { font-size: 11px; color: var(--grey); margin-right: 8px; }
   #plot .t { font-size: 13px; line-height: 1.5; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .02em; color: var(--ink); }
-  #empty { color: var(--grey); padding: 12px 0; }
+  #empty { color: var(--grey); padding: 12px 0; font-family: Georgia, 'Times New Roman', serif; font-style: italic; }
+  /* the plot's tab wears the star, the way her right panel's active word does */
+  #plotLabel { color: var(--star); }
 
-  /* the desk: the page and its chapter outline, one on the phone stacked, two across on the glass */
-  #desk { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; }
+  /* the desk: the rail of file-words on top (Vellum's own law), the page and its
+     chapter outline below — one on the phone stacked, two across on the glass */
+  #desk { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  #deskrow { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  /* her rail: the file words, grey until a hand passes, exactly her quiet row's law */
+  #rail { flex: 0 0 auto; display: flex; gap: 16px; align-items: baseline;
+    padding: 0 0 8px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  #rail button { font-size: 12px; letter-spacing: .3px; color: var(--grey); user-select: none; }
   #outline { flex: 0 0 auto; max-height: 32%; overflow-y: auto; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   /* her lists-drawer's hand for the small headings */
   .mlabel { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--grey); margin: 14px 0 6px; }
@@ -202,7 +210,7 @@
   html.guest #roomtalk, html.guest #cig, html.guest #set, html.guest #menu, html.guest #menuBtn, html.guest #anew,
   html.guest #share, html.guest #keep, html.guest #bring, html.guest #xport,
   html.guest #hold, html.guest #tape, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode,
-  html.guest #saytape, html.guest #hear { display: none !important; }
+  html.guest #saytape, html.guest #hear, html.guest #rail { display: none !important; }
 
   /* the pager: two dots for two rooms, the phone's own tell of where the swipe stands */
   #pager { display: none; gap: 9px; justify-content: center; z-index: 5;
@@ -222,6 +230,9 @@
     #note button { font-size: 11px; letter-spacing: 0; }
     /* the cigarette's door lives in the drawer on the small glass */
     #cig { display: none; }
+    /* the rail's words crowd gracefully on the small glass */
+    #rail { gap: 10px; }
+    #rail button { font-size: 11px; letter-spacing: 0; }
   }
   @media (max-width: 979px) {
     /* two rooms, one swipe apart, the script on the left: the phone scrolls sideways between them,
@@ -249,10 +260,11 @@
     /* his seat is left of the seam now, at the page's lower right, standing on the note bar */
     #sprite { right: calc(var(--side-w) + 26px) !important; bottom: calc(var(--speak-h) + 10px); }
     #spine { display: block !important; }
-    /* the desk carries the outline beside the page */
-    #desk { flex-direction: row; }
+    /* the desk carries the outline beside the page, the rail spanning above both */
+    #deskrow { flex-direction: row; }
     #outline { width: 220px; flex: 0 0 220px; max-height: none; overflow-y: auto;
       border-bottom: 0; border-right: 1px solid var(--line); margin: 0 14px 0 0; }
+    #paper { flex: 1; min-width: 0; }
     #page { flex: 1; }
   }
   /* ── the SQUATCH spine: the seam between the page and the side panel —
@@ -305,13 +317,22 @@
 <div id="main">
   <section id="scriptsec" class="on" data-name="script">
     <div id="desk">
-      <div id="outline">
-        <p class="mlabel">chapters</p>
-        <ol id="story"></ol>
+      <div id="rail">
+        <button type="button" id="railNew">new</button>
+        <button type="button" id="railOpen">open…</button>
+        <button type="button" id="railExport">export…</button>
+        <button type="button" id="railKeep">keep</button>
+        <button type="button" id="railTape">tape</button>
       </div>
-      <div id="paper">
-        <pre id="fmt" aria-hidden="true"></pre>
-        <textarea id="page" spellcheck="true" aria-label="The script" placeholder="INT.  — name the place. Then a person, in capitals, and they step into the sky."></textarea>
+      <div id="deskrow">
+        <div id="outline">
+          <p class="mlabel">chapters</p>
+          <ol id="story"></ol>
+        </div>
+        <div id="paper">
+          <pre id="fmt" aria-hidden="true"></pre>
+          <textarea id="page" spellcheck="true" aria-label="The script" placeholder="INT.  — name the place. Then a person, in capitals, and they step into the sky."></textarea>
+        </div>
       </div>
     </div>
     <div id="note">
@@ -324,7 +345,7 @@
   <section id="toolsec" data-name="tools">
     <div id="sky" aria-label="The constellation of this script"></div>
     <p id="empty">Write a scene. The stars come out of the page.</p>
-    <p class="mlabel">plot</p>
+    <p class="mlabel" id="plotLabel">plot</p>
     <ol id="plot"></ol>
     <div id="roomtalk">
       <div id="talk"></div>
@@ -1245,6 +1266,11 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
+  $('railNew').addEventListener('click', function () { $('anew').click(); });
+  $('railOpen').addEventListener('click', function () { $('bring').click(); });
+  $('railExport').addEventListener('click', function () { $('xport').click(); });
+  $('railKeep').addEventListener('click', function () { $('keep').click(); });
+  $('railTape').addEventListener('click', function () { if (!guest && !glass) $('voicetape').click(); });
   $('keep').addEventListener('click', function () {
     var pack = R.packShelf(shelf);
     var built = replayOk();
