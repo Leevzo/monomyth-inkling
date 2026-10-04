@@ -8,19 +8,19 @@
  "theme_color": "#F2EAD8",
  "icons": [
   {
-   "src": "squatch-icon.png",
+   "src": "squatch-icon.png?v=3",
    "sizes": "180x180",
    "type": "image/png",
    "purpose": "any"
   },
   {
-   "src": "squatch-icon-192.png",
+   "src": "squatch-icon-192.png?v=3",
    "sizes": "192x192",
    "type": "image/png",
    "purpose": "any"
   },
   {
-   "src": "squatch-icon-512.png",
+   "src": "squatch-icon-512.png?v=3",
    "sizes": "512x512",
    "type": "image/png",
    "purpose": "any"
