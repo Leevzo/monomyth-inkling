@@ -130,10 +130,17 @@
   #last .who { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
     color: var(--star-d); margin-bottom: 6px; font-weight: bold; }
   #say { display: flex; gap: 10px; align-items: flex-end; flex: 0 0 auto; }
-  #say input { flex: 1; min-height: 1.4em; font: inherit; font-size: 15px; line-height: 1.55; padding: 0 0 4px;
+  #say input { flex: 1; min-width: 0; min-height: 1.4em; font: inherit; font-size: 15px; line-height: 1.55; padding: 0 0 4px;
     background: transparent; color: var(--ink); border: 0; border-bottom: 1px solid var(--ink); border-radius: 0;
     caret-color: var(--star); }
-  #say button { flex: 0 0 auto; font-size: 12px; padding: 0 0 5px; line-height: 1; }
+  #say button { flex: 0 0 auto; font-size: 12px; padding: 0 0 5px; line-height: 1; letter-spacing: .2px; user-select: none; }
+  #hear.hot { color: var(--red) !important; }
+  /* the say row's three words must all keep their seat on the small glass */
+  @media (max-width: 700px) {
+    #say { gap: 6px; }
+    #say input { font-size: 14px; }
+    #say button { font-size: 11px; letter-spacing: 0; }
+  }
 
   /* ——— the constellation's window: her whisper-panel's frame — paper, one ink line, radius 2 — */
   #sky { min-height: 150px; max-width: 330px; width: 100%; margin: 2px auto 10px;
@@ -194,7 +201,8 @@
   #key:focus, #ghost:focus { border-bottom-color: var(--ink); }
   html.guest #roomtalk, html.guest #cig, html.guest #set, html.guest #menu, html.guest #menuBtn, html.guest #anew,
   html.guest #share, html.guest #keep, html.guest #bring, html.guest #xport,
-  html.guest #hold, html.guest #tape, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode { display: none !important; }
+  html.guest #hold, html.guest #tape, html.guest #sprite, html.guest #cast, html.guest #castword, html.guest #castcode,
+  html.guest #saytape, html.guest #hear { display: none !important; }
 
   /* the pager: two dots for two rooms, the phone's own tell of where the swipe stands */
   #pager { display: none; gap: 9px; justify-content: center; z-index: 5;
@@ -277,6 +285,7 @@
   <input id="castcode" hidden aria-label="The word on the computer" placeholder="the word on the computer" autocomplete="off" autocapitalize="characters" spellcheck="false">
   <input id="file" type="file" accept="application/json,.json,.inkling" hidden>
   <input id="voicetape" type="file" accept="audio/*,.m4a,.mp3,.webm,.wav,.ogg,.txt,.fountain,.md" hidden>
+  <input id="sayfile" type="file" accept="audio/*,.m4a,.mp3,.webm,.wav,.ogg,.txt,.md" hidden>
 </header>
 <div id="quiet">
   <button type="button" id="menuBtn">menu</button>
@@ -321,6 +330,8 @@
       <div id="talk"></div>
       <form id="say">
         <input id="line" aria-label="Say it to Squatch" placeholder="The council's mouth is shut. Your words are kept." autocomplete="off">
+        <button type="button" id="saytape">tape</button>
+        <button type="button" id="hear" hidden>hear</button>
         <button type="submit">say</button>
       </form>
     </div>
@@ -879,6 +890,118 @@
     line.value = ''; save(); paint();
     var talk = $('talk'); talk.scrollTop = talk.scrollHeight;
     if (phoneKey()) { hearing = true; askSquatch(); }
+  });
+
+  /* ——— the chat's own tape and ear ——— */
+  /* Jev's seat: the hear word shows only where the voiceless door has its key or its relay address */
+  function jevSeat() {
+    var b = $('hear'); if (!b) return;
+    var s = decideLoad();
+    b.hidden = guest || glass || !(s.key || s.url);
+  }
+  /* an ear for the say box, the shape Orv's glass proved: one recognition kept awake for the sitting,
+     interim words landing live in the very box he types in. Tap hear to open it, tap again to rest it;
+     the words stay for the say button. No Jev, no hear word. */
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var EAR = { rec: null, on: false, hearing: false, base: 0, n: 0, fin: '', live: '', pre: '' };
+  function hearShow() { $('line').value = [EAR.pre, EAR.fin, EAR.live].filter(Boolean).join(' '); }
+  function earWake() {
+    if (EAR.on) return true;
+    if (!SR) return false;
+    if (!EAR.rec) {
+      var r = new SR();
+      r.continuous = true; r.interimResults = true; r.lang = navigator.language || 'en-US';
+      r.onresult = function (ev) {
+        EAR.n = ev.results.length;
+        if (!EAR.hearing) { EAR.base = EAR.n; return; }
+        var fin = '', live = '';
+        for (var i = EAR.base; i < ev.results.length; i++) {
+          var x = ev.results[i];
+          if (x.isFinal) fin += x[0].transcript; else live += x[0].transcript;
+        }
+        EAR.fin = fin.trim(); EAR.live = live.trim(); hearShow();
+      };
+      r.onerror = function (ev) {
+        if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') { EAR.on = false;
+          $('kept').textContent = 'The mic was refused. In Safari: aA → Website Settings → Microphone → Allow.'; }
+      };
+      r.onend = function () {
+        if (EAR.on && !document.hidden) { try { r.start(); } catch (e) { EAR.on = false; } }
+        else EAR.on = false;
+      };
+      EAR.rec = r;
+    }
+    try { EAR.rec.start(); EAR.on = true; } catch (e) { EAR.on = /already/i.test(String(e && e.message)); }
+    return EAR.on;
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && EAR.rec) { EAR.on = false; try { EAR.rec.stop(); } catch (e) {} }
+  });
+  $('hear').addEventListener('click', function () {
+    if (EAR.hearing) {
+      setTimeout(function () {   /* a breath for the last words to land */
+        EAR.hearing = false; $('hear').classList.remove('hot');
+        EAR.base = EAR.n; hearShow();
+        var heard = (EAR.fin + ' ' + EAR.live).replace(/\s+/g, ' ').trim();
+        if (heard) { state.log.push({ t: now(), kind: 'voice', chars: heard.length }); save(); }
+      }, 700);
+      return;
+    }
+    if (!earWake()) { $('kept').textContent = 'This glass has no ear to lend. The tape button hears by file.'; return; }
+    EAR.hearing = true; EAR.pre = $('line').value.trim(); EAR.fin = ''; EAR.live = '';
+    EAR.base = EAR.n; $('hear').classList.add('hot'); hearShow();
+  });
+
+  /* a tape or a page for Squatch, heard through the same two ears the desk tape uses */
+  function sayHeard(text, door, name) {
+    text = String(text || '').trim();
+    if (!text) { $('kept').textContent = 'The ear heard nothing; the tape is kept whole.'; return; }
+    if (!R.say(state, text, now())) return;
+    state.log.push({ t: now(), kind: 'tapesay', door: door, chars: text.length, name: name || '' });
+    save(); paint();
+    var talk = $('talk'); talk.scrollTop = talk.scrollHeight;
+    if (phoneKey()) { hearing = true; askSquatch(); }
+  }
+  function hearForChat(blob, name) {
+    if (kingKey) {
+      var fd = new FormData();
+      fd.append('file', blob, 'tape');
+      fetch('/api/ear', { method: 'POST', headers: { 'X-Squatch-Desk': kingKey }, body: fd })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (o) { sayHeard(o && o.text, 'the desk ear', name); })
+        .catch(function () { $('kept').textContent = 'The ear did not answer; the tape is kept whole.'; });
+      return;
+    }
+    var g = boxGroq();
+    if (g) {
+      var fd2 = new FormData();
+      fd2.append('file', blob, 'tape');
+      fd2.append('model', 'whisper-large-v3-turbo');
+      fd2.append('response_format', 'json');
+      fetch('https://api.groq.com/openai/v1/audio/transcriptions', { method: 'POST', headers: { authorization: 'Bearer ' + g }, body: fd2 })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (o) { sayHeard(o && o.text, 'the free door', name); })
+        .catch(function () { $('kept').textContent = 'The free door did not hear it; the tape is kept whole.'; });
+      return;
+    }
+    $('kept').textContent = 'Kept whole: ' + (name || 'a tape') + '. No ear on this glass — at the desk, or a gsk_ key in the box, hears tapes.';
+  }
+  $('saytape').addEventListener('click', function () { if (!guest && !glass) $('sayfile').click(); });
+  $('sayfile').addEventListener('change', function () {
+    var f = $('sayfile').files && $('sayfile').files[0]; $('sayfile').value = ''; if (!f || guest || glass) return;
+    if (/^audio\//.test(f.type) || /\.(m4a|mp3|webm|wav|ogg)$/i.test(f.name)) {
+      var id = 'c' + now();
+      putVoice(id, f).then(function () {
+        state.log.push({ t: now(), kind: 'chatvoice', voice: id, bytes: f.size, name: f.name });
+        save(); paint();
+        $('kept').textContent = 'The tape is kept on this phone. The ear is hearing it for Squatch…';
+        hearForChat(f, f.name);
+      }).catch(function () { $('kept').textContent = 'The tape could not be kept.'; });
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function () { sayHeard(String(reader.result || '').trim(), 'a page', f.name); };
+    reader.readAsText(f);
   });
 
   $('sendnote').addEventListener('click', function () {
@@ -1563,6 +1686,7 @@
     $('fmt').scrollTop = 0;
     seatSquatch();
     seatCig();
+    jevSeat();
     $('setScene').addEventListener('click', function () { share('scene'); });
     $('setFollow').addEventListener('click', function () { share('follow'); });
     try { $('key').value = phoneKey(); } catch (e) {}
@@ -1575,6 +1699,7 @@
         for (var k in patch) slot[k] = patch[k];
         localStorage.setItem(DECIDE_BOX, JSON.stringify(slot));
       } catch (e) {}
+      jevSeat();
     }
     $('key').addEventListener('change', function () {
       var v = scrub($('key').value.trim());
