@@ -8,10 +8,10 @@
 <meta name="apple-mobile-web-app-title" content="Squatch">
 <meta name="theme-color" content="#1a1a1a">
 <title>Squatch</title>
-<link rel="stylesheet" href="/fonts.css">
-<link rel="apple-touch-icon" href="/squatch-icon.png?v=3">
-<link rel="icon" type="image/png" href="/squatch-icon.png?v=3">
-<link rel="manifest" href="/squatch.webmanifest?v=3">
+<link rel="stylesheet" href="fonts.css">
+<link rel="apple-touch-icon" href="squatch-icon.png?v=4">
+<link rel="icon" type="image/png" href="squatch-icon.png?v=4">
+<link rel="manifest" href="squatch.webmanifest?v=4">
 <script>if (location.pathname.indexOf('/s/') === 0) document.documentElement.classList.add('guest');</script>
 <!--
   SQUATCH — the writing inkling (the King, 2026-10-03).
@@ -340,8 +340,8 @@
   <p id="setLink"></p>
   <div id="setNotes"></div>
 </div>
-<script src="/squatch-room.js"></script>
-<script src="/sky.js"></script>
+<script src="squatch-room.js"></script>
+<script src="sky.js"></script>
 <script>
 (function () {
   'use strict';
@@ -1302,7 +1302,7 @@
   /* his body, cell for cell, from squatch.json. The red pixels above the ember climb and come round. Never redrawn. */
   function seatSquatch() {
     var cv = $('sprite'); if (!cv || guest) return;
-    fetch('/squatch/squatch.json').then(function (r) { return r.json(); }).then(function (O) {
+    fetch('squatch/squatch.json').then(function (r) { return r.json(); }).then(function (O) {
       var S = 5, w = O.w, h = O.h, rows = O.frames[0], ey = 10, cols = [9, 10];
       var isSpark = function (x, y) { return y < ey && cols.indexOf(x) >= 0 && O.pal[rows[y][x]] && String(O.pal[rows[y][x]]).toUpperCase() === '#FF0000'; };
       var sparks = [];
@@ -1528,7 +1528,7 @@
       if (typeof shares[token] === 'string') shares[token] = { project: shelf.projects[0].id, mode: shares[token] };
     });
     $('anew').addEventListener('click', newProject);
-    fetch('/squatch/session.txt').then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+    fetch('squatch/session.txt').then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
       if (!t || !t.trim() || !shelf) return;
       var built = R.construct(t), kept = [], i, p, notes, k, kingSaid;
       for (i = 0; i < shelf.projects.length; i++) {
