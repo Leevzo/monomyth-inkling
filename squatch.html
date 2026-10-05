@@ -893,6 +893,32 @@ window.WORLD_INDEX=book=> Promise.resolve(parseWorld(curContent()));   // world.
 function loglineGet(path){ try{ return (JSON.parse(localStorage.getItem('squatch.loglines')||'{}')||{})[path]||''; }catch(x){ return ''; } }
 function loglinePut(path, line){ let all={}; try{ all=JSON.parse(localStorage.getItem('squatch.loglines')||'{}')||{}; }catch(x){}
   all[path]=line; try{ localStorage.setItem('squatch.loglines', JSON.stringify(all)); }catch(x){} }
+/* the old room's drawer comes home: a one-time carrying of squatch.room.v1 projects onto the new
+   shelf (this page replaces that room on the same origin — his work must never look lost) */
+function shelfMigrate(){
+  try{
+    if (shelfPaths().length) return;
+    if (localStorage.getItem('squatch.desk.migrated')) return;
+    localStorage.setItem('squatch.desk.migrated', '1');
+    const raw=JSON.parse(localStorage.getItem('squatch.room.v1')||'null');
+    if (!raw || !Array.isArray(raw.projects)) return;
+    let opened=null;
+    raw.projects.forEach(function(p, i){
+      if (!p || typeof p.script!=='string' || !p.script.trim()) return;
+      let name=String(p.title||'Project').replace(/[.][^.]*$/,'').replace(/[^A-Za-z0-9_ -]/g,'').trim()||('Project '+(i+1));
+      let path='scripts/'+name+'.fountain', n=2;
+      while (shelfGet(path)!=null) path='scripts/'+name+' '+(n++)+'.fountain';
+      shelfPut(path, p.script);
+      if (p.id===raw.current) opened=path;
+      if (Array.isArray(p.chat) && p.chat.length){
+        const msgs=p.chat.filter(m=>m&&(m.who==='king'||m.who==='squatch')).slice(-20)
+          .map(m=>({role:m.who==='king'?'user':'assistant', content:String(m.text||'')}));
+        try{ localStorage.setItem('squatch.chat:'+path, JSON.stringify(msgs)); }catch(x){}
+      }
+    });
+    if (opened){ try{ localStorage.setItem('sp-open', opened); }catch(x){} }
+  }catch(x){}
+}
 
 
 function setStatus(msg, cls){ const s=$('status'); s.textContent=msg||''; s.className='status'+(cls?' '+cls:''); }
@@ -1496,6 +1522,7 @@ function autoDetectChapters(){
 
 async function loadLibrary(sel){
   try{
+    shelfMigrate();   // the old room's projects come home before the shelf is read
     const files = shelfPaths();   // the shelf on this machine, not the table-server's scripts/
     const lib=$('lib'); lib.innerHTML='<option value="">Open…</option><option value="__import">From elsewhere… (import)</option>';
     files.forEach(f=>{ const o=document.createElement('option'); o.value=f; o.textContent=f; lib.appendChild(o); });
