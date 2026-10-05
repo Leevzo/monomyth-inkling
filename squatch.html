@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Squatch</title>
 <link rel="icon" type="image/png" href="squatch-icon.png">
 <link rel="apple-touch-icon" href="squatch-icon.png">
@@ -357,7 +357,7 @@
                                  font-family:var(--title-font,'Courier Prime',monospace);
                                  text-transform:uppercase; font-weight:700; }
   #editor.screenplay .ftp-author{ margin-top:2.4em; }
-  #editor.screenplay .ftp-author::before{ content:'written by'; display:block; margin-bottom:1.3em; color:#777; font-size:.85em; }
+  #editor.screenplay .ftp-author.ftp-nocredit::before{ content:'written by'; display:block; margin-bottom:1.3em; color:#777; font-size:.85em; }
   /* ═══ quiet markdown in tomes & chat ═══ */
   .md-h{ display:block; margin:12px 0 4px; color:var(--teal-dim); font-size:10px; letter-spacing:.13em; text-transform:uppercase; font-weight:600; }
   .tome-body b, .chat-msg b{ color:var(--ink); font-weight:600; }
@@ -1229,6 +1229,7 @@ function elFromText(line, prevBlank, nextNonblank, prevEl){
 function formatFountain(){
   const blocks=[...ed.children].filter(n=>n.nodeType===1 && !n.classList.contains('pgspacer'));
   const txt=blocks.map(b=>(b.textContent||'').replace(/ /g,' '));
+  const _tpCredit=blocks.some(b=>/^(credit|credits|written by)$/i.test((b.dataset&&b.dataset.tp)||''));
   let prevEl=null;
   window._hasTitlePage = !!ed.querySelector('[data-tp]');
   const _caretB = (document.activeElement===ed) ? currentBlock() : null;
@@ -1236,8 +1237,10 @@ function formatFountain(){
     const b=blocks[i];
     if(b.classList.contains('h')){ _FCL.forEach(c=>b.classList.remove(c)); prevEl=null; continue; }
     if(b.dataset.tp){ b.classList.add('ftp');
-      b.classList.toggle('ftp-title', b.dataset.tp==='title');
-      b.classList.toggle('ftp-author', b.dataset.tp==='author'||b.dataset.tp==='authors');
+      const tpKey=(b.dataset.tp||'').toLowerCase();   // "Title:" and "title:" are the same door — the case was hiding the title page's own shape
+      b.classList.toggle('ftp-title', tpKey==='title');
+      b.classList.toggle('ftp-author', tpKey==='author'||tpKey==='authors');
+      b.classList.toggle('ftp-nocredit', (tpKey==='author'||tpKey==='authors') && !_tpCredit);   // the credit line already says "written by" — never twice
       prevEl=null; continue; }
     const line=(txt[i]||'').trim();
     if(!line){ prevEl=b.dataset.el||null; continue; }
@@ -1669,8 +1672,13 @@ async function save(){
 })();
 $('newdoc').onclick=()=>{ if(dirty && !confirm('Discard unsaved changes?')) return;
   if(dirty){ try{ localStorage.setItem('sp-rescue', JSON.stringify({path:curPath,at:new Date().toISOString(),content:curContent()})); }catch(x){} }
-  setText(''); curPath=null; dirty=false; _as.lastPageWC=0; _as.ring=0; _as.ltDate='';
-  $('path').textContent=''; setStatus(''); updateWC(); updateWC24(); buildOutline(); ed.focus(); placeSword(); };
+  /* a script opens in a script's shape: the title page first, then the writing (his word,
+     2026-10-05). The caret lands in the title's empty name, ready. */
+  setText('Title: \nCredit: written by\nAuthor: \n\n'); curPath=null; dirty=false; _as.lastPageWC=0; _as.ring=0; _as.ltDate='';
+  $('path').textContent=''; setStatus(''); updateWC(); updateWC24(); buildOutline(); ed.focus(); placeSword();
+  try{ const f=ed.firstElementChild; if(f){ const r=document.createRange(), s=getSelection();
+    if(f.firstChild){ r.setStart(f.firstChild, (f.textContent||'').length); } else { r.setStart(f, 0); }
+    r.collapse(true); s.removeAllRanges(); s.addRange(r); } }catch(x){} };
 document.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){ e.preventDefault(); if(!onShelf()) save(); } });
 // ── ⌘+ / ⌘− / ⌘0 — all the room's text bigger or smaller, remembered; the Magic frame follows ──
 (function(){ const KEY='sp-zoom'; let z=1; try{ z=parseFloat(localStorage.getItem(KEY))||1; }catch(x){}
@@ -3044,6 +3052,10 @@ const FIRST = (function () {
     .chat .chat-input .chat-btn { position: static !important; background: none !important; border: 0 !important;
       box-shadow: none !important; color: var(--dim); font-size: 19px; padding: 4px 2px; cursor: pointer; }
     .chat .chat-input .chat-btn:hover { color: var(--ink); }
+    /* the glass never zooms (his word, 2026-10-05: "idiotic double tap") — meta locks it,
+       manipulation stills the double-tap, and no field under 16px lets iOS lean in */
+    body { touch-action: manipulation; }
+    input, textarea, select, [contenteditable] { font-size: 16px !important; }
   }
 </style>
 <script>
