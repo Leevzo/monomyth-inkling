@@ -115,6 +115,19 @@
     animation:maire-shift 9s ease-in-out infinite; }
   .maire-sprite.dragging{ cursor:grabbing; animation:none; }
   @keyframes maire-shift{ 0%,100%{ transform:rotate(-.3deg); } 50%{ transform:rotate(.3deg); } }
+  /* the cigarette smoke — his signature breath: gray wisps off the ember, slow, never the same twice */
+  .maire-smoke{ position:absolute; left:64%; bottom:58%; width:0; height:0; pointer-events:none; }
+  .maire-smoke i{ position:absolute; width:3px; height:3px; background:#c9cfc9; opacity:0;
+    animation:sq-smoke 3.4s linear infinite; }
+  .maire-smoke i:nth-child(2){ animation-delay:1.15s; }
+  .maire-smoke i:nth-child(3){ animation-delay:2.3s; }
+  @keyframes sq-smoke{
+    0%{ transform:translate(0,0); opacity:0; }
+    12%{ opacity:.6; }
+    55%{ opacity:.35; }
+    100%{ transform:translate(-7px,-38px); opacity:0; }
+  }
+  @media (prefers-reduced-motion: reduce){ .maire-smoke i{ animation:none; } }
   .maire-glass-wrap{ position:absolute; width:min(340px, 78vw); z-index:41; opacity:0; transform:translateY(6px) scale(.98);
     transition:opacity .17s ease, transform .17s ease; pointer-events:none; line-height:normal; }
   .maire-glass-wrap[hidden]{ display:none; }
@@ -711,6 +724,10 @@
        through the Glass, one line at a time. The dock wears his name now; the bones are hers. -->
   <div class="maire-dock" id="maireDock">
     <img class="maire-sprite" id="maireSprite" src="squatch-sprite.png" alt="Squatch" title="Squatch" draggable="false" tabindex="0">
+    <!-- his small animation (his law, 2026-10-05: "each sprite should have their small animation as
+         well — squatch's cigarette smoke"): three wisps rise from the cigarette at his mouth, drift,
+         and give their light back. His bead pattern stays untouched; the smoke is the room's. -->
+    <div class="maire-smoke" aria-hidden="true"><i></i><i></i><i></i></div>
     <!-- her three — ADVICE · ANSWER · ACTION — beside her, about whichever word is
          picked on the Magic grid (or the whole manuscript when none is) -->
     <div class="maire-three" id="maireThree" title="pick a word on the grid">
