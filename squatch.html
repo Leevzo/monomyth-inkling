@@ -109,7 +109,7 @@
   /* HIS RULING, 2026-09-16: she is ANCHORED to the lower right hand corner.
      She no longer floats beside the menu, and a position dragged in some older
      session is cleared on boot rather than restored. */
-  .maire-dock{ position:fixed; right:calc(var(--menu-w) + 16px); bottom:16px; z-index:40; display:inline-block; line-height:0; }   /* SQUATCH: the page's own lower right, not over the Story column's talk line */
+  .maire-dock{ position:fixed; right:16px; bottom:16px; z-index:40; display:inline-block; line-height:0; }   /* SQUATCH stays in the right corner, as always (his word, 2026-10-04) */
   .maire-sprite{ display:block; height:clamp(96px, 11vw, 140px); width:auto; image-rendering:pixelated; image-rendering:crisp-edges;
     cursor:grab; user-select:none; -webkit-user-drag:none; transform-origin:50% 96%; filter:drop-shadow(4px 4px 0 rgba(0,0,0,.35));
     animation:maire-shift 9s ease-in-out infinite; }
@@ -688,17 +688,19 @@
        the diagnostics. The cigarette opens and closes it, as the salmon does there. The ghost's
        row and the guest seats stood aside: they belong to the wide world, not this glass. -->
   <div id="set" hidden role="dialog" aria-label="settings">
+    <button id="setBack" type="button" aria-label="back">‹ back</button>
     <h2>settings</h2>
     <div id="setBody">
       <label class="sl"><span>key</span><textarea id="setKey" rows="1" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="paste your key — sk-ant-… wakes Squatch · gsk_… lends the ear" aria-label="your key"></textarea></label>
       <label class="sl" id="setChaRow" hidden><span>coin</span><input id="setCha" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Cha-ching" aria-label="the word that lets Squatch spend"></label>
       <label class="sl"><span>model</span><input id="setModel" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="chosen for you" aria-label="the model Squatch thinks with"></label>
+      <label class="sl"><span>jev — the central account</span><input id="setJev" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="vck_… or https://…#pass — the door that organizes as you write" aria-label="the JEV key"></label>
       <button id="setTest" type="button">test</button>
       <div id="setSay" aria-live="polite"></div>
     </div>
     <div id="setDiag"></div>
   </div>
-  <button type="button" class="gear" id="btnGear" title="the room's settings" aria-label="the room's settings" style="bottom:52px"><svg width="16" height="16" viewBox="0 0 8 8" shape-rendering="crispEdges" fill="currentColor"><path d="M3 0h2v1h-2zM1 1h1v1h-1zM6 1h1v1h-1zM2 1h4v1h-4zM1 2h6v1h-6zM0 3h3v2h-3zM5 3h3v2h-3zM1 5h6v1h-6zM2 6h4v1h-4zM1 6h1v1h-1zM6 6h1v1h-1zM3 7h2v1h-2z"/></svg></button>
+  <button type="button" class="gear" id="btnGear" title="the room's settings" aria-label="the room's settings"><svg width="16" height="16" viewBox="0 0 8 8" shape-rendering="crispEdges" fill="currentColor"><path d="M3 0h2v1h-2zM1 1h1v1h-1zM6 1h1v1h-1zM2 1h4v1h-4zM1 2h6v1h-6zM0 3h3v2h-3zM5 3h3v2h-3zM1 5h6v1h-6zM2 6h4v1h-4zM1 6h1v1h-1zM6 6h1v1h-1zM3 7h2v1h-2z"/></svg></button>
   <!-- THE CIGARETTE — his law: the cigarette for settings and the api key insertion. It opens the
        Inkling app's own settings scene (key · coin · model · test), unchanged but for what had to change. -->
   <canvas id="cig" role="button" tabindex="0" aria-label="settings, the cigarette" title="settings, the cigarette"></canvas>
@@ -2592,8 +2594,9 @@ const FIRST = (function () {
   .m2-ask:focus{ border-bottom-color:var(--dim) !important; }
   .maire-dock[hidden], .chat[hidden]{ display:none !important; }
 
-  /* the gear and Settings */
-  .gear{ position:fixed; right:10px; bottom:10px; z-index:31; width:28px; height:28px; display:grid; place-items:center; background:none; border:0; color:var(--faint); cursor:pointer; padding:0; }
+  /* the gear and Settings — the leftover wheel has good things; it lives on the LEFT side now,
+     on the script page, in the corner (his word, 2026-10-04) — stacked just clear of the Loupe's tab */
+  .gear{ position:fixed; left:10px; bottom:48px; z-index:31; width:28px; height:28px; display:grid; place-items:center; background:none; border:0; color:var(--faint); cursor:pointer; padding:0; }
   .gear:hover{ color:var(--ink); }
   #settings{ position:fixed; inset:0; z-index:90; display:grid; place-items:center; background:rgba(0,0,0,.45); }
   #settings[hidden]{ display:none; }
@@ -2785,6 +2788,26 @@ const FIRST = (function () {
   async function onBook() { SEEN = book(); OPEN = {}; await loadSums(); paint(); if (book() && !dirty) setStatus('saved', 'ok'); }
   setInterval(() => { if (SEEN !== book()) onBook(); }, 300);
 
+  /* ── JEV ORGANIZES AS HE WRITES (his word, 2026-10-04): the World's people and places re-read
+     the page for free the moment it moves; the Story is drawn again by the mouth when the work has
+     moved enough — never more than once a quiet stretch, never mid-ask, never without the coin. ── */
+  let _sig = '', _lastOrg = 0, _orgWC = 0;
+  setInterval(() => {
+    const s = String(getPlain().length) + ':' + curPath;
+    if (s === _sig) return; _sig = s;
+    if (SEC === 'world') { try { drawSum(); } catch (x) {} }   // the constellation follows the pen
+  }, 3000);
+  setInterval(() => {
+    if (!book() || BUSY || SEC !== 'story') return;
+    const key = squatchKey(); if (!key || !paidOpen('anthropic')) return;
+    const wc = (getPlain().match(/\S+/g) || []).length;
+    const fresh = !sumOf() && wc >= 100;                 // a young story earns its first shape
+    const moved = wc - _orgWC >= 60;                     // sixty new words earns a fresh read
+    if ((!fresh && !moved) || Date.now() - _lastOrg < 90000) return;
+    _lastOrg = Date.now(); _orgWC = wc;
+    act('');
+  }, 15000);
+
   /* ── THE STRIPBOARD, THE EIGHTHS, THE RUNTIME ── */
   const PAGE_BODY = 864;   // a baked page's writing height: 1056 − 1in top − 1in bottom, at 96dpi
   function eighths(px) { const e = Math.max(1, Math.round(px / PAGE_BODY * 8)), whole = Math.floor(e / 8), rest = e % 8;
@@ -2881,7 +2904,9 @@ const FIRST = (function () {
   new MutationObserver(sync).observe(p,{childList:true,characterData:true,subtree:true}); sync(); })();</script>
 <style>
   /* ——— THE CIGARETTE + THE SETTING SCENE: the Inkling app's own, worn in this room's skin ——— */
-  #cig { position: fixed; right: 10px; bottom: 10px; z-index: 31; cursor: pointer; background: transparent; }
+  #cig { position: fixed; right: 108px; bottom: 10px; z-index: 41; cursor: pointer; background: transparent; }   /* beside Squatch's feet, in his corner */
+  /* on the desk the column's talk line stands aside — Squatch's own Glass is the chat there (his word) */
+  @media (min-width: 980px) { .m2-foot { display: none; } }
   #set { position: fixed; inset: 0; z-index: 95; background: var(--paper);
     background-image: repeating-conic-gradient(rgba(255,255,255,.02) 0 25%, transparent 0 50%); background-size: 4px 4px;
     color: var(--ink); overflow-y: auto; display: flex; flex-direction: column;
@@ -2901,6 +2926,9 @@ const FIRST = (function () {
   #set .sl textarea::placeholder, #set .sl input::placeholder { color: var(--dim); opacity: .7; }
   #setTest { align-self: flex-start; font: inherit; font-size: clamp(18px, 5.4vw, 24px); color: var(--gold, #ffa512);
     background: none; border: 0; padding: 4px 0; cursor: pointer; }
+  #setBack { align-self: flex-start; font: inherit; font-size: clamp(16px, 4.8vw, 22px); color: var(--dim);
+    background: none; border: 0; padding: 0 0 4px; cursor: pointer; }
+  #setBack:hover { color: var(--ink); }
   #setSay { min-height: 3.6em; font-size: clamp(13px, 4vw, 16px); line-height: 1.45; color: var(--dim); white-space: pre-wrap; }
   #setSay.bad { color: var(--not-saved, #FA8072); } #setSay.good { color: var(--gold, #ffa512); }
   #setDiag { font-size: 12px; line-height: 1.55; color: var(--dim); white-space: pre-wrap; max-width: 560px; width: 100%; margin: 0 auto; }
@@ -2928,6 +2956,8 @@ const FIRST = (function () {
     try { at = localStorage.getItem('inkling.keyAt') || ''; } catch (e) {}
     var lines = [];
     lines.push(d && b.apiKey ? ('key kept: ' + d + (at ? ' · since ' + at.slice(0, 10) : '')) : 'no key on this machine');
+    var jv = decideLoad();
+    lines.push(jv.door ? ('jev seated: ' + jv.door) : 'jev has no key — the organizing sleeps');
     lines.push('opened as ' + (matchMedia('(display-mode: standalone)').matches ? 'the Home Screen room' : 'a browser tab'));
     lines.push('this glass: ' + location.pathname);
     el.textContent = lines.join('\n');
@@ -2940,15 +2970,21 @@ const FIRST = (function () {
     try { kept = JSON.parse(localStorage.getItem('inkling.model') || '{}') || {}; } catch (e) {}
     $('setModel').value = (d && kept[d]) || '';
     $('setChaRow').hidden = !d || paidOpen(d);
+    var jv = decideLoad();
+    $('setJev').value = jv.key || (jv.url ? jv.url + (jv.pass ? '#' + jv.pass : '') : '');
   }
   window.setOpen = function (why, how) {
     $('set').hidden = false;
     document.body.classList.add('setting');
+    var kids = document.documentElement.children;   // the Loupe rides in a shadow host — dim it while the scene stands
+    for (var i = 0; i < kids.length; i++) { if (kids[i].shadowRoot && kids[i].shadowRoot.querySelector('.tab')) kids[i].style.display = 'none'; }
     setFill(); setDiag(); setSay(why || '', how || '');
   };
   window.setClose = function () {
     $('set').hidden = true;
     document.body.classList.remove('setting');
+    var kids = document.documentElement.children;
+    for (var i = 0; i < kids.length; i++) { if (kids[i].shadowRoot && kids[i].shadowRoot.querySelector('.tab')) kids[i].style.display = ''; }
   };
   var SET_BUSY = false;
   function setTest() {
@@ -3012,6 +3048,24 @@ const FIRST = (function () {
     }).then(done, done);
     function done() { SET_BUSY = false; btn.textContent = word; setDiag(); }
   }
+  /* JEV — the central account's own door, kept in the voiceless box (monomyth.focus.decide.v1):
+     a vck_ stamp, or a relay address#pass. This is the door that organizes as he writes. */
+  var DECIDE_BOX = 'monomyth.focus.decide.v1';
+  function decideLoad() { try { return JSON.parse(localStorage.getItem(DECIDE_BOX) || '{}') || {}; } catch (e) { return {}; } }
+  function decideKeep(patch) {
+    try { var slot = decideLoad(); for (var k in patch) slot[k] = patch[k];
+      localStorage.setItem(DECIDE_BOX, JSON.stringify(slot)); } catch (e) {}
+  }
+  $('setBack').addEventListener('click', function () { setClose(); });
+  $('setJev').addEventListener('change', function () {
+    var v = ($('setJev').value || '').trim();
+    if (!v) { try { localStorage.removeItem(DECIDE_BOX); } catch (e) {} setSay('The JEV line is clear. The organizing sleeps.', ''); setDiag(); return; }
+    if (/^vck_/.test(v)) { decideKeep({ key: v, door: 'vercel' }); }
+    else if (/^https?:\/\/.+#.+/.test(v)) { var cut = v.split('#'); decideKeep({ url: cut[0], pass: cut.slice(1).join('#'), door: 'relay' }); }
+    else { setSay('That is no JEV key — vck_… or an address#pass.', 'bad'); return; }
+    setSay('JEV is seated. It organizes as you write.', 'good');
+    setFill(); setDiag();
+  });
   $('setTest').addEventListener('click', setTest);
   $('setCha').addEventListener('change', function () {
     var w = $('setCha').value.trim().toLowerCase();
