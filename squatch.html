@@ -612,15 +612,17 @@
     <div class="ai-files" id="aiFiles"></div>
     <div class="chat-log" id="chatLog"></div>
     <div class="chat-input">
-      <textarea id="chatBox" rows="1" placeholder="Say it to Squatch."></textarea>
-      <button class="chat-btn mic" id="chatMic" title="speak">🎙</button>
+      <textarea id="chatBox" rows="1" placeholder="Say it."></textarea>
+      <button class="chat-btn file" id="chatFileBtn" title="bring a picture or a page">📎</button>
       <button class="chat-btn send" id="chatSend" title="send">➤</button>
+      <input type="file" id="chatFile" accept="image/*,.txt,.md,.fountain,.markdown" multiple hidden>
     </div>
     <div class="coinline" id="coin" title="API cost meter — every Brain call weighed (never wiped with a brain rebuild)"></div>
   </div>
 
   <button class="left-toggle" id="leftToggle" title="collapse the panel">‹</button>
   <aside class="outline">
+    <button type="button" id="drawerClose" aria-label="close the menu" title="close the menu">‹</button>
     <div class="ctrl-sec">
     <button class="btn" id="newdoc" title="a new script">New</button>
     <div class="dd" id="openDD">
@@ -787,6 +789,14 @@ function keyDoor(k){ if(/^sk-ant-/.test(k))return 'anthropic'; if(/^gsk_/.test(k
 const SET_FREE=['groq','gemini','openrouter'];
 function paidOpen(d){ if(SET_FREE.indexOf(d)>=0) return true; try{ const p=JSON.parse(localStorage.getItem('inkling.paid')||'{}')||{}; return !!(d&&p[d]); }catch(x){ return false; } }
 function squatchKey(){ const b=setBox(); return (b.apiKey && (b.door||keyDoor(b.apiKey))==='anthropic') ? b.apiKey : ''; }
+/* HIS RULING, 2026-10-05: "that menu shouldn't even be visible on desktop, only on mobile …
+   verify my api keys are cleansed from the system and I'll add them again on mobile."
+   A wide glass keeps no keys: the boxes wash clean at the door, every visit. The phone —
+   the small glass, where the work happens — is never touched. */
+if (matchMedia('(min-width: 980px)').matches) {
+  try { localStorage.removeItem(SET_BOX); localStorage.removeItem('inkling.keyAt');
+        localStorage.removeItem('monomyth.focus.decide.v1'); } catch (x) {}
+}
 const SET_TRY=['gemini','groq','openrouter','anthropic','openai','xai'];
 const SET_LIST={ groq:'https://api.groq.com/openai/v1/models', openrouter:'https://openrouter.ai/api/v1/models',
   xai:'https://api.x.ai/v1/models', openai:'https://api.openai.com/v1/models',
@@ -1727,7 +1737,7 @@ function chatAdd(text, cls){ const d=document.createElement('div'); d.className=
   if(cls==='ai'){ d.innerHTML=mdlite(text); } else { d.textContent=text; }
   chatLog.appendChild(d); chatLog.scrollTop=chatLog.scrollHeight; return d; }
 function chatGrow(){ chatBox.style.height='auto';
-  const cap=Math.round(window.innerHeight*0.4);
+  const cap=matchMedia('(max-width: 979px)').matches?30:Math.round(window.innerHeight*0.4);   // the phone's bar is one line, always (his word, 2026-10-05)
   const h=Math.min(cap, chatBox.scrollHeight);
   chatBox.style.height=h+'px';
   chatBox.style.overflowY=(chatBox.scrollHeight>cap)?'auto':'hidden'; }
@@ -1746,16 +1756,17 @@ async function loadChatHistory(){
   }catch(e){ /* no history yet for this script — a quiet, fresh chat */ }
 }
 function keepChat(){ try{ localStorage.setItem('squatch.chat:'+(curPath||''), JSON.stringify(chatHistory.slice(-20))); }catch(x){} }
-async function sendChat(){
-  const q=chatBox.value.trim(); if(!q) return;
-  chatAdd(q,'user'); chatBox.value=''; chatGrow();
-  chatHistory.push({role:'user', content:q}); keepChat();
+async function sendChat(blocks, label){
+  const q=chatBox.value.trim(); if(!q && !blocks) return;
+  chatAdd(label||q,'user'); chatBox.value=''; chatGrow();
+  chatHistory.push({role:'user', content:label||q}); keepChat();
   const pend=chatAdd('…','ai');
   try{
     const key=squatchKey();
     if(!key) throw new Error('Squatch’s door is Anthropic; an sk-ant- key opens it (the cigarette, below).');
     if(!paidOpen('anthropic')) throw new Error('Squatch’s door costs coin: the cigarette, the coin line, the word Cha-ching.');
     const msgs=chatHistory.slice(-16).map(m=>({role:m.role, content:m.content}));
+    if(blocks) msgs[msgs.length-1]={ role:'user', content: q?blocks.concat([{type:'text',text:q}]):blocks };   // a picture rides this turn only — the tape keeps its name
     const model=await anthropicModel(key);
     const text=await mouth(key, msgs, model);
     pend.innerHTML=mdlite(text);
@@ -1770,20 +1781,30 @@ async function sendChat(){
 $('chatSend').onclick=sendChat;
 chatBox.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } });
 
-// microphone — the browser's built-in Web Speech API (no key needed)
+// the paperclip — a picture or a plain-text page joins the talk (his word, 2026-10-05:
+// "I still need the file upload button, and the enter button next to it, just those two")
 (function(){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition; const mic=$('chatMic');
-  if(!SR){ mic.style.display='none'; return; }
-  let rec=null, on=false;
-  mic.onclick=()=>{
-    if(on){ rec && rec.stop(); return; }
-    rec=new SR(); rec.lang='en-US'; rec.interimResults=true; rec.continuous=false;
-    const base=chatBox.value;
-    rec.onstart=()=>{ on=true; mic.classList.add('listening'); };
-    rec.onresult=(ev)=>{ let t=''; for(let i=0;i<ev.results.length;i++) t+=ev.results[i][0].transcript; chatBox.value=(base?base+' ':'')+t; chatGrow(); };
-    rec.onerror=()=>{};
-    rec.onend=()=>{ on=false; mic.classList.remove('listening'); chatBox.focus(); };
-    rec.start();
+  const inp=$('chatFile'), btn=$('chatFileBtn'); if(!inp||!btn) return;
+  btn.onclick=()=>inp.click();
+  inp.onchange=()=>{
+    const fs=[...(inp.files||[])]; inp.value='';
+    fs.forEach(f=>{
+      if(/^image\//.test(f.type)){
+        const rd=new FileReader();
+        rd.onload=()=>{ const data=String(rd.result||'').split(',')[1];
+          if(data) sendChat([{type:'image', source:{type:'base64', media_type:f.type, data:data}}], '[a picture: '+f.name+']'); };
+        rd.readAsDataURL(f);
+      } else if(/^audio\//.test(f.type)){
+        chatAdd('Squatch can’t hear recordings yet — the phone keyboard’s own mic, or plain words, carry the voice.','ai');
+      } else {
+        const rd=new FileReader();
+        rd.onload=()=>{ const t=String(rd.result||'').slice(0,6000);
+          if(!t.trim()){ chatAdd('('+f.name+' held nothing the talk could take)','ai'); return; }
+          chatBox.value=(chatBox.value.trim()?chatBox.value.trim()+'\n\n':'')+'— '+f.name+' —\n'+t;
+          sendChat(); };
+        rd.readAsText(f);
+      }
+    });
   };
 })();
 
@@ -1884,8 +1905,10 @@ const GATE = (function(){
   x.onclick=close;
   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && isOpen && st.has_key){ e.preventDefault(); e.stopImmediatePropagation(); close(); } }, true);
   window.addEventListener('message', e=>{ if(e.data && e.data.t==='gate:open') openGate(); });
-  async function openGate(){ await get(); paint(); msg.textContent=''; show(); }
-  async function boot(){ await get(); paint(); if(!st.has_key || new URLSearchParams(location.search).get('settings')) show(); }
+  async function openGate(){ if(matchMedia('(min-width: 980px)').matches) return;   // the key scene is the phone's alone (his word, 2026-10-05)
+    await get(); paint(); msg.textContent=''; show(); }
+  async function boot(){ await get(); paint(); if(matchMedia('(min-width: 980px)').matches) return;   // the desk asks for no key
+    if(!st.has_key || new URLSearchParams(location.search).get('settings')) show(); }
   const sb=$('btnSettings'); if(sb) sb.onclick=openGate;
   return { open: openGate, close, boot, state: ()=>st };
 })();
@@ -2993,6 +3016,33 @@ const FIRST = (function () {
     .m2-foot { padding-right: 96px !important; }   /* the ask line clears Squatch's corner too */
     .m2-voice { max-height: 90px !important; }
   }
+
+  /* ═══ HIS RULING, 2026-10-05: the settings scene is the phone's alone — no cigarette, no keys,
+     no gate on the desk. The ACTION/CHAT tiles retire until called back for. The drawer on the
+     small glass wears small words and a collapse arrow. The talk bar: one line at Squatch's
+     feet, two bare symbols — the paperclip and the arrow — and the word "Squatch" gone from it. ═══ */
+  @media (min-width: 980px) {
+    .chat, #cig, #set { display: none !important; }
+  }
+  .maire-three { display: none !important; }
+  #drawerClose { display: none; }
+  @media (max-width: 979px) {
+    #cig { top: 6px !important; right: 8px !important; bottom: auto !important; }
+    .theme-dock { right: 78px !important; }
+    .outline { width: min(62vw, 240px) !important; }
+    .outline .btn { font-size: 13px !important; letter-spacing: 0 !important; padding: 7px 6px !important; }
+    .outline .outline-head { font-size: 10px !important; }
+    .outline #outlineList { font-size: 12px !important; }
+    #drawerClose { display: block; position: absolute; top: 4px; right: 2px; z-index: 2;
+      background: none; border: 0; color: var(--dim); font: inherit; font-size: 24px; line-height: 1;
+      padding: 6px 10px; cursor: pointer; }
+    #drawerClose:hover { color: var(--ink); }
+    .chat .chat-input { display: flex !important; align-items: center; gap: 6px; }
+    .chat .chat-input textarea { flex: 1; min-width: 0; }
+    .chat .chat-input .chat-btn { position: static !important; background: none !important; border: 0 !important;
+      box-shadow: none !important; color: var(--dim); font-size: 19px; padding: 4px 2px; cursor: pointer; }
+    .chat .chat-input .chat-btn:hover { color: var(--ink); }
+  }
 </style>
 <script>
 /* the cigarette and the scene, transplanted from the Inkling app through the old squatch room —
@@ -3030,6 +3080,7 @@ const FIRST = (function () {
     $('setJev').value = jv.key || (jv.url ? jv.url + (jv.pass ? '#' + jv.pass : '') : '');
   }
   window.setOpen = function (why, how) {
+    if (matchMedia('(min-width: 980px)').matches) return;   // the scene is the phone's alone (his word, 2026-10-05)
     $('set').hidden = false;
     document.body.classList.add('setting');
     var kids = document.documentElement.children;   // the Loupe rides in a shadow host — dim it while the scene stands
@@ -3211,6 +3262,8 @@ const FIRST = (function () {
     if (mb) mb.addEventListener('click', function () {
       document.querySelector('.outline').classList.toggle('open');
     });
+    var dc = $('drawerClose');
+    if (dc) dc.addEventListener('click', function () { document.querySelector('.outline').classList.remove('open'); });
     document.querySelector('.outline').addEventListener('click', function (e) {
       if (e.target.closest('button, select, li')) document.querySelector('.outline').classList.remove('open');
     });
