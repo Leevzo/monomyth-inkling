@@ -1,0 +1,54 @@
+/* WRITERDUET SKIN — one sheet, linked last in <head>. Colours only change: the 4px dither texture on <body>
+   is drawn from var(--bg), so it stays exactly as it was, now over WriterDuet's ground.
+   Palette: slate desk #17232e, light chrome #e1e8ed, white page (the King's WriterDuet notes, 2026-10-01).
+   Fonts: Vellum's pixel roles (arcadeSkin, vellum/app/index.html 3604-3693). Remove this <link> to undo. */
+@font-face { font-family: "Scream"; src: url("fonts/scream.ttf") format("truetype"); font-display: block; }
+
+:root, html[data-theme="dark"] {
+  --bg:#17232E; --paper:#1F2E3B; --ink:#E1E8ED; --dim:#8899A6; --faint:#5B6D7C;
+  --line:#2C3D4C; --edge:#E1E8ED;
+  --teal:#4A9FD8; --teal-dim:#2F6F9E; --ghost:rgba(74,159,216,.34);
+  --px-panel:#1B2834; --px-ink:#E1E8ED; --accent-ink:#0F1820;
+  --maire-glass-bg:rgba(23,35,46,.95); --maire-glass-rim:#3A4E60;
+  --chapter-font:"Heraldic",Georgia,serif;   /* Vellum's chapter heads */
+}
+html[data-theme="light"] {
+  --chapter-font:"Heraldic",Georgia,serif;
+  --bg:#E1E8ED; --paper:#FFFFFF; --ink:#14171A; --dim:#657786; --faint:#AAB8C2;
+  --line:#CCD6DD; --edge:#14171A;
+  --teal:#1F6FAE; --teal-dim:#4A9FD8; --ghost:rgba(31,111,174,.40);
+}
+/* the page's own words, caret and selection (hard-coded in the room) follow the palette */
+#editor, #editor * { color: var(--ink); caret-color: var(--teal); }
+#editor ::selection, #editor::selection { background: rgba(74,159,216,.30); }
+.pageno { color: var(--faint) !important; }
+.fparen { color: var(--dim) !important; }
+
+/* VELLUM'S PIXEL FACES, by role — crisp, never smoothed */
+button, .btn, select, .chip, .menu, .status, .wc, label, .outline-head, .tome-head, .chat-head, .coinline {
+  font-family: 'AqBold','AqMono',ui-monospace,monospace !important; letter-spacing: .04em;
+  -webkit-font-smoothing: none !important; font-smooth: never; }
+h1, h2, h3, .tome-title, .panel-title, .section-title {
+  font-family: 'DarkByte',ui-monospace,monospace !important; letter-spacing: .02em; -webkit-font-smoothing: none !important; }
+#outlineList li, #tomeList li, .h { -webkit-font-smoothing: none !important; }
+.title { font-family: 'Scream','Heraldic',Georgia,serif !important; letter-spacing: .03em; -webkit-font-smoothing: none !important; }
+img, canvas, .maire-sprite { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* NEVERLAND MERGE (2026-10-01): the room's 09-29 typewriter pass made its pressable words with tighter selectors
+   (".ctrl-sec .btn", "#stClose", …), so the chrome face above never reached them. Same selectors here, linked last:
+   Vellum's AqBold on the words you press. Only the face changes; sizes and layout stay the room's own. */
+.ctrl-sec .btn, .dd-menu button, .m2-tabs button, .m2-subs button, .m2-mode button, .theme-toggle button, #stClose, .st-row button,
+.menu-meta .wc, #wc {
+  font-family: 'AqBold','AqMono',ui-monospace,monospace !important; -webkit-font-smoothing: none !important; font-smooth: never; }
+
+/* THE TITLE ACROSS THE TOP, IN PIXEL (his word, 2026-10-01): the name stands as one line across the top of the desk,
+   in Scream (Vellum's title face), from the back-arrow to just short of Light/Dark. It is still the same editable name. */
+#path { left: 40px !important; right: calc(var(--menu-w) + 44px + 190px) !important; width: auto !important; max-width: none !important;
+  font-family: 'Scream','DarkByte',ui-monospace,monospace !important; font-size: 24px !important; line-height: 1.2 !important;
+  letter-spacing: .06em !important; -webkit-font-smoothing: none !important; font-smooth: never; white-space: nowrap; }
+/* …and the page fades before it reaches the title: the desk dissolves under the name as it scrolls up. */
+.main.sp { -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 50px, #000 104px);
+           mask-image: linear-gradient(to bottom, transparent 0, transparent 50px, #000 104px); }
+/* at rest the band shows the name alone; a click opens the whole editable path */
+#path[data-name]:not([data-name=""]):not(:focus) { font-size: 0 !important; letter-spacing: 0 !important; }
+#path[data-name]:not([data-name=""]):not(:focus)::before { content: attr(data-name); font-size: 24px; letter-spacing: .06em; }
