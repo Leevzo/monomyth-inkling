@@ -696,6 +696,7 @@
       <label class="sl"><span>model</span><input id="setModel" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="chosen for you" aria-label="the model Squatch thinks with"></label>
       <label class="sl"><span>jev — the central account</span><input id="setJev" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="vck_… or https://…#pass — the door that organizes as you write" aria-label="the JEV key"></label>
       <button id="setTest" type="button">test</button>
+      <button id="setClear" type="button">clear the key — gone from this machine</button>
       <div id="setSay" aria-live="polite"></div>
     </div>
     <div id="setDiag"></div>
@@ -2929,6 +2930,9 @@ const FIRST = (function () {
   #setBack { align-self: flex-start; font: inherit; font-size: clamp(16px, 4.8vw, 22px); color: var(--dim);
     background: none; border: 0; padding: 0 0 4px; cursor: pointer; }
   #setBack:hover { color: var(--ink); }
+  #setClear { align-self: flex-start; font: inherit; font-size: clamp(13px, 4vw, 16px); color: var(--dim);
+    background: none; border: 0; padding: 0; cursor: pointer; margin-top: -12px; }
+  #setClear:hover { color: var(--not-saved, #FA8072); }
   #setSay { min-height: 3.6em; font-size: clamp(13px, 4vw, 16px); line-height: 1.45; color: var(--dim); white-space: pre-wrap; }
   #setSay.bad { color: var(--not-saved, #FA8072); } #setSay.good { color: var(--gold, #ffa512); }
   #setDiag { font-size: 12px; line-height: 1.55; color: var(--dim); white-space: pre-wrap; max-width: 560px; width: 100%; margin: 0 auto; }
@@ -3057,6 +3061,19 @@ const FIRST = (function () {
       localStorage.setItem(DECIDE_BOX, JSON.stringify(slot)); } catch (e) {}
   }
   $('setBack').addEventListener('click', function () { setClose(); });
+  /* the key leaves this machine whole: the box, its date, and the paid word for the paid doors —
+     so a key typed on the wrong glass is gone as if never typed (his word, 2026-10-04) */
+  $('setClear').addEventListener('click', function () {
+    try {
+      localStorage.removeItem(SET_BOX);
+      localStorage.removeItem('inkling.keyAt');
+      localStorage.removeItem('inkling.paid');
+      localStorage.removeItem('inkling.model');
+      localStorage.removeItem('squatch.gate.models');
+    } catch (e) {}
+    setFill(); setDiag();
+    setSay('The key is gone from this machine. If it ever stood anywhere else, roll it at the door that made it.', 'good');
+  });
   $('setJev').addEventListener('change', function () {
     var v = ($('setJev').value || '').trim();
     if (!v) { try { localStorage.removeItem(DECIDE_BOX); } catch (e) {} setSay('The JEV line is clear. The organizing sleeps.', ''); setDiag(); return; }
