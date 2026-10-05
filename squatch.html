@@ -189,20 +189,21 @@
   .chat-msg.user{ background:rgba(18,255,194,.10); align-self:flex-end; max-width:92%; }
   .chat-msg.ai{ background:rgba(255,255,255,.045); align-self:flex-start; max-width:97%; }
   .chat-msg.err{ color:var(--red); align-self:flex-start; }
-  .chat-input{ position:relative; }
-  .chat-input textarea{ display:block; width:100%; resize:none; overflow-y:hidden; background:rgba(255,255,255,.035);
-                        border:1px solid var(--line); color:var(--ink); border-radius:12px;
-                        padding:11px 66px 11px 13px; font-family:system-ui,sans-serif; font-size:13px; line-height:1.5;
-                        min-height:46px; max-height:40vh; outline:none; }
-  .chat-input textarea:focus{ border-color:var(--teal-dim); box-shadow:0 0 0 1px var(--teal-dim); }
-  .chat-input .chat-btn{ position:absolute; bottom:8px; }
-  .chat-input .chat-btn.send{ right:9px; }
-  .chat-input .chat-btn.mic{ right:39px; }
+  /* the talk line, NAKED (his word, 2026-10-05): no box, no fill, no radius — a bare hairline,
+     the paperclip on the left, the arrow on the right, plain text */
+  .chat-input{ display:flex; align-items:flex-end; gap:8px; }
+  .chat-input textarea{ flex:1; min-width:0; display:block; resize:none; overflow-y:hidden; background:transparent;
+                        border:0; border-bottom:1px solid var(--line); border-radius:0; color:var(--ink);
+                        padding:8px 2px; font-family:system-ui,-apple-system,sans-serif; font-size:13px; line-height:1.5;
+                        min-height:34px; max-height:40vh; outline:none; }
+  .chat-input textarea:focus{ border-bottom-color:var(--teal-dim); box-shadow:none; }
+  .chat-input .chat-btn{ position:static; }
   .chat-input textarea::placeholder{ color:var(--faint); }
   .chat-btn{ background:transparent; border:none; color:var(--dim); cursor:pointer; font-size:14px; width:30px; height:30px;
              border-radius:8px; display:flex; align-items:center; justify-content:center; transition:color .15s, background .15s; flex:0 0 auto; }
-  .chat-btn:hover{ color:var(--ink); background:rgba(255,255,255,.06); }
-  .chat-btn.send{ color:var(--teal); }
+  .chat-btn:hover{ color:var(--ink); background:none; }
+  .chat-btn.send{ color:var(--dim); }
+  .chat-btn.send:hover{ color:var(--ink); }
   .chat-btn.mic.listening{ color:var(--red); background:rgba(255,18,57,.12); }
   .wc{ font-size:11px; color:var(--faint); letter-spacing:.03em; font-variant-numeric:tabular-nums; }
   /* the day's output — faint gold, a quiet companion to the total */
@@ -328,7 +329,6 @@
   html[data-theme="light"] .btn-add:hover, html[data-theme="light"] #outlineList li:hover{ background:rgba(38,38,38,.06); }
   html[data-theme="light"] .chat-msg.ai{ background:rgba(38,38,38,.06); }
   html[data-theme="light"] .chat-msg.user{ background:rgba(13,191,145,.14); }
-  html[data-theme="light"] .chat-input textarea{ background:rgba(0,0,0,.035); }
   html[data-theme="light"] .king-notes{ background:rgba(0,0,0,.035); }
   html[data-theme="light"] .file-chip{ background:rgba(13,191,145,.08); }
   html[data-theme="light"] ::-webkit-scrollbar-thumb{ background:rgba(120,120,120,.40); background-clip:content-box; }
@@ -468,8 +468,6 @@
   }
   html[data-theme="light"] .pagesheet{ box-shadow:4px 4px 0 rgba(0,0,0,.14); }
   .caret-sword{ filter:none; opacity:.07; }
-  .chat-input textarea{ border:2px solid var(--line); }
-  .chat-input textarea:focus{ border-color:var(--edge); box-shadow:none; }
   .king-notes{ border:2px solid var(--line); }
   .king-notes:focus{ border-color:var(--edge); }
   .tome-overlay{ border-left:2px solid var(--edge); }
@@ -625,8 +623,8 @@
     <div class="ai-files" id="aiFiles"></div>
     <div class="chat-log" id="chatLog"></div>
     <div class="chat-input">
-      <textarea id="chatBox" rows="1" placeholder="Say it."></textarea>
       <button class="chat-btn file" id="chatFileBtn" title="bring a picture or a page">📎</button>
+      <textarea id="chatBox" rows="1" placeholder="Say it."></textarea>
       <button class="chat-btn send" id="chatSend" title="send">➤</button>
       <input type="file" id="chatFile" accept="image/*,.txt,.md,.fountain,.markdown" multiple hidden>
     </div>
