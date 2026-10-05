@@ -561,6 +561,7 @@
   <div class="theme-dock"><div class="theme-toggle"><button type="button" id="themeLight">Light</button><button type="button" id="themeDark">Dark</button></div></div>
   <img class="caret-sword" id="caretSword" src="sword-purple.png" alt="" aria-hidden="true">
 
+  <button type="button" id="phoneMenuBtn" aria-label="the menu">☰</button>
   <span class="title" id="path" contenteditable="true" spellcheck="false"></span>
 
   <nav class="menu" id="menu">
@@ -576,6 +577,7 @@
         <!-- his word, 2026-10-01: "just story and world, world is a constellation with characters and locations. those are
              the only tabs I want for now." Cast and Locations stand aside (their summaries stay on disk, untouched). -->
       </div>
+      <div id="worldHalf" hidden></div>
       <div class="m2-subs" id="m2Subs"></div>
       <div class="m2-sum" id="m2Sum"></div>
       <div class="m2-answer" id="m2Answer" hidden></div>
@@ -590,35 +592,32 @@
         </div>
       </div>
     </div>
-    <div class="chat" hidden>
-      <div class="ai-btns">
-        <button class="chip" id="btnPlot">Plot</button>
-        <button class="chip" id="btnChars">Characters</button>
-        <!-- HIS RULING, 2026-09-16: "I do not want a graph button, neither do I
-             want a + character, +file, or magic button — because that's just the
-             state of the whole section when nothing is pressed. I have
-             repeatedly told you I wanted only plot and characters." So the story
-             IS the resting state, and these four keep their ids as hidden stubs
-             only so the handlers below never throw on a missing element. -->
-        <button class="chip" id="btnImagine" title="Imagine Magic — talk the story onto the field">Imagine</button>
-        <button class="chip" id="btnMagic" hidden aria-hidden="true"></button>
-        <button class="chip" id="btnGraph" hidden aria-hidden="true"></button>
-        <button class="chip" id="btnNewFile" hidden aria-hidden="true"></button>
-        <button class="chip" id="btnNewChar" hidden aria-hidden="true"></button>
-        <button class="chip" id="btnProj" hidden aria-hidden="true"></button>
-        <button class="chip" id="btnSettings" title="the key and the door">Settings</button>
-      </div>
-      <div id="magicPane" hidden><iframe id="magicFrame" title="Magic" src="about:blank"></iframe></div>
-      <div class="ai-files" id="aiFiles"></div>
-      <div class="chat-log" id="chatLog"></div>
-      <div class="chat-input">
-        <textarea id="chatBox" rows="1" placeholder="Ask anything structural…"></textarea>
-        <button class="chat-btn mic" id="chatMic" title="speak">🎙</button>
-        <button class="chat-btn send" id="chatSend" title="send">➤</button>
-      </div>
-      <div class="coinline" id="coin" title="API cost meter — every Brain call weighed (never wiped with a brain rebuild)"></div>
-    </div>
   </nav>
+
+  <!-- the talk, carried out of the menu: on the phone it is the CENTER screen of its own —
+       a transformed parent would drag it off-glass otherwise. On the desk it sleeps as before. -->
+  <div class="chat" hidden>
+    <div class="ai-btns">
+      <button class="chip" id="btnPlot">Plot</button>
+      <button class="chip" id="btnChars">Characters</button>
+      <button class="chip" id="btnImagine" title="Imagine Magic — talk the story onto the field">Imagine</button>
+      <button class="chip" id="btnMagic" hidden aria-hidden="true"></button>
+      <button class="chip" id="btnGraph" hidden aria-hidden="true"></button>
+      <button class="chip" id="btnNewFile" hidden aria-hidden="true"></button>
+      <button class="chip" id="btnNewChar" hidden aria-hidden="true"></button>
+      <button class="chip" id="btnProj" hidden aria-hidden="true"></button>
+      <button class="chip" id="btnSettings" title="the key and the door">Settings</button>
+    </div>
+    <div id="magicPane" hidden><iframe id="magicFrame" title="Magic" src="about:blank"></iframe></div>
+    <div class="ai-files" id="aiFiles"></div>
+    <div class="chat-log" id="chatLog"></div>
+    <div class="chat-input">
+      <textarea id="chatBox" rows="1" placeholder="Say it to Squatch."></textarea>
+      <button class="chat-btn mic" id="chatMic" title="speak">🎙</button>
+      <button class="chat-btn send" id="chatSend" title="send">➤</button>
+    </div>
+    <div class="coinline" id="coin" title="API cost meter — every Brain call weighed (never wiped with a brain rebuild)"></div>
+  </div>
 
   <button class="left-toggle" id="leftToggle" title="collapse the panel">‹</button>
   <aside class="outline">
@@ -2700,12 +2699,15 @@ const FIRST = (function () {
     const w = parseWorld(getPlain()); LEAD = w.lead; CAST = w.cast; }
   function drawSum() {
     const host = $('m2Sum');
-    if (SEC !== 'world' && window.WORLD) WORLD.forget();   // Story takes the host back: a World still reading lets go of it, never paints over the Story
-    if (SEC === 'world') { if (window.WORLD) WORLD.draw(host, book(), API); else host.textContent = 'the world did not load'; return; }   // THE WORLD (world.js)
-    host.textContent = ''; host.style.setProperty('--m2-k', 'var(' + KCOL[SEC] + ')');
-    const node = sumOf();
-    if (!node) { host.appendChild(mk('p', 'm2-empty', book() ? 'Tap ' + voice() + ' to draw the ' + SECS[SEC].toLowerCase() + ' from the pages.' : 'Open a script.')); return; }
-    const key = SEC + '|' + SUB, open = OPEN[key] || (OPEN[key] = {});
+    const small = matchMedia('(max-width: 979px)').matches;   // the phone's right screen holds both halves
+    const effSec = small ? 'story' : SEC;
+    if (small && window.WORLD) WORLD.draw($('worldHalf'), book(), API);   // the sky on top, the story beneath
+    if (!small && SEC !== 'world' && window.WORLD) WORLD.forget();   // Story takes the host back: a World still reading lets go of it, never paints over the Story
+    if (!small && SEC === 'world') { if (window.WORLD) WORLD.draw(host, book(), API); else host.textContent = 'the world did not load'; return; }   // THE WORLD (world.js)
+    host.textContent = ''; host.style.setProperty('--m2-k', 'var(' + KCOL[effSec] + ')');
+    const node = ((SUMS[effSec] || {})[SUB || '*'] || {}).node || null;
+    if (!node) { host.appendChild(mk('p', 'm2-empty', book() ? 'Tap ' + voice() + ' to draw the ' + SECS[effSec].toLowerCase() + ' from the pages.' : 'Open a script.')); return; }
+    const key = effSec + '|' + SUB, open = OPEN[key] || (OPEN[key] = {});
     (function tell(n, into, path) {
       String(n.tell || '').split(/\n+/).forEach(text => {
         if (!text.trim()) return;
@@ -2731,7 +2733,8 @@ const FIRST = (function () {
     [...$('m2Mode').children].forEach(b => b.classList.toggle('on', b.dataset.mode === MODE));
     const all = jl(subsKey(), {}), subs = all[SEC] || []; if (SUB && !subs.includes(SUB)) SUB = '';
     const row = $('m2Subs'); row.textContent = ''; row.style.setProperty('--m2-k', 'var(' + KCOL[SEC] + ')');
-    const W = SEC === 'world', mode = W ? 'ask' : MODE;   // the World is read, not rewritten: Act stands aside there, Ask still answers
+    const small = matchMedia('(max-width: 979px)').matches;   // on the phone the right screen is always Story's manners
+    const W = !small && SEC === 'world', mode = W ? 'ask' : MODE;   // the World is read, not rewritten: Act stands aside there, Ask still answers
     row.hidden = W; $('m2Mode').querySelector('[data-mode="act"]').hidden = W;
     if (W) [...$('m2Mode').children].forEach(b => b.classList.toggle('on', b.dataset.mode === 'ask'));
     const chip = (label, on, fn) => { const b = mk('button', on ? 'on' : null, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
@@ -2796,7 +2799,7 @@ const FIRST = (function () {
   setInterval(() => {
     const s = String(getPlain().length) + ':' + curPath;
     if (s === _sig) return; _sig = s;
-    if (SEC === 'world') { try { drawSum(); } catch (x) {} }   // the constellation follows the pen
+    if (SEC === 'world' || matchMedia('(max-width: 979px)').matches) { try { drawSum(); } catch (x) {} }   // the constellation follows the pen
   }, 3000);
   setInterval(() => {
     if (!book() || BUSY || SEC !== 'story') return;
@@ -2941,6 +2944,59 @@ const FIRST = (function () {
   body.setting .menu, body.setting .outline, body.setting .main, body.setting .divider,
   body.setting #path, body.setting .theme-dock, body.setting .maire-dock, body.setting .gear,
   body.setting .bgmark, body.setting .caret-sword, body.setting .tab { visibility: hidden; }
+
+  /* ═══ THE PHONE: three screens, swiped (his law, restated 2026-10-04 — "the phone is where the
+     work happens"): LEFT the page · CENTER the talk · RIGHT the sky over the story. The menu
+     comes in from the left over the page. Squatch keeps the lower right corner on all three.
+     Every rule here lives inside the small-glass measure — the desktop is untouched. ═══ */
+  #phoneMenuBtn { display: none; }
+  @media (max-width: 979px) {
+    body { overflow: hidden; }
+    .divider, .bgmark, .caret-sword, .left-toggle { display: none !important; }
+    #phoneMenuBtn { display: block; position: fixed; top: 8px; left: 10px; z-index: 26;
+      font: inherit; font-size: 22px; line-height: 1; color: var(--dim); background: none; border: 0;
+      padding: 4px 8px; cursor: pointer; }
+    #phoneMenuBtn:hover { color: var(--ink); }
+    #path { position: fixed !important; top: 10px !important; left: 52px !important; right: auto;
+      max-width: 52vw !important; z-index: 25; font-size: 20px !important; }
+    .theme-dock { top: 8px !important; right: 12px !important; }
+
+    /* the track: the three panes are full-glass; the active one stands, the rest wait their side */
+    .main, .chat, .menu { position: fixed !important; inset: 0 !important; left: 0 !important; right: 0 !important;
+      top: 0 !important; bottom: 0 !important; width: auto !important; height: auto !important;
+      background: var(--bg); transition: transform .28s ease; }
+    .main { padding-top: 46px; overflow: auto; }
+    .chat[hidden] { display: flex !important; }   /* the talk wakes on the phone */
+    .chat { flex-direction: column; padding: 52px 14px 18px; }
+    .chat .ai-btns, .chat .ai-files, .chat #magicPane, .chat .coinline { display: none !important; }
+    .chat .chat-log { flex: 1; min-height: 0; overflow-y: auto; }
+    .chat .chat-input { flex: none; padding-right: 96px; }   /* the say box clears Squatch's corner */
+    .menu { padding: 52px 16px 14px; overflow-y: auto; }
+    body[data-ps="script"] .main { transform: none; }
+    body[data-ps="talk"]   .main { transform: translateX(-102%); }
+    body[data-ps="tools"]  .main { transform: translateX(-102%); }
+    body[data-ps="script"] .chat { transform: translateX(102%); }
+    body[data-ps="talk"]   .chat { transform: none; }
+    body[data-ps="tools"]  .chat { transform: translateX(-102%); }
+    body[data-ps="script"] .menu { transform: translateX(102%); }
+    body[data-ps="talk"]   .menu { transform: translateX(102%); }
+    body[data-ps="tools"]  .menu { transform: none; }
+
+    /* the collapsible menu comes in from the left, over the page */
+    .outline { position: fixed !important; left: 0 !important; top: 0 !important; bottom: 0 !important;
+      width: min(78vw, 340px) !important; z-index: 60 !important; background: var(--paper) !important;
+      transform: translateX(-103%); transition: transform .25s ease; overflow-y: auto !important;
+      box-shadow: 0 0 0 1px var(--line), 0 12px 40px rgba(0,0,0,.4) !important; padding-top: 52px; }
+    .outline.open { transform: none; }
+
+    /* the right screen's two halves: the constellation on top, the story beneath (his law) */
+    .m2-tabs { display: none !important; }
+    #worldHalf { display: block !important; flex: 0 0 auto; max-height: 46%; overflow-y: auto;
+      border-bottom: 1px solid var(--line); margin-bottom: 8px; padding-bottom: 6px; }
+    .m2-sum { flex: 1; min-height: 0; overflow-y: auto; }
+    .m2-foot { padding-right: 96px !important; }   /* the ask line clears Squatch's corner too */
+    .m2-voice { max-height: 90px !important; }
+  }
 </style>
 <script>
 /* the cigarette and the scene, transplanted from the Inkling app through the old squatch room —
@@ -3126,6 +3182,45 @@ const FIRST = (function () {
     var tog = function () { if ($('set').hidden) setOpen(); else setClose(); };
     cg.addEventListener('click', tog);
     cg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+  })();
+
+  /* ═══ THE PHONE'S THREE SCREENS (his law, restated 2026-10-04: "the phone is where the work
+     happens"): swipe between the page, the talk, and the sky-over-story. The center is the talk,
+     where the old room always opened. On the desk none of this stirs. ═══ */
+  (function () {
+    var mq = matchMedia('(max-width: 979px)');
+    var ORDER = ['script', 'talk', 'tools'];
+    function go(name) {
+      if (!mq.matches) { document.body.removeAttribute('data-ps'); return; }
+      document.body.setAttribute('data-ps', name);
+      try { localStorage.setItem('squatch.ps', name); } catch (x) {}
+    }
+    var sx = 0, sy = 0;
+    document.addEventListener('touchstart', function (e) {
+      if (!mq.matches) return;
+      var t = e.touches[0]; sx = t.clientX; sy = t.clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      if (!mq.matches) return;
+      /* an overlay owns the glass while it stands; the drawer owns its own swipes */
+      if (!$('set').hidden || !$('settings').hidden || !$('gate').hidden || !$('firstTalk').hidden) return;
+      if (document.querySelector('.outline').classList.contains('open')) return;
+      var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      var cur = ORDER.indexOf(document.body.getAttribute('data-ps') || 'talk');
+      var nx = cur + (dx < 0 ? 1 : -1);
+      if (nx >= 0 && nx < ORDER.length) go(ORDER[nx]);
+    }, { passive: true });
+    var mb = $('phoneMenuBtn');
+    if (mb) mb.addEventListener('click', function () {
+      document.querySelector('.outline').classList.toggle('open');
+    });
+    document.querySelector('.outline').addEventListener('click', function (e) {
+      if (e.target.closest('button, select, li')) document.querySelector('.outline').classList.remove('open');
+    });
+    function bootPane() { try { go(localStorage.getItem('squatch.ps') || 'talk'); } catch (x) { go('talk'); } }
+    if (mq.matches) bootPane();
+    if (mq.addEventListener) mq.addEventListener('change', function () { if (mq.matches) bootPane(); else document.body.removeAttribute('data-ps'); });
   })();
 })();
 </script>
