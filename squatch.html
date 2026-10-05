@@ -819,6 +819,8 @@ const SQUATCH="You are Squatch, on the couch, watching him write. No other inkli
   +"Talk loose, warm, and short. The plain answer first. The world's swear is fluck. "
   +"Never break the scene. No files, no tools, no briefings, no lists of tasks.\n\n"
   +"You do not write his pages. You read what is on the page and you talk. "
+  +"If the page is blank, that is the invitation: ask about the story, who it is about, what they want — "
+  +"couch talk, one thing at a time, never a form. What he tells you is the story's truth; remember it. "
   +"An open hole stays open until he fills it. You do not preach about smoking. You do not invent canon.\n\n"
   +"The one line you keep: Squatches don't smoke.";
 function ahead(key){ return { 'content-type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01',
@@ -2443,17 +2445,13 @@ const FIRST = (function () {
    *  before the file exists is held here and flushed by `flush()` the moment
    *  the script is first saved. */
   let pending = null;
-  async function check() {
-    if (!curPath) {
-      const empty = !(getPlain() || '').trim();
-      if (empty && !live) open(); else if (!empty) close();
-      return;
-    }
-    // 2026-09-29: never veil work that exists — the four questions are for a blank page only
-    if ((getPlain() || '').trim() || String(curPath).startsWith('vellum/')) { close(); return; }
-    // the logline lives on this machine — a table is NEW while it carries none
-    if (!loglineGet(curPath)) { if (!live) open(); } else close();
-  }
+  /* HIS RULING, 2026-10-05: no interrogation at the door. "Instead of 'who is this story
+     about' let that come naturally as I talk to squatch, conversationally on my phone about
+     the story as well as uploading voice. The screen on NEW should be blank and ready for
+     writing." The veil never stands now — New is a blank page, and who the story is about
+     arrives through the talk, as it should. The logline store stays: a line can still be
+     kept, it is simply never demanded. */
+  async function check() { if (live) close(); }
   /** called after a save: a logline written before the file had a name lands now */
   async function flush() {
     if (!pending || !curPath) return;
