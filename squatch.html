@@ -204,9 +204,9 @@
   .chat-btn:hover{ color:var(--ink); background:rgba(255,255,255,.06); }
   .chat-btn.send{ color:var(--teal); }
   .chat-btn.mic.listening{ color:var(--red); background:rgba(255,18,57,.12); }
-  .wc{ font-size:11px; color:var(--faint); letter-spacing:.03em; font-variant-numeric:tabular-nums; font-family:var(--accent-font,monospace); }
+  .wc{ font-size:11px; color:var(--faint); letter-spacing:.03em; font-variant-numeric:tabular-nums; }
   /* the day's output — faint gold, a quiet companion to the total */
-  .wc24{ font-size:11px; font-family:var(--accent-font,monospace); color:var(--gold); opacity:.5; letter-spacing:.03em; font-variant-numeric:tabular-nums; margin-left:9px; }
+  .wc24{ font-size:11px; color:var(--gold); opacity:.5; letter-spacing:.03em; font-variant-numeric:tabular-nums; margin-left:9px; }
   .wc24:empty{ margin-left:0; }
   .status{ font-size:10px; color:var(--faint); letter-spacing:.08em; text-transform:uppercase; text-align:right; }
   .status.dirty{ color:var(--red); } .status.ok{ color:var(--teal); } .status.err{ color:var(--red); }
@@ -581,7 +581,7 @@
     <div id="tomeOverlay" class="tome-overlay" hidden></div>
     <div class="menu-meta">
       <span class="wc" id="wc"></span><span class="wc24" id="wc24" title="words written today"></span>
-      <span class="runtime" id="runtime" title="about a minute a page"></span><span class="status" id="status"></span>
+      <span class="status" id="status"></span>
     </div>
     <div class="m2" id="m2">
       <div class="m2-tabs" id="m2Tabs" role="tablist">
@@ -2599,11 +2599,10 @@ const FIRST = (function () {
   body.focus .divider{ display:block !important; right:0 !important; }
   body.dream .menu{ padding-left:calc(44px + 10px) !important; }
 
-  /* the save in two words; the runtime beside the count */
+  /* the save in two words beside the count */
   .status{ font-family:"Courier Prime","Courier New",Courier,monospace !important; font-size:13px !important; letter-spacing:0 !important; text-transform:none !important; }
   .status.m-saved{ color:var(--saved) !important; } .status.m-not{ color:var(--not-saved) !important; }
-  .menu-meta .wc, .menu-meta .wc24, .runtime{ font-family:"Courier Prime","Courier New",Courier,monospace !important; font-size:13px !important; letter-spacing:0 !important; -webkit-font-smoothing:antialiased; }
-  .runtime{ color:var(--k-story); margin-left:8px; }
+  .menu-meta .wc, .menu-meta .wc24{ font-size:13px !important; letter-spacing:0 !important; -webkit-font-smoothing:antialiased; }
 
   /* THE MAGIC */
   .m2{ flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; padding-top:4px; }
@@ -2903,16 +2902,14 @@ const FIRST = (function () {
     const night = /NIGHT|EVENING|DUSK|MIDNIGHT|\b[1-4](:\d\d)?\s*A\.?M\b|LATE/.test(t) && !/MORNING/.test(t);
     return ext ? (night ? 'var(--c21)' : 'var(--c23)') : (night ? 'var(--c17)' : 'var(--ink)'); }
   function board() {
-    if (!ed.classList.contains('screenplay')) { $('runtime').textContent = ''; return; }
-    const lens = new Map(); let cur = null, total = 0;
+    if (!ed.classList.contains('screenplay')) return;
+    const lens = new Map(); let cur = null;
     [...ed.children].forEach(b => { if (b.nodeType !== 1 || b.classList.contains('pgspacer')) return;
       if (b.classList.contains('fslug')) { cur = b; lens.set(b, 0); }
-      const hgt = b.offsetHeight || 0; total += hgt; if (cur) lens.set(cur, lens.get(cur) + hgt); });
+      const hgt = b.offsetHeight || 0; if (cur) lens.set(cur, lens.get(cur) + hgt); });
     [...$('outlineList').querySelectorAll('li')].forEach(li => { if (!li._h || !lens.has(li._h)) return;
       li.classList.add('strip'); li.style.setProperty('--strip', stripOf(li._h.textContent));
       let e = li.querySelector('.eighths'); if (!e) { e = mk('span', 'eighths'); li.prepend(e); } e.textContent = eighths(lens.get(li._h)); });
-    const pages = Math.max(1, Math.round(total / PAGE_BODY));
-    $('runtime').textContent = pages + ' pp · ≈' + pages + ' min';
   }
   const _bo = buildOutline;
   buildOutline = function () { _bo.apply(this, arguments); try { board(); } catch (x) {} };
