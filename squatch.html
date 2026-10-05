@@ -643,7 +643,14 @@
       <div class="dd-menu" id="openMenu" role="menu" hidden></div>
     </div>
     <button class="btn" id="importBtn" title="bring in a screenplay from elsewhere">Import…</button>
-    <button class="btn" id="exportBtn" title="save a copy out of the Scriptorium">Export…</button>
+    <div class="dd" id="exportDD">
+      <button class="btn" id="exportBtn" aria-haspopup="true" aria-expanded="false" title="save a copy out">Export…</button>
+      <div class="dd-menu" id="exportMenu" role="menu" hidden>
+        <button type="button" data-x="fountain" title="the plain-text screenplay">Fountain</button>
+        <button type="button" data-x="pdf" title="the laid-out pages — print or save as PDF">PDF</button>
+        <button type="button" data-x="project" title="script, logline, and chat — the whole table, as JSON">Project</button>
+      </div>
+    </div>
     <button class="btn" id="pagesBtn" title="the script as pages — print or save it as a PDF">Pages</button>
     <div hidden>
       <select id="lib"><option value="">Open…</option><option value="__import">From elsewhere… (import)</option></select>
@@ -2708,7 +2715,9 @@ const FIRST = (function () {
   /* Import · Export · Pages — the computer's own windows */
   $('importBtn').onclick = () => { const f = $('importFile'); if (f) f.click(); };
   $('pagesBtn').onclick = () => { try { openPageView(); } catch (x) {} };
-  $('exportBtn').onclick = async () => {
+  /* Export… opens its own small menu now (his word, 2026-10-05: "export should include pdf option,
+     not just fountain"): Fountain · PDF · the whole project. */
+  async function exportFountain(){
     const base = ((($('path').textContent || curPath || 'script').split('/').pop()).replace(/\.[^.]*$/, '')) || 'script';
     if (!window.showSaveFilePicker) { const ex = $('exportSel'); ex.value = 'fountain'; ex.onchange(); return; }
     let h;
@@ -2719,7 +2728,27 @@ const FIRST = (function () {
       const blob = new Blob([curContent()], { type: 'text/plain' });   // the whole project was the table-server's zip; on this glass, the words are the export
       const w = await h.createWritable(); await w.write(blob); await w.close(); setStatus('saved', 'ok');
     } catch (e) { setStatus('export failed', 'err'); }
-  };
+  }
+  (function(){
+    const dd=$('exportDD'), em=$('exportMenu'), eb=$('exportBtn'); if(!dd||!em||!eb) return;
+    eb.onclick=()=>{ const open=em.hidden; em.hidden=!open; eb.setAttribute('aria-expanded', String(open)); };
+    document.addEventListener('click', e=>{ if(!em.hidden && !dd.contains(e.target)){ em.hidden=true; eb.setAttribute('aria-expanded','false'); } });
+    em.querySelectorAll('button').forEach(b=>{ b.onclick=()=>{
+      em.hidden=true; eb.setAttribute('aria-expanded','false');
+      const x=b.dataset.x;
+      if(x==='fountain') exportFountain();
+      else if(x==='pdf'){ try{ openPageView(); }catch(e){} }
+      else if(x==='project'){
+        /* the whole table, kept on this machine's side of the glass — no server asked */
+        const base=((($('path').textContent||curPath||'script').split('/').pop()).replace(/\.[^.]*$/,''))||'script';
+        const payload={ squatch:1, path:curPath||'', content:curContent(), logline:loglineGet(curPath), chat:chatHistory.slice(-20), at:new Date().toISOString() };
+        const blob=new Blob([JSON.stringify(payload,null,1)],{type:'application/json'});
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=base+'.squatch.json';
+        document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
+        setStatus('the whole table is in your hands','ok');
+      }
+    }; });
+  })();
 
   /* light / dark: two words */
   function themeWords() { const t = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
@@ -3059,6 +3088,8 @@ const FIRST = (function () {
     .outline .btn { font-size: 13px !important; letter-spacing: 0 !important; padding: 7px 6px !important; }
     .outline .outline-head { font-size: 10px !important; }
     .outline #outlineList { font-size: 12px !important; }
+    .outline .dd-menu { left: 0 !important; top: calc(100% + 4px) !important; max-width: 100% !important;
+      padding: 6px 10px !important; }   /* on the small glass the menu drops down inside the drawer, not off its edge */
     #drawerClose { display: block; position: absolute; top: 4px; right: 2px; z-index: 2;
       background: none; border: 0; color: var(--dim); font: inherit; font-size: 24px; line-height: 1;
       padding: 6px 10px; cursor: pointer; }
@@ -3296,6 +3327,8 @@ const FIRST = (function () {
     var dc = $('drawerClose');
     if (dc) dc.addEventListener('click', function () { document.querySelector('.outline').classList.remove('open'); });
     document.querySelector('.outline').addEventListener('click', function (e) {
+      /* a dropdown's hinge (Open…, Export…) must NOT fold the drawer — its menu lives inside it */
+      if (e.target.closest('#openBtn, #exportBtn')) return;
       if (e.target.closest('button, select, li')) document.querySelector('.outline').classList.remove('open');
     });
     function bootPane() { try { go(localStorage.getItem('squatch.ps') || 'talk'); } catch (x) { go('talk'); } }
