@@ -701,6 +701,10 @@
   <div id="settings" hidden role="dialog" aria-label="Settings">
     <div class="st-card">
       <div class="st-head"><span class="st-title">Settings</span><button type="button" id="stClose">close</button></div>
+      <!-- THE DRAWER — his law, 2026-10-05: a small pixel-art drawer at the top, 16×16 in the
+           room's colours, one sprite per project. Hold a sprite for its key and its papers;
+           a double touch moves the room to that project. -->
+      <div class="st-drawer" id="stDrawer" aria-label="the drawer — your projects"></div>
       <div class="st-body" id="stBody"></div>
     </div>
   </div>
@@ -710,19 +714,26 @@
        row and the guest seats stood aside: they belong to the wide world, not this glass. -->
   <div id="set" hidden role="dialog" aria-label="settings">
     <button id="setBack" type="button" aria-label="back">‹ back</button>
-    <h2>settings</h2>
+    <h2 id="setName">settings</h2>
     <div id="setBody">
       <label class="sl"><span>key</span><textarea id="setKey" rows="1" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="paste your key — sk-ant-… wakes Squatch · gsk_… lends the ear" aria-label="your key"></textarea></label>
       <label class="sl" id="setChaRow" hidden><span>coin</span><input id="setCha" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Cha-ching" aria-label="the word that lets Squatch spend"></label>
       <label class="sl"><span>model</span><input id="setModel" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="chosen for you" aria-label="the model Squatch thinks with"></label>
       <label class="sl"><span>jev — the central account</span><input id="setJev" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="vck_… or https://…#pass — the door that organizes as you write" aria-label="the JEV key"></label>
+      <!-- the personality's own papers — written here, or uploaded whole (his law, 2026-10-05) -->
+      <label class="sl"><span>personality — special instructions</span><textarea id="setNotes" rows="2" enterkeyhint="enter" autocomplete="off" autocapitalize="sentences" autocorrect="on" spellcheck="true" placeholder="who this one is, in your own words" aria-label="special instructions for this personality"></textarea></label>
+      <div class="sl"><span>personality — documents</span>
+        <div id="setDocs"></div>
+        <button id="setDocUp" type="button">upload a document</button>
+        <input id="setDocFile" type="file" accept=".txt,.md,.markdown,.fountain,.json,.text,text/plain,text/markdown" hidden>
+      </div>
       <button id="setTest" type="button">test</button>
       <button id="setClear" type="button">clear the key — gone from this machine</button>
       <div id="setSay" aria-live="polite"></div>
     </div>
     <div id="setDiag"></div>
   </div>
-  <button type="button" class="gear" id="btnGear" title="the room's settings" aria-label="the room's settings"><svg width="16" height="16" viewBox="0 0 8 8" shape-rendering="crispEdges" fill="currentColor"><path d="M3 0h2v1h-2zM1 1h1v1h-1zM6 1h1v1h-1zM2 1h4v1h-4zM1 2h6v1h-6zM0 3h3v2h-3zM5 3h3v2h-3zM1 5h6v1h-6zM2 6h4v1h-4zM1 6h1v1h-1zM6 6h1v1h-1zM3 7h2v1h-2z"/></svg></button>
+  <button type="button" class="gear" id="btnGear" title="the room's settings — touch once for settings, twice for the next project" aria-label="the room's settings"><canvas id="gearSprite" width="16" height="16" aria-hidden="true"></canvas></button>
   <!-- THE CIGARETTE — his law: the cigarette for settings and the api key insertion. It opens the
        Inkling app's own settings scene (key · coin · model · test), unchanged but for what had to change. -->
   <canvas id="cig" role="button" tabindex="0" aria-label="settings, the cigarette" title="settings, the cigarette"></canvas>
@@ -812,7 +823,18 @@ function setBox(){ try{ return JSON.parse(localStorage.getItem(SET_BOX)||'{}')||
 function keyDoor(k){ if(/^sk-ant-/.test(k))return 'anthropic'; if(/^gsk_/.test(k))return 'groq'; if(/^sk-or-/.test(k))return 'openrouter'; if(/^xai-/.test(k))return 'xai'; if(/^AIza/.test(k))return 'gemini'; if(/^sk-/.test(k))return 'openai'; return ''; }
 const SET_FREE=['groq','gemini','openrouter'];
 function paidOpen(d){ if(SET_FREE.indexOf(d)>=0) return true; try{ const p=JSON.parse(localStorage.getItem('inkling.paid')||'{}')||{}; return !!(d&&p[d]); }catch(x){ return false; } }
-function squatchKey(){ const b=setBox(); return (b.apiKey && (b.door||keyDoor(b.apiKey))==='anthropic') ? b.apiKey : ''; }
+/* HIS LAW, 2026-10-05: "api will be personality specific." Each project in the drawer may keep
+   its own key; the room's shared box stands under it as the floor. The persona is named by the
+   manuscript's own name — mustard's bottle keeps mustard's key. */
+function personaOf(path){ const n=String(path||'').split('/').pop().replace(/\.[^.]*$/,'').toLowerCase().trim(); return n||'squatch'; }
+const PKEY_BOX='inkling.persona.keys';
+function personaKeys(){ try{ return JSON.parse(localStorage.getItem(PKEY_BOX)||'{}')||{}; }catch(x){ return {}; } }
+function personaKey(id){ const k=personaKeys()[id]; return (k&&k.apiKey&&(k.door||keyDoor(k.apiKey))==='anthropic')?k.apiKey:''; }
+/* the personality's own words and papers, kept per project on this machine */
+function personaDocs(id){ try{ return JSON.parse(localStorage.getItem('squatch.persona:'+id)||'{}')||{}; }catch(x){ return {}; } }
+function personaKeep(id,obj){ try{ localStorage.setItem('squatch.persona:'+id, JSON.stringify(obj||{})); }catch(x){} }
+function squatchKey(){ try{ const pk=personaKey(personaOf(typeof curPath!=='undefined'?curPath:'')); if(pk) return pk; }catch(x){}
+  const b=setBox(); return (b.apiKey && (b.door||keyDoor(b.apiKey))==='anthropic') ? b.apiKey : ''; }
 /* HIS RULING, 2026-10-05: "that menu shouldn't even be visible on desktop, only on mobile …
    verify my api keys are cleansed from the system and I'll add them again on mobile."
    A wide glass keeps no keys: the boxes wash clean at the door, every visit. The phone —
@@ -872,6 +894,10 @@ function anthropicModel(key){
 function mouth(key, msgs, model, page){
   let system=SQUATCH; const pt=(page==null? getPlain() : page).trim();
   if(pt) system+='\n\nThe page he is writing, as it stands:\n'+pt.slice(0,20000);
+  try{ const pd=personaDocs(personaOf(typeof curPath!=='undefined'?curPath:''));   // the voice's own papers ride with it
+    if(pd.notes) system+='\n\nHis special instructions for this voice:\n'+String(pd.notes).slice(0,4000);
+    (pd.docs||[]).slice(0,4).forEach(d=>{ system+='\n\nPersonality document — '+String(d.name||'untitled')+':\n'+String(d.text||'').slice(0,6000); });
+  }catch(x){}
   const body={ model:model, max_tokens:1500, system:system, messages:msgs, output_config:{ effort:'low' } };
   const knock=b=> fetch(MOUTH, { method:'POST', headers:ahead(key), body:JSON.stringify(b) });
   return knock(body).then(r=>{
@@ -2962,7 +2988,120 @@ const FIRST = (function () {
     b.appendChild(mk('div', 'st-sec', 'The key'));
     b.appendChild(act2('the door', 'key and door…', () => { $('settings').hidden = true; if (window.setOpen) setOpen(); }));
   }
-  $('btnGear').onclick = () => { draw(); $('settings').hidden = false; };
+  /* ——— THE DRAWER + THE SPRITES (his law, 2026-10-05): each project wears a 16×16 pixel
+     sprite drawn in the room's own colours — the cigarette for Squatch, the mustard bottle,
+     the walker. One touch on the corner sprite opens this panel; a double touch moves the
+     room to the next project; holding a sprite in the drawer opens that one's key and papers. ——— */
+  const DPAL = { '.':null, w:'#EDEDED', g:'#8a8a8a', d:'#3c3c3c', k:'#141414', G:'#ffa512',
+                 y:'#e3b93c', m:'#8a6a1f', R:'#e23a2e', b:'#BF6A40', t:'#3aa79a', o:'#c96b32' };
+  const SPRITE_CIG = [
+    '................',
+    '..............R.',
+    '.............R..',
+    '..............R.',
+    '................',
+    '................',
+    '.bbbbwwwwwwwwRR.',
+    '.bbbbwwwwwwwwRR.',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................'];
+  const SPRITE_MUSTARD = [
+    '................',
+    '......kkkk......',
+    '......kkkk......',
+    '......yyyy......',
+    '.....yyyyyy.....',
+    '....yyyyyyyy....',
+    '...yyyyyyyyyy...',
+    '...yymmmmmmyy...',
+    '...yymGGGGmyy...',
+    '...yymmmmmmyy...',
+    '...yyyyyyyyyy...',
+    '...yyyyyyyyyy...',
+    '...yyyyyyyyyy...',
+    '....yyyyyyyy....',
+    '................',
+    '................'];
+  const SPRITE_WALKER = [
+    '................',
+    '..kk........kk..',
+    '..kk........kk..',
+    '..kkk......kkk..',
+    '...kkk....kkk...',
+    '....kkkkkkkk....',
+    '....kk....kk....',
+    '....kk....kk....',
+    '....kk....kk....',
+    '....kk....kk....',
+    '....kk....kk....',
+    '...kkk....kkk...',
+    '...kkk....kkk...',
+    '................',
+    '................',
+    '................'];
+  const SPRITE_PAGE = [
+    '................',
+    '................',
+    '...wwwwwwwwk....',
+    '...wwwwwwwkk....',
+    '...wgggggwkw....',
+    '...wwwwwwwww....',
+    '...wgggggggw....',
+    '...wwwwwwwww....',
+    '...wgggwwwww....',
+    '...wwwwwwwww....',
+    '...wgggggggw....',
+    '...wwwwwwwww....',
+    '................',
+    '................',
+    '................',
+    '................'];
+  const SPRITES = [ [/squatch|cigarette/i, SPRITE_CIG], [/mustard/i, SPRITE_MUSTARD],
+                    [/grandma|granny|walker|june/i, SPRITE_WALKER] ];
+  function spriteFor(path){ const n=String(path||'').split('/').pop();
+    for (const [re, rows] of SPRITES) if (re.test(n)) return rows; return SPRITE_PAGE; }
+  function paintSprite(cv, rows){ const c=cv.getContext('2d'); cv.width=16; cv.height=16; c.clearRect(0,0,16,16);
+    rows.forEach((r,y)=>{ for(let x=0;x<16;x++){ const col=DPAL[r[x]]; if(col){ c.fillStyle=col; c.fillRect(x,y,1,1); } } }); }
+  function cycleProject(dir){ const paths=shelfPaths(); if(paths.length<2) return;
+    const i=paths.indexOf(curPath), next=paths[(i+dir+paths.length)%paths.length];
+    if(next && next!==curPath) openFile(next); }
+  function paintGear(){ const g=$('gearSprite'); if(g) paintSprite(g, spriteFor(curPath)); }
+  let _gearPath=null;
+  setInterval(()=>{ if(curPath!==_gearPath){ _gearPath=curPath; paintGear(); } },1500);
+  setTimeout(paintGear, 400);
+  function drawDrawer(){
+    const d=$('stDrawer'); if(!d) return; d.textContent='';
+    shelfPaths().forEach(path=>{
+      const el=mk('button', 'spr'+(path===curPath?' cur':'')); el.type='button';
+      el.title=String(path).split('/').pop()+' — hold: key & papers · twice: go there';
+      const cv=document.createElement('canvas'); paintSprite(cv, spriteFor(path)); el.appendChild(cv);
+      /* hold = the key and the papers; twice = go there; hold wins over click */
+      let holdT=null, sx=0, sy=0, held=false, lastTap=0;
+      el.addEventListener('pointerdown', e=>{ held=false; sx=e.clientX; sy=e.clientY;
+        holdT=setTimeout(()=>{ holdT=null; held=true;
+          if (matchMedia('(min-width: 980px)').matches) return;   // keys and papers are the phone's alone (his law)
+          $('settings').hidden=true; if(window.setOpen) setOpen('', '', personaOf(path)); }, 550); });
+      el.addEventListener('pointermove', e=>{ if(holdT && Math.hypot(e.clientX-sx, e.clientY-sy)>10){ clearTimeout(holdT); holdT=null; } });
+      ['pointerup','pointercancel','pointerleave'].forEach(ev=> el.addEventListener(ev, ()=>{ if(holdT){ clearTimeout(holdT); holdT=null; } }));
+      el.addEventListener('click', ()=>{ if(held){ held=false; return; }
+        const now=Date.now();
+        if(now-lastTap<320){ lastTap=0; $('settings').hidden=true; if(path!==curPath) openFile(path); }
+        else lastTap=now; });
+      d.appendChild(el);
+    });
+  }
+  window.openRoomSettings = function(){ draw(); drawDrawer(); $('settings').hidden=false; };
+  /* the corner sprite: one touch for the panel, two for the next project — the click waits a
+     breath so the double can be told apart */
+  let _gT=null;
+  $('btnGear').onclick = ()=>{ if(_gT){ clearTimeout(_gT); _gT=null; cycleProject(1); return; }
+    _gT=setTimeout(()=>{ _gT=null; window.openRoomSettings(); }, 260); };
   $('stClose').onclick = () => { $('settings').hidden = true; };
   $('settings').addEventListener('click', e => { if (e.target === $('settings')) $('settings').hidden = true; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') $('settings').hidden = true; });
@@ -3010,6 +3149,25 @@ const FIRST = (function () {
   #setSay.bad { color: var(--not-saved, #FA8072); } #setSay.good { color: var(--gold, #ffa512); }
   #setDiag { font-size: 12px; line-height: 1.55; color: var(--dim); white-space: pre-wrap; max-width: 560px; width: 100%; margin: 0 auto; }
   #set .sl[hidden] { display: none; }
+  /* the personality's papers */
+  #setDocs { display: flex; flex-direction: column; gap: 6px; margin: 2px 0 4px; }
+  #setDocs .pdoc { all: unset; cursor: pointer; font-size: 13px; color: var(--ink);
+    border-bottom: 1px solid var(--line); padding: 4px 2px 6px; display: flex; justify-content: space-between; gap: 10px; }
+  #setDocs .pdoc:hover { color: var(--not-saved, #FA8072); }
+  #setDocs .pdoc i { font-style: normal; color: var(--dim); flex: 0 0 auto; }
+  #setDocUp { align-self: flex-start; font: inherit; font-size: clamp(13px, 4vw, 16px); color: var(--dim);
+    background: none; border: 0; padding: 0; cursor: pointer; }
+  #setDocUp:hover { color: var(--ink); }
+  /* THE DRAWER — 16×16 pixel sprites, one per project, worn at 2× so the eye can read them */
+  .st-drawer { display: flex; gap: 10px; align-items: flex-end; overflow-x: auto; padding: 10px 2px 6px;
+    border-bottom: 1px solid var(--line); margin-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .st-drawer:empty { display: none; }
+  .st-drawer .spr { all: unset; cursor: pointer; padding: 5px; border-radius: 6px; flex: 0 0 auto;
+    display: grid; place-items: center; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+  .st-drawer .spr canvas { width: 32px; height: 32px; image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .st-drawer .spr.cur { box-shadow: 0 0 0 1px var(--gold, #ffa512); }
+  .st-drawer .spr:active { transform: translateY(1px); }
+  .gear canvas { width: 16px; height: 16px; image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
   /* while the scene stands, the room steps back and only the cigarette stays lit (the salmon's law) */
   body.setting .menu, body.setting .outline, body.setting .main, body.setting .divider,
   body.setting #path, body.setting .theme-dock, body.setting .maire-dock, body.setting .gear,
@@ -3109,6 +3267,9 @@ const FIRST = (function () {
    inkling.paid. A key kept here wakes Inkling too, and a Cha-ching here is law there.
    Only the test keeps a key; typing never does. */
 (function () {
+  /* SETP — which personality's key and papers this scene is holding, when it was opened
+     by a held sprite in the drawer. Empty means the room's shared box, as before. */
+  var SETP = '';
   function setSay(t, how) {
     var say = $('setSay'); if (!say) return;
     say.textContent = t || '';
@@ -3120,6 +3281,8 @@ const FIRST = (function () {
     var b = setBox(), d = b.door || keyDoor(b.apiKey || ''), at = '';
     try { at = localStorage.getItem('inkling.keyAt') || ''; } catch (e) {}
     var lines = [];
+    if (SETP) { var pk = personaKeys()[SETP];
+      lines.push(pk && pk.apiKey ? (SETP + '’s own key kept: ' + (pk.door || keyDoor(pk.apiKey))) : (SETP + ' keeps no key of its own — the room’s box stands under it')); }
     lines.push(d && b.apiKey ? ('key kept: ' + d + (at ? ' · since ' + at.slice(0, 10) : '')) : 'no key on this machine');
     var jv = decideLoad();
     lines.push(jv.door ? ('jev seated: ' + jv.door) : 'jev has no key — the organizing sleeps');
@@ -3127,9 +3290,29 @@ const FIRST = (function () {
     lines.push('this glass: ' + location.pathname);
     el.textContent = lines.join('\n');
   }
+  /* the personality's papers, drawn fresh each opening */
+  function docsDraw() {
+    var box = $('setDocs'); if (!box) return; box.textContent = '';
+    if (!SETP) return;
+    var pd = personaDocs(SETP);
+    (pd.docs || []).forEach(function (doc, i) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pdoc';
+      b.title = 'touch to take this paper back';
+      var nm = document.createElement('span'); nm.textContent = doc.name || ('paper ' + (i + 1));
+      var sz = document.createElement('i'); sz.textContent = Math.ceil(String(doc.text || '').length / 100) / 10 + 'k';
+      b.append(nm, sz);
+      b.addEventListener('click', function () {
+        if (!confirm('Take “' + (doc.name || 'this paper') + '” back out of ' + SETP + '’s papers?')) return;
+        var p2 = personaDocs(SETP); (p2.docs || []).splice(i, 1); personaKeep(SETP, p2); docsDraw();
+      });
+      box.appendChild(b);
+    });
+  }
   function setFill() {
-    var b = setBox(), d = b.door || keyDoor(b.apiKey || '');
-    $('setKey').value = b.apiKey || '';
+    var b = setBox(), pk = SETP ? (personaKeys()[SETP] || null) : null;   // a held sprite's own key, else the room's box
+    var d = pk ? (pk.door || keyDoor(pk.apiKey || '')) : (b.door || keyDoor(b.apiKey || ''));
+    $('setKey').value = pk ? (pk.apiKey || '') : (b.apiKey || '');
+    $('setKey').placeholder = pk ? 'this one’s own key' : 'paste your key — sk-ant-… wakes Squatch · gsk_… lends the ear';
     grow($('setKey'));
     var kept = {};
     try { kept = JSON.parse(localStorage.getItem('inkling.model') || '{}') || {}; } catch (e) {}
@@ -3137,9 +3320,15 @@ const FIRST = (function () {
     $('setChaRow').hidden = !d || paidOpen(d);
     var jv = decideLoad();
     $('setJev').value = jv.key || (jv.url ? jv.url + (jv.pass ? '#' + jv.pass : '') : '');
+    /* the personality's own papers */
+    var pd = SETP ? personaDocs(SETP) : {};
+    if ($('setNotes')) $('setNotes').value = pd.notes || '';
+    docsDraw();
   }
-  window.setOpen = function (why, how) {
+  window.setOpen = function (why, how, persona) {
     if (matchMedia('(min-width: 980px)').matches) return;   // the scene is the phone's alone (his word, 2026-10-05)
+    SETP = persona || '';
+    var h = $('setName'); if (h) h.textContent = SETP || 'settings';
     $('set').hidden = false;
     document.body.classList.add('setting');
     var kids = document.documentElement.children;   // the Loupe rides in a shadow host — dim it while the scene stands
@@ -3181,15 +3370,21 @@ const FIRST = (function () {
     });
     chain.then(function () {
       if (!found) { setSay('No door knew that key. The key line is unchanged.', 'bad'); return null; }
-      var before = setBox();
-      var swapped = before.apiKey && before.apiKey !== v;
-      try {
-        localStorage.setItem(SET_BOX, JSON.stringify({ apiKey: v, door: found }));
-        localStorage.setItem('inkling.keyAt', new Date().toISOString());
-      } catch (e) {}
-      if (setBox().apiKey !== v) { setSay('This glass refused to keep the key. Try once more.', 'bad'); return null; }
-      if (swapped) {
-        try { var km = JSON.parse(localStorage.getItem('inkling.model') || '{}') || {}; delete km[found]; localStorage.setItem('inkling.model', JSON.stringify(km)); } catch (e) {}
+      if (SETP) {   // a held sprite's own key — kept under its name, the room's box untouched
+        try { var all = personaKeys(); all[SETP] = { apiKey: v, door: found };
+          localStorage.setItem(PKEY_BOX, JSON.stringify(all)); } catch (e) {}
+        if ((personaKeys()[SETP] || {}).apiKey !== v) { setSay('This glass refused to keep the key. Try once more.', 'bad'); return null; }
+      } else {
+        var before = setBox();
+        var swapped = before.apiKey && before.apiKey !== v;
+        try {
+          localStorage.setItem(SET_BOX, JSON.stringify({ apiKey: v, door: found }));
+          localStorage.setItem('inkling.keyAt', new Date().toISOString());
+        } catch (e) {}
+        if (setBox().apiKey !== v) { setSay('This glass refused to keep the key. Try once more.', 'bad'); return null; }
+        if (swapped) {
+          try { var km = JSON.parse(localStorage.getItem('inkling.model') || '{}') || {}; delete km[found]; localStorage.setItem('inkling.model', JSON.stringify(km)); } catch (e) {}
+        }
       }
       setFill();
       if (found !== 'anthropic') {
@@ -3224,8 +3419,15 @@ const FIRST = (function () {
   }
   $('setBack').addEventListener('click', function () { setClose(); });
   /* the key leaves this machine whole: the box, its date, and the paid word for the paid doors —
-     so a key typed on the wrong glass is gone as if never typed (his word, 2026-10-04) */
+     so a key typed on the wrong glass is gone as if never typed (his word, 2026-10-04).
+     When the scene holds a personality, only that one's own key is lifted. */
   $('setClear').addEventListener('click', function () {
+    if (SETP) {
+      try { var all = personaKeys(); delete all[SETP]; localStorage.setItem(PKEY_BOX, JSON.stringify(all)); } catch (e) {}
+      setFill(); setDiag();
+      setSay(SETP + '’s own key is gone from this machine. The room’s box is untouched.', 'good');
+      return;
+    }
     try {
       localStorage.removeItem(SET_BOX);
       localStorage.removeItem('inkling.keyAt');
@@ -3235,6 +3437,32 @@ const FIRST = (function () {
     } catch (e) {}
     setFill(); setDiag();
     setSay('The key is gone from this machine. If it ever stood anywhere else, roll it at the door that made it.', 'good');
+  });
+  /* the personality's written instructions, kept as they are typed */
+  $('setNotes').addEventListener('change', function () {
+    if (!SETP) return;
+    var pd = personaDocs(SETP); pd.notes = $('setNotes').value || ''; personaKeep(SETP, pd);
+    setSay('The instructions are kept under ' + SETP + '’s name.', 'good');
+  });
+  $('setNotes').addEventListener('input', function () { grow($('setNotes')); });
+  /* a document, uploaded whole into the personality's papers */
+  $('setDocUp').addEventListener('click', function () {
+    if (!SETP) { setSay('Hold a sprite in the drawer to give one personality its papers.', ''); return; }
+    $('setDocFile').click();
+  });
+  $('setDocFile').addEventListener('change', function () {
+    var f = this.files && this.files[0]; this.value = '';
+    if (!f || !SETP) return;
+    if (f.size > 200000) { setSay('That paper is too heavy for the shelf — keep it under 200k.', 'bad'); return; }
+    var r = new FileReader();
+    r.onload = function () {
+      var pd = personaDocs(SETP); pd.docs = pd.docs || [];
+      pd.docs.push({ name: f.name, text: String(r.result || ''), at: new Date().toISOString() });
+      personaKeep(SETP, pd); docsDraw();
+      setSay('“' + f.name + '” is among ' + SETP + '’s papers now — it rides with the voice.', 'good');
+    };
+    r.onerror = function () { setSay('The paper could not be read.', 'bad'); };
+    r.readAsText(f);
   });
   $('setJev').addEventListener('change', function () {
     var v = ($('setJev').value || '').trim();
@@ -3285,7 +3513,9 @@ const FIRST = (function () {
     };
     cig();
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(function () { if (!cg.hidden) { sp = (sp + 1) % top; cig(); } }, 260);
-    var tog = function () { if ($('set').hidden) setOpen(); else setClose(); };
+    /* MERGED (his word, 2026-10-05): the cigarette and the gear are one door now — both open the
+       room's settings, with the pixel drawer on top. The keys live behind a HELD sprite there. */
+    var tog = function () { if (window.openRoomSettings) window.openRoomSettings(); };
     cg.addEventListener('click', tog);
     cg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
   })();
