@@ -105,10 +105,12 @@
 
           tokens.push({ type: 'dialogue_end' });
 
-          parts = match[3].split(/(\(.+\))(?:\n+)/).reverse();
+          // a parenthetical on its own line at the end of a speech has no newline after it; give it one so it stays a parenthetical
+          var speech = match[3].replace(/(^|\n)(\(.+\))$/g, '$1$2\n');
+          parts = speech.split(/(\(.+\))(?:\n+)/).reverse();
 
-          for (x = 0, xlen = parts.length; x < xlen; x++) {	
-            text = parts[x];
+          for (x = 0, xlen = parts.length; x < xlen; x++) {
+            text = parts[x].replace(/\n+$/g, '');
 
             if (text.length > 0) {
               tokens.push({ type: regex.parenthetical.test(text) ? 'parenthetical' : 'dialogue', text: text });

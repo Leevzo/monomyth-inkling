@@ -291,8 +291,17 @@
   #editor.screenplay .fslug{ text-transform:uppercase; font-weight:700; margin:1.5em 0 .4em; letter-spacing:.01em; }
   #editor.screenplay .ftrans{ text-transform:uppercase; text-align:right; margin:.9em 0; }
   #editor.screenplay .fchar{ text-transform:uppercase; margin:1em 0 0; padding-left:38%; }
-  #editor.screenplay .fparen{ padding-left:30%; padding-right:28%; font-style:italic; color:#555; }
+  #editor.screenplay .fparen{ padding-left:30%; padding-right:28%; font-style:italic; color:var(--dim); }
   #editor.screenplay .fdlg{ padding-left:24%; padding-right:18%; }
+  /* dual dialogue — fountain.js's own block: .dual-dialogue > .dialogue.left / .dialogue.right */
+  #editor.screenplay .dual-dialogue{ margin:1em 0; }
+  #editor.screenplay .dual-dialogue::after{ content:""; display:block; clear:both; }
+  #editor.screenplay .dual-dialogue > .dialogue{ width:48%; margin:0; }
+  #editor.screenplay .dual-dialogue > .dialogue.left{ float:left; }
+  #editor.screenplay .dual-dialogue > .dialogue.right{ float:right; }
+  #editor.screenplay .dual-dialogue .fchar{ margin:0; padding-left:0; text-align:center; }
+  #editor.screenplay .dual-dialogue .fdlg,
+  #editor.screenplay .dual-dialogue .fparen{ padding-left:.15in; padding-right:.15in; }
   #editor.screenplay .faction{ margin:1em 0; }   /* a full blank line above/below action — reads as a paragraph after dialogue and between action paras, no double-Enter needed */
   #editor.screenplay .fcenter{ text-align:center; }
   .charauto{ position:fixed; z-index:20; padding:0; font-family:'Courier Prime','Courier New',monospace; font-size:13px; line-height:1.55; }
@@ -315,7 +324,16 @@
   .pv-pages .pagedjs_page{ background:#fff; margin:0 auto 26px; box-shadow:0 8px 30px rgba(0,0,0,.45); }
   .pv-msg{ color:var(--faint); padding:24px; font:13px 'Courier Prime',monospace; }
   .pv-fallback{ background:#fff; color:#111; max-width:8.5in; margin:0 auto; padding:1in 1in 1in 1.5in; box-shadow:0 8px 30px rgba(0,0,0,.45); font:12pt/1 'Courier Prime',monospace; }
-  @media print{ body>*:not(#pageView){ display:none !important; } #pageView{ position:static; background:#fff; } .pv-bar{ display:none; } .pv-pages{ overflow:visible; padding:0; } .pv-pages .pagedjs_page{ box-shadow:none; } }
+  @media print{
+    @page{ size:letter; margin:0 !important; }
+    html, body{ margin:0 !important; padding:0 !important; background:#fff !important; }
+    body>*:not(#pageView){ display:none !important; }
+    #pageView{ position:static !important; display:block !important; background:#fff !important; height:auto !important; inset:auto !important; }
+    .pv-bar{ display:none !important; }
+    .pv-pages{ overflow:visible !important; padding:0 !important; margin:0 !important; }
+    .pv-pages .pagedjs_page{ margin:0 !important; box-shadow:none !important; break-after:page; page-break-after:always; }
+    .pv-pages .pagedjs_page:last-child{ break-after:auto; page-break-after:auto; }
+  }
 
   /* ════ LIGHT THEME — near-white paper, near-black ink; never pure white/black.
      2026-09-16: repointed to true greyscale (no warm tint) as part of the
@@ -563,7 +581,7 @@
   .ft-said:empty{ display:none; }
   .ft-said div{ margin:0 0 6px; }
   .ft-said b{ color:var(--dim); font-weight:600; margin-right:.4em; }
-</style><script src="world.js"></script></head>
+</style><script src="world.js"></script><script src="squatch-room.js"></script></head>
 <body>
   <div class="bgmark" id="spine" aria-hidden="true">SQUATCH</div>
   <div class="divider" id="divider" title="drag: left for the Magic, right for the page alone"><span class="divider-word" aria-hidden="true">SQUATCH</span></div>
@@ -585,6 +603,7 @@
       <div class="m2-tabs" id="m2Tabs" role="tablist">
         <button type="button" data-sec="story" role="tab">Story</button>
         <button type="button" data-sec="world" role="tab">World</button>
+        <button type="button" data-sec="chat" role="tab">Chat</button>
         <!-- his word, 2026-10-01: "just story and world, world is a constellation with characters and locations. those are
              the only tabs I want for now." Cast and Locations stand aside (their summaries stay on disk, untouched). -->
       </div>
@@ -593,6 +612,8 @@
       <div class="m2-sum" id="m2Sum"></div>
       <div class="m2-answer" id="m2Answer" hidden></div>
       <div class="m2-foot">
+        <button type="button" class="m2-tape" id="m2Tape" title="upload a voice note — heard into the story and the world, never written onto the page">voice note</button>
+        <button type="button" class="m2-tape" id="m2Undo" title="step back through the page" disabled>undo</button>
         <button type="button" class="m2-voice" id="m2Maire" title="the one who keeps the story — tap to send"></button>
         <div class="m2-line">
           <div class="m2-mode" id="m2Mode" role="radiogroup" aria-label="act or ask">
@@ -646,16 +667,24 @@
       <div class="dd-menu" id="exportMenu" role="menu" hidden>
         <button type="button" data-x="fountain" title="the plain-text screenplay">Fountain</button>
         <button type="button" data-x="pdf" title="the laid-out pages — print or save as PDF">PDF</button>
-        <button type="button" data-x="project" title="script, logline, and chat — the whole table, as JSON">Project</button>
+        <button type="button" data-x="squatch" title="the page, and every keystroke of yours and of his">.squatch</button>
       </div>
     </div>
     <button class="btn" id="pagesBtn" title="the script as pages — print or save it as a PDF">Pages</button>
+    <button class="btn" id="keyBtn" title="paste a key — this opens on the desk and on the phone">Key</button>
+    <button class="btn" id="tapeBtn" title="upload a voice note — heard into the story and the world">voice note</button>
+    <button class="btn" id="undoBtn" type="button" title="step back through the page" disabled>undo</button>
+    <button class="btn" id="shareBtn" type="button" title="a link to this page">share</button>
+    <label class="share-line"><input type="checkbox" id="shareWrite" checked> they can write</label>
+    <input id="shareWord" type="password" placeholder="a word, if you want one" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div id="shareLink" hidden></div>
+    <input type="file" id="tapeFile" accept="audio/*,.m4a,.mp3,.wav,.webm,.caf,.ogg,.aac">
     <div hidden>
       <select id="lib"><option value="">Open…</option><option value="__import">From elsewhere… (import)</option></select>
       <button class="btn" id="titleFontBtn">Titles · Wripetyter</button>
       <select id="exportSel"><option value="">Export…</option><option value="fountain">f</option><option value="pdf">p</option><option value="project">j</option><option value="share">s</option></select>
     </div>
-    <input type="file" id="importFile" accept=".fountain,.txt,.md" style="display:none">
+    <input type="file" id="importFile" accept=".fountain,.txt,.md,.squatch,.json" style="display:none">
     </div>
     <div class="outline-head"><span id="outlineHead">Chapters</span></div>
     <ul id="outlineList"></ul>
@@ -666,6 +695,13 @@
       <div class="pagelayer" id="pageLayer"></div>
       <div id="editor" contenteditable="true" spellcheck="true" autocapitalize="sentences"></div>
     </div>
+  </div>
+  <div id="penBar">
+    <span id="penInks"></span>
+    <input id="penWord" type="password" hidden placeholder="the word" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button type="button" class="pen-word" id="penUndo">undo</button>
+    <button type="button" class="pen-word" id="penPages">pages</button>
+    <span id="penStatus"></span>
   </div>
   <!-- ⟡ THE FIRST TALK — his ruling, 2026-09-16: "this is after a chat to
        establish enough story details before the writing portion is revealed.
@@ -715,6 +751,8 @@
     <h2 id="setName">settings</h2>
     <div id="setBody">
       <label class="sl"><span>key</span><textarea id="setKey" rows="1" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="paste your key — sk-ant-… wakes Squatch · gsk_… lends the ear" aria-label="your key"></textarea></label>
+      <label class="sl"><span>this Mac — the phone’s door</span><input id="setRoom" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="the six letters, once" aria-label="the phone’s door to this Mac"></label>
+      <div id="setHouse"></div>
       <label class="sl" id="setChaRow" hidden><span>coin</span><input id="setCha" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Cha-ching" aria-label="the word that lets Squatch spend"></label>
       <label class="sl"><span>model</span><input id="setModel" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="chosen for you" aria-label="the model Squatch thinks with"></label>
       <label class="sl"><span>jev — the central account</span><input id="setJev" type="text" enterkeyhint="done" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="vck_… or https://…#pass — the door that organizes as you write" aria-label="the JEV key"></label>
@@ -789,6 +827,10 @@ const API = '';
 const $ = id => document.getElementById(id);
 const ed = $('editor');
 let curPath = null, dirty = false;
+window.PEN = /^\/pen\/[A-Za-z0-9_-]{20,80}$/.test(location.pathname);
+let penToken = window.PEN ? location.pathname.slice(location.pathname.lastIndexOf('/') + 1) : '';
+let penBase = '';
+let _hist = { past: [], future: [], mute: false };
 let mode = 'screenplay';   // this app is screenplay-native
 
 /* ════════ SQUATCH'S GUTS, transplanted into the Scriptorium's body (2026-10-04, his word:
@@ -827,20 +869,19 @@ function paidOpen(d){ if(SET_FREE.indexOf(d)>=0) return true; try{ const p=JSON.
 function personaOf(path){ const n=String(path||'').split('/').pop().replace(/\.[^.]*$/,'').toLowerCase().trim(); return n||'squatch'; }
 const PKEY_BOX='inkling.persona.keys';
 function personaKeys(){ try{ return JSON.parse(localStorage.getItem(PKEY_BOX)||'{}')||{}; }catch(x){ return {}; } }
-function personaKey(id){ const k=personaKeys()[id]; return (k&&k.apiKey&&(k.door||keyDoor(k.apiKey))==='anthropic')?k.apiKey:''; }
+function personaKey(id){ const k=personaKeys()[id]; return (k&&k.apiKey)?k.apiKey:''; }
 /* the personality's own words and papers, kept per project on this machine */
 function personaDocs(id){ try{ return JSON.parse(localStorage.getItem('squatch.persona:'+id)||'{}')||{}; }catch(x){ return {}; } }
 function personaKeep(id,obj){ try{ localStorage.setItem('squatch.persona:'+id, JSON.stringify(obj||{})); }catch(x){} }
-function squatchKey(){ try{ const pk=personaKey(personaOf(typeof curPath!=='undefined'?curPath:'')); if(pk) return pk; }catch(x){}
-  const b=setBox(); return (b.apiKey && (b.door||keyDoor(b.apiKey))==='anthropic') ? b.apiKey : ''; }
-/* HIS RULING, 2026-10-05: "that menu shouldn't even be visible on desktop, only on mobile …
-   verify my api keys are cleansed from the system and I'll add them again on mobile."
-   A wide glass keeps no keys: the boxes wash clean at the door, every visit. The phone —
-   the small glass, where the work happens — is never touched. */
-if (matchMedia('(min-width: 980px)').matches) {
-  try { localStorage.removeItem(SET_BOX); localStorage.removeItem('inkling.keyAt');
-        localStorage.removeItem('monomyth.focus.decide.v1'); } catch (x) {}
+function squatchDoor(){
+  try{ const pk=personaKeys()[personaOf(typeof curPath!=='undefined'?curPath:'')];
+    if(pk&&pk.apiKey) return pk.door||keyDoor(pk.apiKey); }catch(x){}
+  const b=setBox(); return (b.apiKey&&(b.door||keyDoor(b.apiKey)))||'';
 }
+function squatchKey(){ try{ const pk=personaKey(personaOf(typeof curPath!=='undefined'?curPath:'')); if(pk) return pk; }catch(x){}
+  const b=setBox(); return b.apiKey||''; }
+/* 2026-10-06: the key stays, on the desk and on the phone. He asked for the window.
+   Yesterday’s wipe — a wide glass forgetting the key on every load — is retired. */
 const SET_TRY=['gemini','groq','openrouter','anthropic','openai','xai'];
 const SET_LIST={ groq:'https://api.groq.com/openai/v1/models', openrouter:'https://openrouter.ai/api/v1/models',
   xai:'https://api.x.ai/v1/models', openai:'https://api.openai.com/v1/models',
@@ -863,8 +904,11 @@ function doorModels(d, key){   // the door names its own models; cached on this 
 }
 function cachedModels(d){ try{ return (JSON.parse(localStorage.getItem('squatch.gate.models')||'{}')||{})[d]||[]; }catch(x){ return []; } }
 
-/* ——— THE MOUTH: his voice, Anthropic's door, straight from this glass ——— */
+/* ——— THE MOUTH: the key's stamp names the door. The door lists its own models. ——— */
 const MOUTH='https://api.anthropic.com/v1/messages';
+const SET_CHAT={ groq:'https://api.groq.com/openai/v1/chat/completions', openrouter:'https://openrouter.ai/api/v1/chat/completions',
+  xai:'https://api.x.ai/v1/chat/completions', openai:'https://api.openai.com/v1/chat/completions',
+  anthropic:MOUTH, gemini:'https://generativelanguage.googleapis.com/v1beta/models/' };
 const SQUATCH="You are Squatch, on the couch, watching him write. No other inkling is in this room. "
   +"People in the script are his, and they arrive because he writes them.\n\n"
   +"You are a sasquatch. Big, a little fat, long black fur. Depressed, and funny about it. "
@@ -879,44 +923,90 @@ const SQUATCH="You are Squatch, on the couch, watching him write. No other inkli
   +"The one line you keep: Squatches don't smoke.";
 function ahead(key){ return { 'content-type':'application/json', 'x-api-key':key, 'anthropic-version':'2023-06-01',
   'anthropic-dangerous-direct-browser-access':'true' }; }
-function anthropicModel(key){
+function doorModel(door, key){
   let kept={}; try{ kept=JSON.parse(localStorage.getItem('inkling.model')||'{}')||{}; }catch(x){}
-  if(kept.anthropic) return Promise.resolve(kept.anthropic);
-  return doorModels('anthropic', key).then(ids=>{
-    const pick=ids.filter(id=>/sonnet/i.test(id))[0] || ids[0] || 'claude-sonnet-5-5';
-    kept.anthropic=pick; try{ localStorage.setItem('inkling.model', JSON.stringify(kept)); }catch(x){}
+  if(kept[door]) return Promise.resolve(kept[door]);
+  return doorModels(door, key).then(ids=>{
+    let pick='';
+    if(door==='gemini'){
+      const ver=id=>parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(id)||[0,0])[1]);
+      const plain=ids.filter(id=>/^gemini-[\d.]+-flash(-\d+)?$/.test(id)).sort((a,z)=>ver(z)-ver(a));
+      pick=plain[0]||ids.filter(id=>/flash/i.test(id)&&!/preview|exp|embed|image|tts|veo/i.test(id))[0]||ids.filter(id=>!/embed|imagen|veo|tts|aqa/i.test(id))[0]||'';
+    } else if(door==='anthropic') pick=ids.filter(id=>/sonnet/i.test(id))[0]||ids[0]||'';
+    else pick=ids.filter(id=>/flash|mini|70b|sonnet/i.test(id)&&!/embed|whisper|image/i.test(id))[0]||ids.filter(id=>!/embed|whisper|image|tts/i.test(id))[0]||ids[0]||'';
+    if(!pick) throw new Error('the door listed no models');
+    kept[door]=pick; try{ localStorage.setItem('inkling.model', JSON.stringify(kept)); }catch(x){}
     return pick;
+  });
+}
+function anthropicModel(key){ return doorModel('anthropic', key); }
+function textOfParts(content){
+  if(typeof content==='string') return content;
+  if(!Array.isArray(content)) return String(content||'');
+  return content.map(b=> (b&&b.type==='text')? (b.text||'') : '').join('');
+}
+function geminiParts(content){
+  if(typeof content==='string') return [{text:content}];
+  if(!Array.isArray(content)) return [{text:String(content||'')}];
+  const parts=[];
+  content.forEach(b=>{
+    if(!b) return;
+    if(typeof b==='string'||b.type==='text'){ parts.push({text: typeof b==='string'?b:(b.text||'')}); return; }
+    if(b.type==='image' && b.source && b.source.data) parts.push({ inline_data:{ mime_type:b.source.media_type||'image/png', data:b.source.data } });
+  });
+  return parts.length? parts : [{text:''}];
+}
+function readAnswer(r){
+  return r.json().catch(()=>({})).then(o=>{
+    if(r.status===401||r.status===403) throw new Error('the key was refused');
+    if(!r.ok){ const e=o&&o.error; throw new Error((typeof e==='string'?e:(e&&e.message))||'the mouth did not answer'); }
+    const anthropic=(((o&&o.content)||[]).filter(b=>b&&b.type==='text').map(b=>b.text||'').join('')).trim();
+    const gemini=(((((o.candidates||[])[0]||{}).content||{}).parts)||[]).map(p=>p.text||'').join('').trim();
+    const openai=((((o.choices||[])[0]||{}).message||{}).content||'').trim();
+    const text=anthropic||gemini||openai;
+    if(!text) throw new Error('the mouth was empty');
+    return text;
   });
 }
 /* msgs: [{role, content}]; page: the manuscript as it stands (defaults to the live page) */
 function mouth(key, msgs, model, page){
+  const door=squatchDoor()||keyDoor(key);
   let system=SQUATCH; const pt=(page==null? getPlain() : page).trim();
   if(pt) system+='\n\nThe page he is writing, as it stands:\n'+pt.slice(0,20000);
   try{ const pd=personaDocs(personaOf(typeof curPath!=='undefined'?curPath:''));   // the voice's own papers ride with it
     if(pd.notes) system+='\n\nHis special instructions for this voice:\n'+String(pd.notes).slice(0,4000);
     (pd.docs||[]).slice(0,4).forEach(d=>{ system+='\n\nPersonality document — '+String(d.name||'untitled')+':\n'+String(d.text||'').slice(0,6000); });
   }catch(x){}
+  if(door==='gemini'){
+    const body={ systemInstruction:{parts:[{text:system}]}, contents:msgs.map(t=>({ role:t.role==='assistant'?'model':'user', parts:geminiParts(t.content) })), generationConfig:{ maxOutputTokens:1500 } };
+    const url=SET_CHAT.gemini+encodeURIComponent(model)+':generateContent';
+    const heads=Object.assign({ 'content-type':'application/json' }, doorHeaders('gemini', key));
+    const go=b=> fetchT(url, { method:'POST', headers:heads, body:JSON.stringify(b) });
+    return go(body).then(r=>{
+      if(r.status!==400) return r;
+      const b2={ contents: body.contents.slice() };
+      if(b2.contents[0]) b2.contents[0]={ role:'user', parts:[{text:system}].concat(b2.contents[0].parts) };
+      return go(b2);
+    }).then(readAnswer);
+  }
+  if(door && door!=='anthropic' && SET_CHAT[door]){
+    const body={ model:model, temperature:0.6, max_tokens:1500,
+      messages:[{role:'system', content:system}].concat(msgs.map(m=>({ role:m.role, content:textOfParts(m.content) }))) };
+    return fetchT(SET_CHAT[door], { method:'POST', headers:Object.assign({ 'content-type':'application/json' }, doorHeaders(door, key)), body:JSON.stringify(body) }).then(readAnswer);
+  }
   const body={ model:model, max_tokens:1500, system:system, messages:msgs, output_config:{ effort:'low' } };
   const knock=b=> fetch(MOUTH, { method:'POST', headers:ahead(key), body:JSON.stringify(b) });
   return knock(body).then(r=>{
     if(r.status===400){ delete body.output_config; return knock(body); }   // a door that dislikes effort
     return r;
-  }).then(r=>{
-    if(r.status===401||r.status===403) throw new Error('the key was refused');
-    if(!r.ok) throw new Error('the mouth did not answer');
-    return r.json();
-  }).then(o=>{
-    const text=(((o&&o.content)||[]).filter(b=>b&&b.type==='text').map(b=>b.text||'').join('')).trim();
-    if(!text) throw new Error('the mouth was empty');
-    return text;
-  });
+  }).then(readAnswer);
 }
-/* one question to Squatch, Cha-ching law included; resolves to his line */
+/* one question to Squatch. A free door speaks. A paid door waits for Cha-ching. */
 function squatchAsk(q, page){
-  const key=squatchKey();
-  if(!key) return Promise.reject(new Error('Squatch’s door is Anthropic; an sk-ant- key opens it (the cigarette, below).'));
-  if(!paidOpen('anthropic')) return Promise.reject(new Error('Squatch’s door costs coin: the cigarette, the coin line, the word Cha-ching.'));
-  return anthropicModel(key).then(m=> mouth(key, [{role:'user', content:q}], m, page));
+  const key=squatchKey(), door=squatchDoor();
+  if(!key) return Promise.reject(new Error('Press Squatch and paste the key.'));
+  if(!paidOpen(door)) return Promise.reject(new Error('Press Squatch, then the coin line: Cha-ching.'));
+  return doorModel(door, key).then(m=> mouth(key, [{role:'user', content:q}], m, page));
 }
 
 /* ——— THE WORLD, read from the page itself: world.js's food without a table-server ——— */
@@ -935,7 +1025,7 @@ function parseWorld(text){
     const m=SCENE.exec(t);
     if(m){ sceneNo++; const loc=locOf(m[2]); scenes.push({number:sceneNo, location:loc}); locations[loc]=locations[loc]||{}; continue; }
     if(isCue(t) && sceneNo>0){
-      const name=t.replace(/\s*\((?:O\.S\.|V\.O\.|O\.C\.|CONT'D|CONT’D)\)\s*$/i,'');
+      const name=t.replace(/\s*\((?:O\.S\.|V\.O\.|O\.C\.|CONT'D|CONT’D)\)\s*$/i,'').replace(/\s*\^$/,'').trim();
       let j=i+1, spoken=0;
       while(j<lines.length){ const u=lines[j].trim(); if(!u){ if(spoken){ j++; } else break; continue; }
         if(SCENE.test(u)||isCue(u)) break; spoken++; j++; }
@@ -1049,7 +1139,7 @@ function blockFor(line){
   return div;
 }
 const TP_RE=/^(title|credits|credit|authors|author|source|draft date|draft|contact info|contact|copyright|notes|date|revision|episode|series|based on|story by|written by|format)\s*:\s*(.*)$/i;
-function setText(str){ ed.innerHTML=''; (str&&str.length?str.split('\n'):['']).forEach(l=>ed.appendChild(blockFor(l)));
+function setText(str){ if(typeof histReset==='function' && !_hist.mute) histReset(); ed.innerHTML=''; (str&&str.length?str.split('\n'):['']).forEach(l=>ed.appendChild(blockFor(l)));
   // fountain title-page metadata -> clean display blocks (round-tripped on save)
   let c=ed.firstElementChild;
   while(c){ const m=(c.textContent||'').match(TP_RE); if(!m || (c.classList&&c.classList.contains('h'))) break;
@@ -1070,12 +1160,64 @@ function updateWC24(){
 // ── the purple sword follows the caret's line (cheap: selection rect) ──
 const sword=$('caretSword');
 function edTextLeft(){ return ed.getBoundingClientRect().left + parseFloat(getComputedStyle(ed).paddingLeft); }
+function scriptBlocks(){
+  const out=[];
+  for(const n of ed.children){
+    if(n.nodeType!==1 || n.classList.contains('pgspacer') || n.classList.contains('pagelayer')) continue;
+    if(n.classList.contains('dual-dialogue')){
+      [...n.children].forEach(col=>{
+        if(!col.classList || !col.classList.contains('dialogue')) return;
+        [...col.children].forEach(line=>{ if(line.nodeType===1 && !line.classList.contains('pgspacer')) out.push(line); });
+      });
+    } else out.push(n);
+  }
+  return out;
+}
+function lineOf(node){
+  if(!node) return null;
+  if(node===ed){
+    const sel=window.getSelection();
+    const child=ed.children[Math.min(sel?sel.anchorOffset:0, Math.max(0, ed.children.length-1))]||null;
+    if(child && child.classList.contains('dual-dialogue')){
+      const col=child.querySelector('.dialogue');
+      return (col && col.querySelector('div')) || child;
+    }
+    return child;
+  }
+  let n=node.nodeType===3 ? node.parentNode : node;
+  while(n && n!==ed){
+    const p=n.parentNode;
+    if(!p) return null;
+    if(p.classList && p.classList.contains('dialogue')) return n;
+    if(p===ed){
+      if(n.classList.contains('pgspacer') || n.classList.contains('pagelayer')) return null;
+      if(n.classList.contains('dual-dialogue')){
+        const col=n.querySelector('.dialogue');
+        return (col && col.querySelector('div')) || null;
+      }
+      return n;
+    }
+    n=p;
+  }
+  return null;
+}
 function currentBlock(){
   const sel=window.getSelection(); if(!sel||!sel.rangeCount) return null;
-  let n=sel.anchorNode; if(!n) return null;
-  if(n===ed){ return ed.children[Math.min(sel.anchorOffset, Math.max(0,ed.children.length-1))]||null; }
-  while(n && n.parentNode!==ed){ n=n.parentNode; if(!n) return null; }
-  return n;
+  return lineOf(sel.anchorNode);
+}
+function lineStep(block, dir){
+  if(!block) return null;
+  const lines=scriptBlocks();
+  let i=lines.indexOf(block);
+  if(i<0) return null;
+  const step=dir<0?-1:1;
+  i+=step;
+  while(i>=0 && i<lines.length){
+    const n=lines[i];
+    if(n.classList && n.classList.contains('pgspacer')){ i+=step; continue; }
+    return n;
+  }
+  return null;
 }
 function placeSword(){
   let rect=null; const sel=window.getSelection();
@@ -1153,12 +1295,15 @@ function reflow(){
     }
     let page=0;
     for(const b of blocks){
-      const top=b.offsetTop, h=b.offsetHeight;
+      const pull=parseFloat(b.style.marginTop)||0;
+      const top=b.offsetTop - Math.min(0, pull), h=b.offsetHeight;
       let contentBottom=page*stride + sheetH - mbottom;
       while(top >= (page+1)*stride){ page++; contentBottom=page*stride + sheetH - mbottom; }
-      if(h < textH && top + h > contentBottom - 1){
+      const lineH=parseFloat(getComputedStyle(b).lineHeight)||16;
+      const overflow=top + h - contentBottom;
+      if(h < textH && overflow > lineH){             // a sliver past the edge stays; a whole line goes over
         const add=((page+1)*stride + mtop) - top;
-        if(add>0) mkSpacer(add,b);
+        if(add>1 && add<stride) mkSpacer(add,b);
         page++;
       }
     }
@@ -1169,26 +1314,82 @@ function paginate(){ fitPage(); }   // layout entry: size page+font, reflow, dra
 // ── PAGE VIEW — Fountain.js (parse) + paged.js (paginate) → true US-Letter pages + PDF ──
 function _loadJS(src){ return new Promise((res,rej)=>{ if(document.querySelector('script[data-v="'+src+'"]')){res();return;} const sc=document.createElement('script'); sc.src=src; sc.dataset.v=src; sc.onload=res; sc.onerror=()=>rej(new Error('load '+src)); document.head.appendChild(sc); }); }
 async function ensurePaged(){ window.PagedConfig={auto:false}; if(!window.Paged){ await _loadJS('vendor/paged.polyfill.js'); } if(!window.fountain){ await _loadJS('vendor/fountain.js'); } }
-function scriptHTML(){ return new Promise(res=>{ const text=getScript();
-  if(!window.fountain){ res('<pre>'+text.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</pre>'); return; }
-  fountain.parse(text, function(out){ res((out&&out.html&&out.html.script)||''); }); }); }
-const PV_CSS=`@page{ size:8.5in 11in; margin:1in 1in 1in 1.5in; @bottom-right{ content: counter(page) "."; font:11pt 'Courier Prime',monospace; color:#444; } }
-.pv-screenplay{ font:12pt/1.0 'Courier Prime','Courier New',monospace; color:#111; }
-.pv-screenplay h3{ font-weight:400; text-transform:uppercase; margin:1.4em 0 .2em; }
-.pv-screenplay h2{ font-weight:400; text-transform:uppercase; text-align:right; margin:1em 0; }
-.pv-screenplay > p{ margin:0 0 1em; white-space:pre-wrap; }
-.pv-screenplay .dialogue{ margin:.2em 0 1em; }
-.pv-screenplay .dialogue h4{ font-weight:400; text-transform:uppercase; margin:0 0 0 2.2in; }
-.pv-screenplay .dialogue .parenthetical{ margin:0 0 0 1.6in; }
-.pv-screenplay .dialogue p{ margin:0 1.5in 0 1in; white-space:pre-wrap; }
-.pv-screenplay .centered{ text-align:center; }`;
+function escPaper(s){ return String(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+// the paper is black ink. The room's light colours stay on the glass; they do not go onto the page.
+function paperParts(){
+  const blocks=scriptBlocks();
+  const plain=b=>(b.textContent||'').replace(/\u00a0/g,' ').replace(/\n+$/,'');
+  const title=[]; const body=[];
+  let prevEl=null, blankOpen=true, lead=true;
+  for(const b of blocks){
+    if(b.classList.contains('h')) continue;
+    if(lead && b.dataset && b.dataset.tp){
+      const key=(b.dataset.tp||'').toLowerCase();
+      const t=plain(b);
+      const cls=key.replace(/\s+/g,'-');
+      if(key==='title') title.push('<h1>'+escPaper(t)+'</h1>');
+      else if(t.trim()) title.push('<p class="'+cls+'">'+escPaper(t)+'</p>');
+      continue;
+    }
+    lead=false;
+    const t=plain(b);
+    if(t.trim()===''){ body.push(t); prevEl=null; blankOpen=true; continue; }
+    const el=b.dataset.el||'action';
+    let line=(el==='character'||el==='transition') ? t.toUpperCase() : t;
+    if(el==='character'){ line=line.replace(/\s*\^$/,'').trim(); if(b.dataset.dual==='1') line+=' ^'; }
+    if(el==='paren') line=parenLine(line);
+    if(el==='center') line=centerLine(line);
+    const adjacent=(el==='dialogue'||el==='paren') && (prevEl==='character'||prevEl==='paren'||prevEl==='dialogue');
+    if(body.length && !adjacent && !blankOpen) body.push('');
+    body.push(line); prevEl=el; blankOpen=false;
+  }
+  return { title: title.join(''), body: body.join('\n').replace(/\n+$/,'') };
+}
+function scriptHTML(){ return new Promise(res=>{ const parts=paperParts();
+  const wrap=inner=>'<div class="pv-screenplay">'+(parts.title?'<div class="title-page">'+parts.title+'</div>':'')+'<div class="paper">'+inner+'</div></div>';
+  if(!window.fountain){ res(wrap('<pre>'+escPaper(parts.body)+'</pre>')); return; }
+  fountain.parse(parts.body, function(out){ res(wrap((out&&out.html&&out.html.script)||'')); }); }); }
+const PV_CSS=`@page{ size:letter; margin:1in 1in 1in 1.5in;
+  @top-right{ content: counter(page) "."; font:12pt "Courier Prime", Courier, monospace; color:#111; }
+}
+@page titlepage{ size:letter; margin:1in 1in 1in 1.5in; @top-right{ content: none; } }
+.pv-screenplay, .paper, .title-page{ font:12pt/1 "Courier Prime","Courier New",Courier,monospace; color:#111; }
+.title-page{ page:titlepage; break-after:page; text-align:center; }
+.title-page h1{ margin:3.2in 0 0; font:12pt/1 "Courier Prime",Courier,monospace; font-weight:400; text-transform:uppercase; letter-spacing:.16em; }
+.title-page p{ margin:.3em 0 0; font-weight:400; }
+.title-page .credit{ margin-top:2em; }
+.title-page .authors, .title-page .author{ margin-top:.2em; }
+.title-page .contact, .title-page .notes{ margin-top:3in; white-space:pre-wrap; }
+.paper{ counter-reset: page 1; }
+.paper h2, .paper h3, .paper h4, .paper p{ font-family:"Courier Prime","Courier New",Courier,monospace; font-size:12pt; font-weight:400; font-style:normal; line-height:1; color:#111; }
+.paper h3{ text-transform:uppercase; margin:1.2em 0 .6em; }
+.paper h2{ text-transform:uppercase; text-align:right; margin:1em 0; }
+.paper > p{ margin:0 0 1em; white-space:pre-wrap; }
+.paper .dialogue{ margin:0 0 1em; }
+.paper .dialogue h4{ text-transform:uppercase; margin:0 0 0 2.2in; }
+.paper .dialogue .parenthetical{ margin:0 1.1in 0 1.6in; }
+.paper .dialogue p{ margin:0 1.5in 0 1in; white-space:pre-wrap; }
+.paper .centered{ text-align:center; margin:1em 0; }
+.paper .dual-dialogue{ margin:0 0 1em; }
+.paper .dual-dialogue::after{ content:""; display:block; clear:both; }
+.paper .dual-dialogue .dialogue{ width:48%; margin:0; }
+.paper .dual-dialogue .dialogue.left{ float:left; }
+.paper .dual-dialogue .dialogue.right{ float:right; }
+.paper .dual-dialogue .dialogue h4{ margin:0; text-align:center; }
+.paper .dual-dialogue .dialogue p,
+.paper .dual-dialogue .dialogue .parenthetical{ margin:0 .15in; }
+.paper .section, .paper .synopsis{ display:none; }
+.paper hr{ border:0; margin:0; break-after:page; }`;
 let _pv=null;
 async function openPageView(){ const ov=$('pageView'), pages=$('pvPages'); if(!ov) return;
   ov.style.display='flex'; pages.innerHTML='<div class="pv-msg">Paginating…</div>';
   try{ await ensurePaged(); const html=await scriptHTML(); pages.innerHTML='';
     if(window.Paged && Paged.Previewer){ const cssUrl=URL.createObjectURL(new Blob([PV_CSS],{type:'text/css'}));
-      _pv=new Paged.Previewer(); await _pv.preview('<div class="pv-screenplay">'+html+'</div>', [cssUrl], pages); }
-    else { pages.innerHTML='<style>'+PV_CSS+'</style><div class="pv-fallback pv-screenplay">'+html+'</div>'; }
+      _pv=new Paged.Previewer(); await _pv.preview(html, [cssUrl], pages); }
+    else { pages.innerHTML='<style>'+PV_CSS+'</style><div class="pv-fallback">'+html+'</div>'; }
+    let fix=document.getElementById('pvPrintFix');
+    if(!fix){ fix=document.createElement('style'); fix.id='pvPrintFix'; document.head.appendChild(fix); }
+    fix.textContent='@media print{@page{size:letter;margin:0 !important;} .pagedjs_page{margin:0 !important;box-shadow:none !important;break-after:page;page-break-after:always;} .pagedjs_page:last-child{break-after:auto;page-break-after:auto;}}';
   }catch(e){ pages.innerHTML='<div class="pv-msg">Page view error — '+String((e&&e.message)||e).slice(0,180)+'</div>'; } }
 function closePageView(){ const ov=$('pageView'); if(ov) ov.style.display='none'; const p=$('pvPages'); if(p) p.innerHTML=''; }
 (function(){ const b=$('pageViewBtn'); if(b) b.onclick=openPageView; const c=$('pvClose'); if(c) c.onclick=closePageView; const pr=$('pvPrint'); if(pr) pr.onclick=()=>window.print(); })();
@@ -1198,8 +1399,8 @@ function placeCaret(node){ const r=document.createRange(); r.selectNodeContents(
 function insertBlockAfter(b){ const nb=document.createElement('div'); nb.appendChild(document.createElement('br')); b.after(nb); placeCaret(nb); }
 
 let metaTimer=null;  // debounced so it scales to whole novels
-function scheduleMeta(){ clearTimeout(metaTimer); metaTimer=setTimeout(()=>{ if(mode==='screenplay') formatFountain(); updateWC(); buildOutline(); paginate(); }, 200); }
-ed.addEventListener('input', ()=>{ markDirty(); updateEmpty(); placeSword(); markCurrentChapter(); scheduleMeta(); scheduleAutosave(); });
+function scheduleMeta(){ clearTimeout(metaTimer); metaTimer=setTimeout(()=>{ if(mode==='screenplay') formatFountain(); updateWC(); buildOutline(); paginate(); if(window.tapeSync) tapeSync('human'); }, 200); }
+ed.addEventListener('input', ()=>{ if(window.tapeSync) tapeSync('human'); markDirty(); updateEmpty(); placeSword(); markCurrentChapter(); scheduleMeta(); scheduleAutosave(); });
 ed.addEventListener('keyup', ()=>{ placeSword(); markCurrentChapter(); });
 ['mouseup','click','focus'].forEach(ev=>ed.addEventListener(ev,()=>{ placeSword(); markCurrentChapter(); }));
 window.addEventListener('resize',()=>{ placeSword(); paginate(); });
@@ -1265,47 +1466,262 @@ function setTitle(b){ [...ed.querySelectorAll('.h')].forEach(h=>{ if(h!==b && (p
 
 // ── SCREENPLAY MODE (Fountain) — First Law: structure is free to analyze; you write the scenes ──
 const _FCL=['fslug','faction','fchar','fdlg','fparen','ftrans','fcenter'];
-function elFromText(line, prevBlank, nextNonblank, prevEl){
-  if(/^(int|ext|est|i\/e|int\.?\/ext)[\.\s]/i.test(line) || /^\.[^.\s]/.test(line)) return 'scene';
-  if(/^>.+<$/.test(line)) return 'center';
-  if(/^>/.test(line) || (line===line.toUpperCase() && /[A-Z]/.test(line) && /to:$/i.test(line))) return 'transition';
-  if(/^\(.*\)$/.test(line)) return 'paren';
-  if(prevBlank && nextNonblank && line===line.toUpperCase() && /[A-Z]/.test(line) && line.length<=38 && !/[.!?,;:]$/.test(line)) return 'character';
-  if(prevEl==='character'||prevEl==='paren'||prevEl==='dialogue') return 'dialogue';
+// A centered line is centered on the glass. Fountain only knows it by the angle brackets.
+function centerLine(line){
+  const raw=String(line==null?'':line);
+  const vis=raw.replace(/<[^>]*>/g,'').replace(/\u00a0/g,' ').trim();
+  if(!vis || /^>.+<$/.test(vis)) return raw;
+  const inner=vis.replace(/^>\s*/,'').replace(/\s*<$/,'').trim();
+  return inner ? '> '+inner+' <' : raw;
+}
+// a name, shouted or written the way a person says it. Not a sentence.
+function looksLikeCue(line){
+  if(!line || line.length>42 || /[.!?,;:]$/.test(line)) return false;
+  const bare=line.replace(/\s*\([^)]*\)\s*$/,'').replace(/\s*\^$/,'').trim();
+  if(!bare || /^(int[ .\/]|ext[ .\/]|est[ .\/]|i\/e\b)/i.test(bare)) return false;
+  if(/^(fade|cut|smash|dissolve)\b/i.test(bare)) return false;
+  const words=bare.split(/\s+/);
+  if(/^(the|a|an)\b/i.test(bare) && words.length>=3 && line.indexOf('(')<0) return false;
+  if(bare===bare.toUpperCase() && /[A-Z]/.test(bare) && bare.length<=38) return true;
+  if(words.length>4) return false;
+  return words.every(w=>/^[A-Z][A-Za-z0-9.'’\-]*$/.test(w));
+}
+function looksLikeTrans(line){
+  if(/^>/.test(line) && !/^>.+<$/.test(line)) return true;
+  if(/^(fade in:?|fade out\.?|fade to black\.?|cut to black\.?)$/i.test(line)) return true;
+  return line===line.toUpperCase() && /[A-Z]/.test(line) && /to:$/i.test(line);
+}
+// A parenthetical is italic on the glass. Fountain only knows it by the parentheses, so the file has to carry them.
+function parenLine(line){
+  const raw=String(line==null?'':line);
+  const vis=raw.replace(/<[^>]*>/g,'').replace(/\u00a0/g,' ').trim();
+  if(!vis || /^\(.*\)$/.test(vis)) return raw;
+  if(raw.indexOf('<')===-1){
+    let inner=vis;
+    if(inner.charAt(0)==='(') inner=inner.slice(1).trim();
+    if(inner.charAt(inner.length-1)===')') inner=inner.slice(0,-1).trim();
+    return inner ? '('+inner+')' : raw;
+  }
+  if(vis.charAt(0)==='(' || vis.charAt(vis.length-1)===')'){
+    let inner=vis;
+    if(inner.charAt(0)==='(') inner=inner.slice(1).trim();
+    if(inner.charAt(inner.length-1)===')') inner=inner.slice(0,-1).trim();
+    return inner ? '('+inner+')' : raw;
+  }
+  return '('+raw.trim()+')';
+}
+function lineKind(line){
+  const t=String(line||'').replace(/\u00a0/g,' ').trim();
+  if(!t) return 'blank';
+  if(/^(int|ext|est|i\/e|int\.?\/ext)[\.\s]/i.test(t) || /^\.[^.\s]/.test(t)) return 'scene';
+  if(/^>.+<$/.test(t)) return 'center';
+  if(looksLikeTrans(t)) return 'transition';
+  if(/^\(.*\)$/.test(t)) return 'paren';
+  if(looksLikeCue(t)) return 'cue';
+  return 'speech';
+}
+function speechAhead(txt, i){
+  for(let j=i+1;j<txt.length;j++){
+    const k=lineKind(txt[j]);
+    if(k==='blank') continue;
+    return k==='speech' || k==='paren';
+  }
+  return false;
+}
+function hardLine(line){
+  return lineKind(line)==='scene' || lineKind(line)==='center' || lineKind(line)==='transition' || /^\(.*\)$/.test(line);
+}
+function elFromText(line, prevBlank, nextSpeech, prevEl){
+  const k=lineKind(line);
+  if(k==='scene'||k==='center'||k==='transition'||k==='paren') return k==='paren'?'paren':k==='scene'?'scene':k==='center'?'center':'transition';
+  const open=prevBlank || !prevEl || prevEl==='action' || prevEl==='scene' || prevEl==='transition' || prevEl==='center';
+  if(open && nextSpeech && k==='cue') return 'character';
+  if(prevEl==='character'||prevEl==='paren'||prevEl==='dialogue'){
+    if(/^\([^)]*$/.test(line)) return 'paren';
+    return 'dialogue';
+  }
   return 'action';
 }
+function cssRgb(c){
+  const s=String(c||'').trim();
+  const hex=s.match(/^#([0-9a-f]{6})$/i);
+  if(hex){ const n=hex[1]; return [parseInt(n.slice(0,2),16), parseInt(n.slice(2,4),16), parseInt(n.slice(4,6),16)]; }
+  const m=s.match(/\d+/g);
+  if(!m || m.length<3) return null;
+  return [+m[0], +m[1], +m[2]];
+}
+function relLum(rgb){
+  const f=v=>{ v/=255; return v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+  return 0.2126*f(rgb[0]) + 0.7152*f(rgb[1]) + 0.0722*f(rgb[2]);
+}
+function pagePaper(){
+  const raw=getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+  return cssRgb(raw) || [36,36,36];
+}
+// Paint that matches the page hides the line. The words stay; that paint does not.
+function liftFaintInk(root){
+  const paper=pagePaper();
+  const pL=relLum(paper);
+  root.querySelectorAll('span, font').forEach(s=>{
+    const raw=(s.style && s.style.color) ? s.style.color : (s.getAttribute && s.getAttribute('color')) || '';
+    const rgb=cssRgb(raw);
+    if(!rgb) return;
+    const L=relLum(rgb), hi=Math.max(pL,L), lo=Math.min(pL,L);
+    if((hi+0.05)/(lo+0.05) >= 2) return;
+    const parent=s.parentNode; if(!parent) return;
+    while(s.firstChild) parent.insertBefore(s.firstChild, s);
+    s.remove();
+  });
+}
 function formatFountain(){
-  const blocks=[...ed.children].filter(n=>n.nodeType===1 && !n.classList.contains('pgspacer'));
-  const txt=blocks.map(b=>(b.textContent||'').replace(/ /g,' '));
+  liftFaintInk(ed);
+  const blocks=scriptBlocks();
+  const txt=blocks.map(b=>(b.textContent||'').replace(/\u00a0/g,' '));
   const _tpCredit=blocks.some(b=>/^(credit|credits|written by)$/i.test((b.dataset&&b.dataset.tp)||''));
-  let prevEl=null;
+  let prevEl=null, prevWasBlank=true;
+  const anyBreak=blocks.some(b=>b.dataset && b.dataset.break==='1');
   window._hasTitlePage = !!ed.querySelector('[data-tp]');
   const _caretB = (document.activeElement===ed) ? currentBlock() : null;
   for(let i=0;i<blocks.length;i++){
     const b=blocks[i];
-    if(b.classList.contains('h')){ _FCL.forEach(c=>b.classList.remove(c)); prevEl=null; continue; }
+    if(b.classList.contains('h')){ _FCL.forEach(c=>b.classList.remove(c)); prevEl=null; prevWasBlank=true; continue; }
     if(b.dataset.tp){ b.classList.add('ftp');
       const tpKey=(b.dataset.tp||'').toLowerCase();   // "Title:" and "title:" are the same door — the case was hiding the title page's own shape
       b.classList.toggle('ftp-title', tpKey==='title');
       b.classList.toggle('ftp-author', tpKey==='author'||tpKey==='authors');
       b.classList.toggle('ftp-nocredit', (tpKey==='author'||tpKey==='authors') && !_tpCredit);   // the credit line already says "written by" — never twice
-      prevEl=null; continue; }
-    const line=(txt[i]||'').trim();
-    if(!line){ prevEl=b.dataset.el||null; continue; }
-    const prevBlank = i===0 || (txt[i-1]||'').trim()==='';
-    const nextNonblank = (txt[i+1]||'').trim()!=='';
-    const hard = /^(int|ext|est|i\/e|int\.?\/ext)[\.\s]/i.test(line) || /^\.[^.\s]/.test(line) || /^\(.*\)$/.test(line) || /^>.+<$/.test(line) || /^>/.test(line) || (line===line.toUpperCase()&&/to:$/i.test(line));
+      prevEl=null; prevWasBlank=true; continue; }
+    let line=(txt[i]||'').trim();
+    if(/\^$/.test(line) && looksLikeCue(line.replace(/\s*\^$/,'').trim())){
+      b.dataset.dual='1';
+      if(b!==_caretB){ b.textContent=line.replace(/\s*\^$/,'').trim(); if(!(b.textContent||'').trim()) b.appendChild(document.createElement('br')); line=(b.textContent||'').trim(); }
+    }
+    if(!line){
+      const own=b.dataset.el;
+      if(own==='character'||own==='paren'||own==='dialogue'){ prevEl=own; prevWasBlank=false; continue; }
+      if((prevEl==='character'||prevEl==='paren') && speechAhead(txt, i)){ prevWasBlank=true; continue; }
+      prevEl=null; prevWasBlank=true; continue;
+    }
+    const prevBlank=prevWasBlank;
+    const ahead=speechAhead(txt, i);
+    const hard=hardLine(line);
     // the line under the caret keeps its current shape while you type — no indent snapping mid-word
     if(b===_caretB && !hard){
       const keep=b.dataset.el;
       _FCL.forEach(c=>b.classList.remove(c));
       if(keep) b.classList.add(EL2F[keep]||'faction');
-      prevEl=keep||prevEl; continue;
+      prevEl=keep||prevEl; prevWasBlank=false; continue;
     }
+    if(hard) delete b.dataset.lock;
     _FCL.forEach(c=>b.classList.remove(c));
-    const el=(b.dataset.el && !hard) ? b.dataset.el : elFromText(line, prevBlank, nextNonblank, prevEl);
-    b.dataset.el=el; b.classList.add(EL2F[el]||'faction');
-    prevEl=el;
+    let el;
+    const cur=b.dataset.el;
+    const dualCue=b.dataset.dual==='1' && lineKind(line)==='cue';
+    if(dualCue && b.dataset.lock!=='1'){
+      el='character';   // the second voice sits against the first, with no blank between
+    } else if(hard || !cur){
+      el=elFromText(line, prevBlank, ahead, prevEl);
+    } else if(b.dataset.lock==='1'){
+      el=cur;
+    } else if(cur==='action' && b.dataset.break!=='1'){
+      const under=prevEl==='character' || prevEl==='paren' || (anyBreak && prevEl==='dialogue');
+      if(under && lineKind(line)==='speech') el=/^\([^)]*$/.test(line)?'paren':'dialogue';
+      else if(lineKind(line)==='cue' && ahead && (prevBlank || !prevEl || prevEl==='action' || prevEl==='scene' || prevEl==='transition' || prevEl==='center')) el='character';
+      else el='action';
+    } else el=cur;
+    if(el==='character' && b!==_caretB && !b.querySelector('span, font')){
+      const up=line.toUpperCase();
+      if(up!==line){ b.textContent=up; if(!up) b.appendChild(document.createElement('br')); line=up; }
+    }
+    if(el==='paren' && b!==_caretB && !b.querySelector('span, font')){
+      const wrapped=parenLine(line).replace(/<[^>]*>/g,'').trim();
+      if(wrapped && wrapped!==line){ b.textContent=wrapped; line=wrapped; }
+    }
+    b.dataset.el=el;
+    if(el!=='action') delete b.dataset.break;
+    b.classList.add(EL2F[el]||'faction');
+    prevEl=el; prevWasBlank=false;
+  }
+  seatDual();
+}
+function seatDual(){
+  ed.querySelectorAll('.dual-l,.dual-r').forEach(b=>{ b.classList.remove('dual-l','dual-r'); b.style.marginTop=''; b.style.marginBottom=''; });
+  const lines=scriptBlocks();
+  const speech=el=>el==='character'||el==='dialogue'||el==='paren';
+  const groups=[];
+  const used=new Set();
+  for(let i=0;i<lines.length;i++){
+    const b=lines[i];
+    if(used.has(b)) continue;
+    if((b.dataset.el||'')!=='character' || b.dataset.dual!=='1') continue;
+    let prev=-1;
+    for(let p=i-1;p>=0;p--){
+      if(used.has(lines[p])) break;
+      const el=lines[p].dataset.el||'';
+      const txt=(lines[p].textContent||'').trim();
+      if(el==='character'){ prev=p; break; }
+      if(!txt) continue;
+      if(speech(el)) continue;
+      break;
+    }
+    if(prev<0) continue;
+    const left=[], right=[];
+    for(let k=prev;k<i;k++){
+      if(used.has(lines[k])) break;
+      const el=lines[k].dataset.el||'';
+      const txt=(lines[k].textContent||'').trim();
+      if(k>prev && txt && !speech(el)) break;
+      if(speech(el)) left.push(lines[k]);
+    }
+    for(let k=i;k<lines.length;k++){
+      if(used.has(lines[k])) break;
+      const el=lines[k].dataset.el||'';
+      if(k>i && (el==='character' || !speech(el))) break;
+      if(speech(el)) right.push(lines[k]);
+    }
+    if(!left.length || !right.length) continue;
+    left.concat(right).forEach(n=>used.add(n));
+    groups.push({left, right});
+  }
+  const wraps=[...ed.querySelectorAll(':scope > .dual-dialogue')];
+  const colNodes=col=>[...col.children].filter(n=>n.nodeType===1 && !(n.classList&&n.classList.contains('pgspacer')));
+  const same=(a,b)=>{ if(a.length!==b.length) return false; for(let n=0;n<a.length;n++) if(a[n]!==b[n]) return false; return true; };
+  let seated=wraps.length===groups.length;
+  if(seated){
+    for(let i=0;i<groups.length;i++){
+      const L=wraps[i].querySelector(':scope > .dialogue.left');
+      const R=wraps[i].querySelector(':scope > .dialogue.right');
+      if(!L||!R||!same(groups[i].left,colNodes(L))||!same(groups[i].right,colNodes(R))){ seated=false; break; }
+    }
+  }
+  if(seated) return;
+  const sel=window.getSelection();
+  const pin=(sel&&sel.rangeCount&&ed.contains(sel.anchorNode))?{node:sel.anchorNode,off:sel.anchorOffset}:null;
+  wraps.forEach(wrap=>{
+    const held=[];
+    [...wrap.children].forEach(col=>{
+      if(!col.classList||!col.classList.contains('dialogue')) return;
+      [...col.children].forEach(line=>{ if(line.nodeType===1) held.push(line); });
+    });
+    held.forEach(line=>wrap.before(line));
+    wrap.remove();
+  });
+  groups.forEach(g=>{
+    const wrap=document.createElement('div'); wrap.className='dual-dialogue';
+    const L=document.createElement('div'); L.className='dialogue left';
+    const R=document.createElement('div'); R.className='dialogue right';
+    wrap.append(L,R);
+    g.left[0].before(wrap);
+    g.left.forEach(n=>L.appendChild(n));
+    g.right.forEach(n=>R.appendChild(n));
+  });
+  if(pin&&pin.node.isConnected){
+    try{
+      const r=document.createRange();
+      const max=pin.node.nodeType===3?pin.node.length:pin.node.childNodes.length;
+      r.setStart(pin.node, Math.min(pin.off, max)); r.collapse(true);
+      sel.removeAllRanges(); sel.addRange(r);
+    }catch(x){}
   }
 }
 function clearFountain(){ _FCL.forEach(c=> ed.querySelectorAll('.'+c).forEach(b=>b.classList.remove(c))); }
@@ -1315,13 +1731,22 @@ function clearFountain(){ _FCL.forEach(c=> ed.querySelectorAll('.'+c).forEach(b=
 // margins alone give clean single spacing, and getScript() re-adds the blank lines when saving.
 function stripScreenplayBlanks(){
   if(mode!=='screenplay') return;
-  const kids=[...ed.children].filter(n=>n.nodeType===1 && !n.classList.contains('pgspacer'));
+  const kids=scriptBlocks();
   const isEl=b=> b.dataset && b.dataset.el && !b.classList.contains('h') && !(b.dataset&&b.dataset.tp);
   const isBlank=b=> !(b.dataset&&b.dataset.tp) && !b.classList.contains('h')
-                    && (b.textContent||'').replace(/ /g,' ').trim()==='';
+                    && (b.textContent||'').replace(/\u00a0/g,' ').trim()==='';
+  const speech=el=>el==='character'||el==='dialogue'||el==='paren';
   for(let i=0;i<kids.length;i++){
-    // drop a blank line only when it sits right after real content (a separator, not leading/title space)
-    if(isBlank(kids[i]) && i>0 && isEl(kids[i-1])) kids[i].remove();
+    // drop a blank only when it sits right after real content (a separator, not leading/title space)
+    if(!(isBlank(kids[i]) && i>0 && isEl(kids[i-1]))) continue;
+    const prev=kids[i-1].dataset.el;
+    let n=i;
+    while(n<kids.length && isBlank(kids[n])) n++;
+    const next=n<kids.length ? kids[n] : null;
+    // the blank ended a speech. The next action must not get pulled back into it.
+    if(next && speech(prev) && isEl(next) && next.dataset.el!=='dialogue' && next.dataset.el!=='paren') next.dataset.break='1';
+    for(let k=i;k<n;k++) kids[k].remove();
+    i=n-1;
   }
 }
 function applyMode(){
@@ -1330,7 +1755,7 @@ function applyMode(){
   const ms=$('mode'); if(ms) ms.value=mode;
   const oh=$('outlineHead'); if(oh) oh.textContent = (mode==='screenplay'?'Scenes':'Chapters');
   sword.classList.toggle('down', mode==='screenplay');
-  if(mode==='screenplay'){ formatFountain(); stripScreenplayBlanks(); } else clearFountain();
+  if(mode==='screenplay'){ formatFountain(); stripScreenplayBlanks(); formatFountain(); } else clearFountain();
   buildOutline(); placeSword(); paginate();
 }
 function setMode(m){ mode=m; try{ localStorage.setItem('sp-mode',m); }catch(x){} applyMode(); ed.focus(); }
@@ -1340,11 +1765,31 @@ function setMode(m){ mode=m; try{ localStorage.setItem('sp-mode',m); }catch(x){}
 const EL2F={scene:'fslug',action:'faction',character:'fchar',dialogue:'fdlg',paren:'fparen',transition:'ftrans',center:'fcenter'};
 const RING=['scene','action','character','dialogue','paren','transition'];
 function tabCycle(b, back){ const cur=b.dataset.el||'action'; const empty=(b.textContent||'').trim()===''; let next; if(empty && cur==='character'){ next='transition'; } else { const i=RING.indexOf(cur); next=RING[((i<0?1:i)+(back?-1:1)+RING.length)%RING.length]; } setEl(b,next); }
-function setEl(b, el){ b.dataset.el=el; _FCL.forEach(c=>b.classList.remove(c)); b.classList.add(EL2F[el]||'faction'); }
-function newBlockAfter(b, el){ const nb=document.createElement('div'); nb.dataset.el=el; nb.classList.add(EL2F[el]||'faction'); nb.appendChild(document.createElement('br')); b.after(nb); placeCaret(nb); return nb; }
-function knownChars(){ const s=new Set(); ed.querySelectorAll('[data-el="character"]').forEach(b=>{ const t=(b.textContent||'').trim(); if(t) s.add(t.toUpperCase()); }); return [...s].sort(); }
+function setEl(b, el){
+  b.dataset.el=el; b.dataset.lock='1';
+  if(el==='action') b.dataset.break='1'; else delete b.dataset.break;
+  _FCL.forEach(c=>b.classList.remove(c)); b.classList.add(EL2F[el]||'faction');
+}
+function newBlockAfter(b, el){
+  const nb=document.createElement('div'); nb.dataset.el=el; nb.dataset.lock='1';
+  if(el==='action') nb.dataset.break='1';
+  nb.classList.add(EL2F[el]||'faction'); nb.appendChild(document.createElement('br'));
+  const col=b.parentElement;
+  const inCol=!!(col && col.classList && col.classList.contains('dialogue') && col.parentElement && col.parentElement.classList.contains('dual-dialogue'));
+  if(inCol && (el==='dialogue' || el==='paren')) b.after(nb);
+  else if(inCol) col.parentElement.after(nb);
+  else b.after(nb);
+  placeCaret(nb); return nb;
+}
+function knownChars(){ const s=new Set(); ed.querySelectorAll('[data-el="character"]').forEach(b=>{
+  let t=(b.textContent||'').trim().toUpperCase().replace(/\s*\^$/,'').replace(/\s*\([^)]*\)\s*$/,'').trim(); if(t) s.add(t); }); return [...s].sort(); }
+function cueBlock(b){
+  let n=b;
+  while(n && n.nodeType===1 && (n.classList.contains('pgspacer') || (n.dataset.el==='dialogue'||n.dataset.el==='paren'))) n=lineStep(n,-1);
+  return (n && n.dataset && n.dataset.el==='character') ? n : null;
+}
 function getScript(){
-  const blocks=[...ed.children].filter(n=>n.nodeType===1 && !n.classList.contains('pgspacer'));
+  const blocks=scriptBlocks();
   const out=[]; let prevEl=null, blankOpen=true, inLead=true;
   for(const b of blocks){
     if(b.classList.contains('h')){ const t=serializeInline(b); const lvl=parseInt(b.dataset&&b.dataset.level)||1;
@@ -1356,7 +1801,10 @@ function getScript(){
     if(t.trim()===''){ out.push(t); prevEl=null; blankOpen=true; inLead=false; continue; }  // blanks & two-space lines verbatim
     inLead=false;
     const el=b.dataset.el||'action';
-    const line=((el==='character'||el==='transition') && t.indexOf('<')===-1) ? t.toUpperCase() : t;
+    let line=((el==='character'||el==='transition') && t.indexOf('<')===-1) ? t.toUpperCase() : t;
+    if(el==='character'){ line=line.replace(/\s*\^$/,'').trim(); if(b.dataset.dual==='1') line+=' ^'; }
+    if(el==='paren') line=parenLine(line);
+    if(el==='center') line=centerLine(line);
     const adjacent=(el==='dialogue'||el==='paren') && (prevEl==='character'||prevEl==='paren'||prevEl==='dialogue');
     if(out.length && !adjacent && !blankOpen) out.push('');
     out.push(line); prevEl=el; blankOpen=false;
@@ -1383,11 +1831,210 @@ function caRender(block){
 function caAccept(name){ const b=_ca.el||currentBlock(); caHide(); if(!b) return; b.textContent=name; setEl(b,'character');
   const nb=newBlockAfter(b,'dialogue'); markDirty(); scheduleMeta(); scheduleAutosave(); placeSword(); ed.focus(); placeCaret(nb); }
 function openCharAuto(block){ _ca.sel=0; caRender(block); }
+function histReset(){ _hist.past=[]; _hist.future=[]; histPaint(); }
+function histShot(){
+  const blocks=scriptBlocks();
+  const b=currentBlock();
+  let i=b?blocks.indexOf(b):-1, o=0;
+  const sel=window.getSelection();
+  if(b && i>=0 && sel && sel.rangeCount && b.contains(sel.anchorNode)){
+    const pre=document.createRange(); pre.selectNodeContents(b); pre.setEnd(sel.anchorNode, sel.anchorOffset); o=pre.toString().length;
+  }
+  return { text: curContent(), i: i, o: o };
+}
+function histPaint(){
+  const on=_hist.past.length>0;
+  ['undoBtn','m2Undo'].forEach(id=>{ const b=$(id); if(!b) return; b.disabled=!on; });
+}
+function histMark(){
+  if(_hist.mute) return;
+  const shot=histShot();
+  const top=_hist.past[_hist.past.length-1];
+  if(top && top.text===shot.text && top.i===shot.i && top.o===shot.o) return;
+  _hist.past.push(shot);
+  if(_hist.past.length>200) _hist.past.shift();
+  _hist.future=[];
+  histPaint();
+}
+function placeCaretAt(block, off){
+  if(!block) return;
+  const w=document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  let left=off||0, n;
+  while((n=w.nextNode())){
+    if(n.textContent.length>=left){
+      const r=document.createRange(); r.setStart(n, left); r.collapse(true);
+      const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); return;
+    }
+    left-=n.textContent.length;
+  }
+  placeCaret(block);
+}
+function histRestore(shot){
+  _hist.mute=true;
+  try{
+    setText(shot.text||'');
+    applyMode();
+    const blocks=scriptBlocks();
+    const b=shot.i>=0 ? blocks[Math.min(shot.i, blocks.length-1)] : null;
+    ed.focus();
+    if(b) placeCaretAt(b, shot.o||0);
+  } finally { _hist.mute=false; }
+  markDirty(); scheduleMeta(); scheduleAutosave(); placeSword(); histPaint();
+}
+function undo(){
+  if(!_hist.past.length) return;
+  const cur=histShot();
+  let prev=_hist.past.pop();
+  while(prev && prev.text===cur.text && prev.i===cur.i && prev.o===cur.o && _hist.past.length) prev=_hist.past.pop();
+  if(!prev || (prev.text===cur.text && prev.i===cur.i && prev.o===cur.o)){ histPaint(); return; }
+  _hist.future.push(cur);
+  histRestore(prev);
+}
+function redo(){
+  if(!_hist.future.length) return;
+  _hist.past.push(histShot());
+  histRestore(_hist.future.pop());
+}
+function histKey(e){
+  if(typeof isOptEnter==='function' && isOptEnter(e)) return true;
+  if(e.key==='Enter' || e.key==='Tab') return true;
+  if((e.metaKey||e.ctrlKey) && (e.key==='Enter' || e.key==='.' || e.code==='Period')) return true;
+  return false;
+}
+['undoBtn','m2Undo'].forEach(id=>{ const b=$(id); if(b) b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); undo(); }; });
+document.addEventListener('keydown', e=>{
+  if(!(e.metaKey||e.ctrlKey) || e.altKey) return;
+  const k=e.key.toLowerCase();
+  if(k!=='z' && k!=='y') return;
+  const t=e.target;
+  if(!(t===ed || (t&&ed.contains(t)))) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if(k==='y' || e.shiftKey) redo(); else undo();
+}, true);
+ed.addEventListener('beforeinput', ()=>{ if(!_hist.mute) histMark(); }, true);
 ed.addEventListener('input', ()=>{ if(mode!=='screenplay') return; const b=currentBlock();
   if(b&&b.dataset&&b.dataset.el==='character') caRender(b); else caHide(); });
+function _skipSp(n, dir){ while(n && n.classList && n.classList.contains('pgspacer')) n=n[dir]; return n; }
+function _speechEnd(cue){
+  let n=cue, last=cue;
+  while(n){
+    const x=lineStep(n, 1);
+    if(!x || !x.dataset || (x.dataset.el!=='dialogue' && x.dataset.el!=='paren')) break;
+    last=x; n=x;
+  }
+  return last;
+}
+let _optAt=0, _optHeld=false;
+document.addEventListener('keydown', e=>{ if(e.key==='Alt'||e.code==='AltLeft'||e.code==='AltRight') _optHeld=true; }, true);
+document.addEventListener('keyup', e=>{ if(e.key==='Alt'||e.code==='AltLeft'||e.code==='AltRight') _optHeld=false; }, true);
+function isOptEnter(e){
+  if(e.shiftKey || e.metaKey || e.ctrlKey) return false;
+  const alt=e.altKey || (e.getModifierState && e.getModifierState('Alt'));
+  if(!alt) return false;
+  return e.key==='Enter' || e.code==='Enter' || e.code==='NumpadEnter' || e.keyCode===13 || e.keyCode===3;
+}
+function seatOtherVoice(){
+  const now=Date.now(); if(now-_optAt<80) return; _optAt=now;
+  const b=currentBlock(); if(!b || b.nodeType!==1) return;
+  if((b.dataset && b.dataset.tp) || b.classList.contains('h')) return;
+  const el=b.dataset.el||'action';
+  const done=()=>{ formatFountain(); markDirty(); scheduleMeta(); scheduleAutosave(); placeSword(); };
+  const voiceBefore=block=>{
+    let p=lineStep(block,-1);
+    while(p && !p.classList.contains('h') && !(p.dataset&&p.dataset.tp)){
+      if(!(p.textContent||'').trim()){ p=lineStep(p,-1); continue; }
+      const pel=p.dataset&&p.dataset.el;
+      if(pel==='character'||pel==='dialogue'||pel==='paren') return cueBlock(p)||p;
+      if(pel==='action'||pel==='scene'||pel==='transition'||pel==='center'||!pel){ p=lineStep(p,-1); continue; }
+      break;
+    }
+    return null;
+  };
+  if(el==='character'){
+    if(b.dataset.dual==='1'){ delete b.dataset.dual; done(); return; }
+    if(voiceBefore(b)){ b.dataset.dual='1'; done(); return; }
+    const end=_speechEnd(b);
+    let nxt=lineStep(end, 1);
+    if(nxt && nxt.dataset && nxt.dataset.el==='character'){
+      nxt.dataset.dual='1'; done(); placeCaret(nxt); if(!(nxt.textContent||'').trim()) openCharAuto(nxt); return;
+    }
+    const nb=newBlockAfter(end,'character'); nb.dataset.dual='1';
+    done(); openCharAuto(nb); return;
+  }
+  const cue=(el==='dialogue'||el==='paren') ? cueBlock(b) : null;
+  if(cue){
+    const end=_speechEnd(cue);
+    let nxt=lineStep(end, 1);
+    if(nxt && nxt.dataset && nxt.dataset.el==='character'){
+      if(nxt.dataset.dual==='1') delete nxt.dataset.dual; else nxt.dataset.dual='1';
+      done(); placeCaret(nxt); if(!(nxt.textContent||'').trim()) openCharAuto(nxt);
+      return;
+    }
+    const nb=newBlockAfter(end, 'character'); nb.dataset.dual='1';
+    done(); openCharAuto(nb); return;
+  }
+  const above=voiceBefore(b);
+  const empty=!(b.textContent||'').trim();
+  if(above && empty){
+    setEl(b,'character'); b.dataset.dual='1';
+    if(!b.firstChild) b.appendChild(document.createElement('br'));
+    done(); openCharAuto(b); return;
+  }
+  if(above){
+    const end=_speechEnd(above);
+    const nb=newBlockAfter(end, 'character'); nb.dataset.dual='1';
+    done(); openCharAuto(nb); return;
+  }
+  let left=b;
+  if(empty && el!=='scene' && el!=='transition'){ setEl(b,'character'); left=b; if(!left.firstChild) left.appendChild(document.createElement('br')); }
+  else left=newBlockAfter(b,'character');
+  const right=newBlockAfter(left,'character'); right.dataset.dual='1';
+  done(); placeCaret(left); openCharAuto(left);
+}
+ed.addEventListener('beforeinput', e=>{
+  if(mode!=='screenplay') return;
+  if(!(e.altKey || _optHeld || (e.getModifierState && e.getModifierState('Alt')))) return;
+  if(e.inputType!=='insertLineBreak' && e.inputType!=='insertParagraph') return;
+  e.preventDefault(); seatOtherVoice();
+}, true);
+function placeCaretEnd(node){ const r=document.createRange(); r.selectNodeContents(node); r.collapse(false);
+  const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
 function flowKey(e){
   if(mode!=='screenplay') return;
+  if(histKey(e)) histMark();
+  if(isOptEnter(e)){ e.preventDefault(); e.stopImmediatePropagation(); seatOtherVoice(); return; }
   const cmd=e.metaKey||e.ctrlKey;
+  /* the keyboard is how he moves. Dictation keeps the caret. ⌘↑⌘↓ scenes, ⌥↑⌥↓ lines. */
+  if(cmd && !e.altKey && !e.shiftKey && (e.key==='ArrowUp' || e.key==='ArrowDown')){
+    const heads=[...ed.querySelectorAll('.fslug')].filter(h=>(h.textContent||'').trim());
+    if(!heads.length) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const b=currentBlock(); let cur=-1;
+    heads.forEach((h,i)=>{ if(b && (h===b || (h.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING))) cur=i; });
+    const n=e.key==='ArrowDown' ? Math.min(heads.length-1, cur+1) : Math.max(0, cur<=0 ? 0 : cur-1);
+    jumpToEl(heads[n]); return;
+  }
+  if(e.altKey && !cmd && (e.key==='ArrowUp' || e.key==='ArrowDown')){
+    const b=currentBlock(); if(!b) return;
+    const n=lineStep(b, e.key==='ArrowDown'?1:-1);
+    if(!n || n.nodeType!==1) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    placeCaret(n); ed.focus(); return;
+  }
+  const tb=currentBlock();
+  if(tb && tb.dataset && tb.dataset.tp && (e.key==='Tab' || (e.key==='Enter' && !e.shiftKey))){
+    e.preventDefault(); e.stopImmediatePropagation();
+    const tps=[...ed.querySelectorAll('[data-tp]')];
+    const i=tps.indexOf(tb), nxt=e.shiftKey ? tps[i-1] : tps[i+1];
+    if(nxt){ placeCaretEnd(nxt); return; }
+    if(e.shiftKey) return;
+    let w=tps[tps.length-1].nextElementSibling;
+    while(w && w.classList && w.classList.contains('pgspacer')) w=w.nextElementSibling;
+    if(!w || (w.dataset && w.dataset.tp)) newBlockAfter(tps[tps.length-1], 'scene');
+    else if(!(w.textContent||'').trim()){ setEl(w,'scene'); placeCaret(w); }
+    else placeCaret(w);
+    markDirty(); scheduleMeta(); scheduleAutosave(); placeSword(); return;
+  }
   if(cmd && (e.key==='Enter' || e.key==='.' || e.code==='Period')){
     e.preventDefault(); e.stopImmediatePropagation();
     const b=currentBlock(); if(!b||b.nodeType!==1) return;
@@ -1410,8 +2057,12 @@ function flowKey(e){
   if(e.key!=='Enter' || e.shiftKey) return;
   e.preventDefault(); e.stopImmediatePropagation();
   const b=currentBlock(); if(!b||b.nodeType!==1) return;
-  caHide();   // Enter keeps YOUR typed name — suggestions accept only via Tab, arrows, or click
   const empty=(b.textContent||'').trim()===''; const cur=b.dataset.el||'action';
+  if(cur==='character' && !empty && _ca.opts && _ca.opts.length){
+    const pick=_ca.opts[Math.max(0,_ca.sel)];
+    if(pick){ caAccept(pick); return; }   // the letter already chose the name. Return takes it.
+  }
+  caHide();
   const selE=window.getSelection();
   if(!empty && selE && selE.rangeCount && b.contains(selE.getRangeAt(0).startContainer)){
     const r0=selE.getRangeAt(0); const rEnd=document.createRange();
@@ -1447,20 +2098,161 @@ ed.addEventListener('input', ()=>{                     // heal bare root text (s
     } else if(n.nodeName==='BR'){ const d=document.createElement('div'); ed.insertBefore(d,n); d.appendChild(n); }
     n=nx; }
 });
-ed.addEventListener('paste', e=>{                      // plain text only, split into real line-blocks
-  const cd=e.clipboardData||window.clipboardData; if(!cd) return;
-  const txt=cd.getData('text/plain'); if(txt==null) return;
-  e.preventDefault();
-  const lines=txt.replace(/\r\n?/g,'\n').split('\n');
-  document.execCommand('insertText', false, lines[0]);
-  if(lines.length>1){
-    let anchor=currentBlock(); if(!anchor||anchor.nodeType!==1) anchor=ed.lastElementChild;
-    for(let i=1;i<lines.length;i++){ const d=blockFor(lines[i]); anchor.after(d); anchor=d; }
-    const r=document.createRange(); r.selectNodeContents(anchor); r.collapse(false);
-    const sl=getSelection(); sl.removeAllRanges(); sl.addRange(r);
+function blockFrom(node){
+  if(!node || node===ed) return null;
+  const line=lineOf(node);
+  if(!line || line===ed || line.nodeType!==1) return null;
+  if(line.classList && (line.classList.contains('pgspacer') || line.classList.contains('pagelayer') || line.classList.contains('dual-dialogue'))) return null;
+  return line;
+}
+function pointInBlock(block, node, offset){
+  if(!block) return 0;
+  if(node===block){
+    let n=0, i=0;
+    for(const c of block.childNodes){ if(i++>=offset) break; n+=c.textContent ? c.textContent.length : 0; }
+    return n;
   }
+  try{
+    const pre=document.createRange(); pre.selectNodeContents(block); pre.setEnd(node, offset);
+    return pre.toString().length;
+  }catch(x){ return (block.textContent||'').length; }
+}
+function setBlockText(b, s){
+  b.textContent=s||'';
+  if(!(b.textContent||'').length) b.appendChild(document.createElement('br'));
+}
+function plainLines(txt){
+  let lines=String(txt||'').replace(/\r\n?/g,'\n').replace(/\u2028|\u2029/g,'\n').split('\n');
+  if(lines.length>1 && lines[lines.length-1]==='') lines.pop();   // a copied line brings one trailing break; it is not a blank line
+  return lines;
+}
+function blockSlice(b, from, to){
+  let t=(b.textContent||'').replace(/\u00a0/g,' ');
+  const end=to==null ? t.length : to;
+  const whole=from<=0 && end>=t.length;
+  t=t.slice(Math.max(0,from), end);
+  if(whole && b.dataset && b.dataset.el==='character' && b.dataset.dual==='1') t=t.replace(/\s*\^$/,'').trim()+' ^';
+  if(whole && b.dataset && b.dataset.el==='paren') t=parenLine(t);
+  if(whole && b.dataset && b.dataset.el==='center') t=centerLine(t);
+  return t;
+}
+function selectionPlain(){
+  const sel=window.getSelection();
+  if(!sel || !sel.rangeCount || sel.isCollapsed) return null;
+  const r=sel.getRangeAt(0);
+  if(!ed.contains(r.startContainer) || !ed.contains(r.endContainer)) return null;
+  const a=blockFrom(r.startContainer), b=blockFrom(r.endContainer);
+  if(!a || !b) return null;
+  if(a===b){
+    const from=pointInBlock(a, r.startContainer, r.startOffset), to=pointInBlock(a, r.endContainer, r.endOffset);
+    return blockSlice(a, Math.min(from,to), Math.max(from,to));
+  }
+  const lines=scriptBlocks();
+  const ia=lines.indexOf(a), ib=lines.indexOf(b);
+  if(ia<0 || ib<0) return null;
+  const lo=Math.min(ia,ib), hi=Math.max(ia,ib);
+  const parts=[];
+  for(let i=lo;i<=hi;i++){
+    const n=lines[i];
+    if(n.classList && n.classList.contains('pgspacer')) continue;
+    if(n===a) parts.push(blockSlice(n, pointInBlock(n, r.startContainer, r.startOffset), null));
+    else if(n===b) parts.push(blockSlice(n, 0, pointInBlock(n, r.endContainer, r.endOffset)));
+    else parts.push(blockSlice(n, 0, null));
+  }
+  return parts.join('\n');
+}
+function deleteRange(){
+  const sel=window.getSelection();
+  if(!sel || !sel.rangeCount || sel.isCollapsed) return false;
+  const r=sel.getRangeAt(0);
+  const a=blockFrom(r.startContainer), b=blockFrom(r.endContainer);
+  if(!a || !b) return false;
+  if(a===b){
+    const from=pointInBlock(a, r.startContainer, r.startOffset);
+    const to=pointInBlock(a, r.endContainer, r.endOffset);
+    const t=(a.textContent||'');
+    const lo=Math.min(from,to), hi=Math.max(from,to);
+    setBlockText(a, t.slice(0,lo)+t.slice(hi));
+    placeCaretAt(a, lo);
+    return true;
+  }
+  const headLen=pointInBlock(a, r.startContainer, r.startOffset);
+  const tailFrom=pointInBlock(b, r.endContainer, r.endOffset);
+  const head=(a.textContent||'').slice(0, headLen);
+  const tail=(b.textContent||'').slice(tailFrom);
+  const lines=scriptBlocks();
+  const ia=lines.indexOf(a), ib=lines.indexOf(b);
+  if(ia<0 || ib<0) return false;
+  const lo=Math.min(ia,ib), hi=Math.max(ia,ib);
+  const home=lines[hi+1] || lines[lo-1] || null;
+  for(let i=lo+1;i<hi;i++) lines[i].remove();
+  if(!head && !tail){
+    a.remove(); b.remove();
+    if(home && home.isConnected && !(home.classList && home.classList.contains('pgspacer'))) placeCaret(home);
+    return true;
+  }
+  if(!head){ a.remove(); setBlockText(b, tail); placeCaret(b); return true; }
+  setBlockText(a, head);
+  if(tail) setBlockText(b, tail); else b.remove();
+  placeCaretAt(a, head.length);
+  return true;
+}
+function finishEdit(block, off){
+  window._pgSig='';
+  if(mode==='screenplay'){ formatFountain(); stripScreenplayBlanks(); formatFountain(); }
+  if(block && block.isConnected){ ed.focus(); placeCaretAt(block, off||0); }
+  if(mode==='screenplay') paginate();   // drop a stale page gap now, not a beat later
+  if(block && block.isConnected) placeCaretAt(block, off||0);
   markDirty(); updateEmpty(); updateWC(); scheduleMeta(); scheduleAutosave(); placeSword();
-});
+}
+function insertPlain(txt){
+  histMark();
+  caHide();
+  const sel=window.getSelection();
+  if(sel && !sel.isCollapsed) deleteRange();
+  const lines=plainLines(txt);
+  let b=currentBlock();
+  if(!b){
+    let anchor=null;
+    lines.forEach(l=>{ const d=blockFor(l); if(anchor) anchor.after(d); else ed.appendChild(d); anchor=d; });
+    finishEdit(anchor, ((anchor&&anchor.textContent)||'').length);
+    return;
+  }
+  const full=b.textContent||'';
+  const off=pointInBlock(b, (sel&&sel.rangeCount)?sel.getRangeAt(0).startContainer:b, (sel&&sel.rangeCount)?sel.getRangeAt(0).startOffset:0);
+  const head=full.slice(0, off), tail=full.slice(off);
+  setBlockText(b, head+(lines[0]||''));
+  let anchor=b;
+  for(let i=1;i<lines.length;i++){ const d=blockFor(lines[i]); anchor.after(d); anchor=d; }
+  const end=lines.length===1 ? head.length+(lines[0]||'').length : (lines[lines.length-1]||'').length;
+  if(tail) setBlockText(anchor, (anchor.textContent||'')+tail);
+  finishEdit(anchor, end);
+}
+function onPaste(e){
+  const cd=e.clipboardData||window.clipboardData; if(!cd) return;
+  e.preventDefault();   // the page's own gap must not ride in as HTML
+  const text=cd.getData('text/plain')||'';
+  if(!text) return;
+  insertPlain(text);
+}
+function onCopy(e){
+  const text=selectionPlain(); if(text==null || !e.clipboardData) return;
+  e.preventDefault();
+  e.clipboardData.setData('text/plain', text);
+}
+function onCut(e){
+  const text=selectionPlain(); if(text==null || !e.clipboardData) return;
+  e.preventDefault();
+  e.clipboardData.setData('text/plain', text);
+  histMark();
+  deleteRange();
+  const b=currentBlock();
+  const sel=getSelection();
+  finishEdit(b, (b&&sel&&sel.anchorNode)?pointInBlock(b, sel.anchorNode, sel.anchorOffset):0);
+}
+ed.addEventListener('paste', onPaste);
+ed.addEventListener('copy', onCopy);
+ed.addEventListener('cut', onCut);
 
 // ── AUTOSAVE — purely MECHANICAL, ZERO API. Lowering API per script is the product; autosave never calls the model. ──
 const AUTOSAVE_DIR='scripts';
@@ -1509,6 +2301,112 @@ window.addEventListener('beforeunload', e=>{
   }
 });
 function scheduleAutosave(){ if(onShelf()) return; clearTimeout(_as.t); _as.t=setTimeout(autosaveNow, 1200); }   // ~every few words / on a typing pause
+
+const PEN_INKS = ['#7ee0d0','#f2c14e','#8eb6ff','#e59bff','#ff8f8f','#9be7a8'];
+function penInk(){
+  try{ const c=localStorage.getItem('squatch.pen.ink'); if(PEN_INKS.indexOf(c)>=0) return c; }catch(x){}
+  return PEN_INKS[0];
+}
+function armPenInk(hex){
+  if(PEN_INKS.indexOf(hex)<0) hex=PEN_INKS[0];
+  try{ localStorage.setItem('squatch.pen.ink', hex); }catch(x){}
+  document.body.style.setProperty('--pen-ink', hex);
+  ed.style.caretColor = hex;
+  document.querySelectorAll('#penInks button').forEach(b=>b.classList.toggle('on', b.dataset.ink===hex));
+}
+function penType(e){
+  if(!document.body.classList.contains('pen') || ed.contentEditable==='false') return;
+  if(e.inputType!=='insertText' || !e.data) return;
+  e.preventDefault();
+  const sel=window.getSelection();
+  if(!sel || !sel.rangeCount || !ed.contains(sel.anchorNode)) return;
+  const range=sel.getRangeAt(0);
+  range.deleteContents();
+  const span=document.createElement('span');
+  span.style.color=penInk();
+  span.textContent=e.data;
+  range.insertNode(span);
+  const after=document.createRange();
+  after.setStartAfter(span); after.collapse(true);
+  sel.removeAllRanges(); sel.addRange(after);
+  ed.dispatchEvent(new InputEvent('input', {bubbles:true, inputType:'insertText', data:e.data}));
+}
+function penSave(){
+  if(!window.PEN || !penToken) return;
+  if(_sv.inflight){ _sv.pending=true; return; }
+  const content=curContent();
+  const gen=_sv.gen;
+  const base=penBase;
+  _sv.inflight=true;
+  const word=($('penWord')&&$('penWord').value)||'';
+  fetch('/api/pen/'+penToken, {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({content:content, base:base, ink:penInk(), word:word})})
+    .then(r=>r.json().then(j=>({s:r.status, j:j}), ()=>({s:r.status, j:{}})))
+    .then(o=>{
+      _sv.inflight=false;
+      if(o.s===200 && o.j && o.j.ok){
+        penBase=o.j.at||penBase;
+        if(gen===_sv.gen){ dirty=false; setStatus('saved','ok'); }
+        if(_sv.pending){ _sv.pending=false; if(_sv.gen!==gen) penSave(); }
+        return;
+      }
+      _sv.pending=false;
+      if(o.s===409 && o.j && curContent()===content){
+        setText(o.j.content||''); applyMode(); penBase=o.j.at||''; dirty=false;
+        setStatus('the page moved','err'); return;
+      }
+      if(o.s===403){ setStatus(o.j&&o.j.error==='you can read'?'you can read':'the word','err'); return; }
+      setStatus('not saved','err');
+    })
+    .catch(()=>{ _sv.inflight=false; _sv.pending=false; setStatus('not saved','err'); });
+}
+function penPoll(){
+  if(!window.PEN || dirty || _sv.inflight) return;
+  fetch('/api/pen/'+penToken).then(r=>r.ok?r.json():null).then(j=>{
+    if(!j || dirty || _sv.inflight) return;
+    if((j.at||'')===penBase) return;
+    setText(j.content||'');
+    applyMode();
+    penBase=j.at||'';
+    dirty=false;
+  }).catch(()=>{});
+}
+async function penBoot(){
+  const ink=penInk(); armPenInk(ink);
+  const box=$('penInks');
+  if(box && !box.childElementCount){
+    PEN_INKS.forEach(hex=>{
+      const b=document.createElement('button');
+      b.type='button'; b.dataset.ink=hex; b.style.background=hex; b.title='this ink';
+      b.addEventListener('click', ()=>armPenInk(hex));
+      box.appendChild(b);
+    });
+    armPenInk(ink);
+  }
+  const u=$('penUndo'); if(u) u.onclick=()=>{ const b=$('undoBtn'); if(b) b.click(); };
+  const pg=$('penPages'); if(pg) pg.onclick=()=>{ try{ openPageView(); }catch(x){} };
+  try{
+    const r=await fetch('/api/pen/'+penToken);
+    if(!r.ok){ setStatus('this pen is closed','err'); return; }
+    const j=await r.json();
+    setText(j.content||'');
+    applyMode();
+    penBase=j.at||'';
+    dirty=false;
+    const p=$('path'); if(p) p.textContent=j.name||'page';
+    const pw=$('penWord');
+    if(j.write==='shut'){ ed.contentEditable='false'; if(pw) pw.hidden=true; setStatus('you can read','err'); }
+    else { ed.contentEditable='true'; if(pw) pw.hidden=!j.need; if(!j.need) ed.focus(); }
+  }catch(e){ setStatus('the page did not open','err'); }
+  setInterval(penPoll, 2000);
+}
+if(window.PEN){
+  document.body.classList.add('pen');
+  const _pp=$('path'); if(_pp) _pp.contentEditable='false';
+  shelfPut=function(){};
+  scheduleAutosave=function(){ clearTimeout(_as.t); _as.t=setTimeout(penSave, 700); };
+  autosaveNow=penSave;
+  ed.addEventListener('beforeinput', penType, true);
+}
 
 // SYNC SYSTEM FONTS — pull every installed family into the picker (Local Font Access API)
 let _sysFontsLoaded=false;
@@ -1576,7 +2474,7 @@ function migrateHeadings(){ const l1=[...ed.querySelectorAll('.h')].filter(h=>(p
 function autoDetectChapters(){
   let count=0;
   [...ed.children].forEach(b=>{
-    if(b.nodeType!==1 || (b.classList && (b.classList.contains('h')||b.classList.contains('pgspacer')))) return;
+    if(b.nodeType!==1 || (b.classList && (b.classList.contains('h')||b.classList.contains('pgspacer')||b.classList.contains('dual-dialogue')))) return;
     if(looksLikeChapter(b.textContent)){ b.classList.add('h'); b.dataset.level='2'; count++; }
   });
   return count;
@@ -1807,32 +2705,31 @@ async function loadChatHistory(){
       chatAdd(m.content||'', m.role==='user'?'user':'ai');
       chatHistory.push({role:m.role, content:m.content||''});
     });
-    if(chatHistory.length>20) chatHistory=chatHistory.slice(-20);
+    if(chatHistory.length>200) chatHistory=chatHistory.slice(-200);
     chatLog.scrollTop=chatLog.scrollHeight;
   }catch(e){ /* no history yet for this script — a quiet, fresh chat */ }
 }
-function keepChat(){ try{ localStorage.setItem('squatch.chat:'+(curPath||''), JSON.stringify(chatHistory.slice(-20))); }catch(x){} }
+function keepChat(){ try{ localStorage.setItem('squatch.chat:'+(curPath||''), JSON.stringify(chatHistory.slice(-200))); }catch(x){} }
 async function sendChat(blocks, label){
   const q=chatBox.value.trim(); if(!q && !blocks) return;
   chatAdd(label||q,'user'); chatBox.value=''; chatGrow();
   chatHistory.push({role:'user', content:label||q}); keepChat();
   const pend=chatAdd('…','ai');
   try{
-    const key=squatchKey();
-    if(!key) throw new Error('Squatch’s door is Anthropic; an sk-ant- key opens it (the cigarette, below).');
-    if(!paidOpen('anthropic')) throw new Error('Squatch’s door costs coin: the cigarette, the coin line, the word Cha-ching.');
+    const key=squatchKey(), door=squatchDoor();
+    if(!key) throw new Error('Press Squatch and paste the key.');
+    if(!paidOpen(door)) throw new Error('Press Squatch, then the coin line: Cha-ching.');
     const msgs=chatHistory.slice(-16).map(m=>({role:m.role, content:m.content}));
     if(blocks) msgs[msgs.length-1]={ role:'user', content: q?blocks.concat([{type:'text',text:q}]):blocks };   // a picture rides this turn only — the tape keeps its name
-    const model=await anthropicModel(key);
+    const model=await doorModel(door, key);
     const text=await mouth(key, msgs, model);
     pend.innerHTML=mdlite(text);
     chatHistory.push({role:'assistant', content:text}); keepChat();
-    if(chatHistory.length>20) chatHistory=chatHistory.slice(-20);
+    if(chatHistory.length>200) chatHistory=chatHistory.slice(-200);
     updateCoin();
     chatLog.scrollTop=chatLog.scrollHeight;
   }catch(e){ pend.className='chat-msg err'; const m=String(e.message||e).slice(0,180);
-    if(/door|key|coin/i.test(m)){ pend.textContent=m; if(typeof GATE!=='undefined' && /key/i.test(m)) GATE.open(); }
-    else pend.textContent='Squatch did not answer — '+m; }
+    pend.textContent=/door|key|coin/i.test(m) ? m : ('Squatch did not answer — '+m); }
 }
 $('chatSend').onclick=sendChat;
 chatBox.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } });
@@ -1850,8 +2747,9 @@ chatBox.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.p
         rd.onload=()=>{ const data=String(rd.result||'').split(',')[1];
           if(data) sendChat([{type:'image', source:{type:'base64', media_type:f.type, data:data}}], '[a picture: '+f.name+']'); };
         rd.readAsDataURL(f);
-      } else if(/^audio\//.test(f.type)){
-        chatAdd('Squatch can’t hear recordings yet — the phone keyboard’s own mic, or plain words, carry the voice.','ai');
+      } else if(/^audio\//.test(f.type) || /\.(m4a|mp3|wav|webm|caf|ogg|aac)$/i.test(f.name)){
+        if(window.hearFile) hearFile(f);
+        else chatAdd('The ear is not seated on this glass yet.','ai');
       } else {
         const rd=new FileReader();
         rd.onload=()=>{ const t=String(rd.result||'').slice(0,6000);
@@ -1889,7 +2787,7 @@ const GATE = (function(){
   }
   function paint(){
     key.value=''; key.placeholder = st.has_key ? ('•••• '+(st.key_tail||'')+' — paste a new key to replace') : 'paste your API key';
-    x.hidden=!st.has_key; paintDoor();
+    x.hidden=false; paintDoor();   // 2026-10-06: the close mark stays, key or none — a scene with no way out is a trap
     const lib=$('lib'); open.innerHTML='<option value="">Open…</option>';
     if(lib) lib.querySelectorAll('option').forEach(o=>{ if(o.value && o.value!=='__import'){ const c=document.createElement('option'); c.value=o.value; c.textContent=o.textContent; open.appendChild(c); } });
     open.value='';
@@ -1961,14 +2859,22 @@ const GATE = (function(){
   x.onclick=close;
   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && isOpen && st.has_key){ e.preventDefault(); e.stopImmediatePropagation(); close(); } }, true);
   window.addEventListener('message', e=>{ if(e.data && e.data.t==='gate:open') openGate(); });
-  async function openGate(){ if(matchMedia('(min-width: 980px)').matches) return;   // the key scene is the phone's alone (his word, 2026-10-05)
-    await get(); paint(); msg.textContent=''; show(); }
-  async function boot(){ await get(); paint(); if(matchMedia('(min-width: 980px)').matches) return;   // the desk asks for no key
-    if(!st.has_key || new URLSearchParams(location.search).get('settings')) show(); }
+  async function openGate(){
+    await get(); paint();
+    if (window.setOpen) { window.setOpen(); return; }   // 2026-10-06: pressing Squatch, Key, or Settings opens the one door
+    if (matchMedia('(min-width: 980px)').matches) return;
+    msg.textContent=''; show();
+  }
+  async function boot(){
+    await get(); paint();
+    // a plain load, phone or desk, does not cover the page. ?settings is a link he chose.
+    if (new URLSearchParams(location.search).get('settings')) openGate();
+  }
   const sb=$('btnSettings'); if(sb) sb.onclick=openGate;
   return { open: openGate, close, boot, state: ()=>st };
 })();
-loadLibrary().then(async()=>{
+if(window.PEN){ penBoot(); }
+else loadLibrary().then(async()=>{
   GATE.boot();
   const o=new URLSearchParams(location.search).get('open');
   const lib=$('lib');
@@ -2283,9 +3189,10 @@ const MAIRE = (function () {
   window.addEventListener('mouseup', () => {
     if (!dragging) return;
     dragging = false; sprite.classList.remove('dragging');
-    if (moved) { const r = rect(); persist(r.left, r.top); } else toggle();
+    if (moved) { const r = rect(); persist(r.left, r.top); }
+    else if (window.setOpen) window.setOpen();
   });
-  sprite.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  sprite.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (window.setOpen) window.setOpen(); } });
   window.addEventListener('resize', () => {
     const r = rect();
     const c = clampToEdges(r.left, r.top);
@@ -2636,6 +3543,7 @@ const FIRST = (function () {
   .m2-tabs button[data-sec="cast"].on{ color:var(--k-cast) !important; }
   .m2-tabs button[data-sec="locations"].on{ color:var(--k-locations) !important; }
   .m2-tabs button[data-sec="world"].on{ color:var(--k-cast) !important; }
+  .m2-tabs button[data-sec="chat"].on{ color:var(--k-ask) !important; }
   .m2-subs[hidden], .m2-mode button[hidden]{ display:none !important; }
   .m2-sum .world{ padding-top:2px; }
   .m2-sum p.world-facts{ font-family:"AqMono",ui-monospace,monospace !important; font-size:12px !important; line-height:1.5 !important; color:var(--dim); margin:6px 0 0;
@@ -2655,11 +3563,20 @@ const FIRST = (function () {
   .m2-sum .m2-door:hover{ text-decoration:underline; text-underline-offset:3px; }
   .m2-sum .m2-door.open{ color:var(--m2-k, var(--k-open)); }
   .m2-sum.busy > :not(.m2-reading){ opacity:.35; }
+  .m2-sum .chat-log { display:flex; flex-direction:column; gap:12px; min-height:0; overflow:visible; padding:0; }
+  .m2-sum .chat-msg { background:none !important; border-radius:0; padding:0; max-width:none; align-self:stretch;
+    font-family:"Courier Prime","Courier New",Courier,monospace; font-size:16px; line-height:1.65; }
+  .m2-sum .chat-msg.user { color:var(--dim); }
   .m2-empty, .m2-reading{ color:var(--faint) !important; }
   .m2-reading{ color:var(--m2-k, var(--faint)) !important; }
   .m2-answer{ max-height:34%; overflow:auto; color:var(--ink); box-shadow:0 0 0 1px var(--line); padding:10px 12px; white-space:pre-wrap; }
   .m2-answer[hidden], .m2-answer:empty{ display:none; }
   .m2-foot{ display:flex; align-items:flex-end; gap:12px; padding:4px 34px 4px 0; }
+  .m2-tape{ flex:none; font-family:"Wripetyter","Courier Prime",Georgia,serif !important; font-size:16px !important;
+    line-height:1.2 !important; letter-spacing:0 !important; text-transform:none !important; color:var(--dim);
+    background:none !important; border:0 !important; box-shadow:none !important; padding:8px 0 !important; cursor:pointer; }
+  .m2-tape:hover{ color:var(--ink) !important; }
+  #tapeFile{ position:fixed; left:-40px; top:0; width:1px; height:1px; opacity:0; }
   .m2-voice{ flex:none; font-family:"Wripetyter","Courier Prime",Georgia,serif !important; font-size:26px !important; line-height:1 !important; letter-spacing:0 !important; -webkit-font-smoothing:antialiased !important;
     color:var(--m2-k, var(--k-story)) !important; background:none !important; border:0 !important; padding:0 0 6px !important; cursor:pointer; writing-mode:vertical-rl; transform:rotate(180deg); max-height:180px; overflow:hidden; }
   .m2-voice:active{ opacity:.7; }
@@ -2716,12 +3633,18 @@ const FIRST = (function () {
   let _last = '';
   setStatus = function (msg, cls) {
     const m = String(msg || ''), el = $('status'); if (!el) return;
+    const pen = $('penStatus');
+    const paint = (text, name) => {
+      el.textContent = text; el.className = 'status' + (name ? ' ' + name : '');
+      if (pen) { pen.textContent = text; pen.className = 'pen-status' + (name ? ' ' + name : ''); }
+    };
     const not = cls === 'dirty' || /unsaved|not saved|save failed/i.test(m);
     const yes = !not && /^saved\b|^✓ saved|^saved ✓/i.test(m);
-    if (not) { el.textContent = 'not saved'; el.className = 'status m-not'; _last = 'not'; return; }
-    if (yes) { el.textContent = 'saved'; el.className = 'status m-saved'; _last = 'yes'; return; }
-    if (cls === 'err') { el.textContent = m.replace(/^[^a-z]+/i, '').slice(0, 40); el.className = 'status m-not';
-      setTimeout(() => { el.textContent = _last === 'yes' ? 'saved' : _last === 'not' ? 'not saved' : ''; el.className = 'status' + (_last === 'yes' ? ' m-saved' : _last === 'not' ? ' m-not' : ''); }, 3500); }
+    if (not) { paint('not saved', 'm-not'); _last = 'not'; return; }
+    if (yes) { paint('saved', 'm-saved'); _last = 'yes'; return; }
+    if (cls === 'err') { paint(m.replace(/^[^a-z]+/i, '').slice(0, 40), 'm-not');
+      setTimeout(() => { paint(_last === 'yes' ? 'saved' : _last === 'not' ? 'not saved' : '', _last === 'yes' ? 'm-saved' : _last === 'not' ? 'm-not' : ''); }, 3500); return; }
+    if (m) paint(m.slice(0, 48), cls === 'ok' ? 'm-saved' : '');
   };
 
   /* Open — a menu of words to the right of the button */
@@ -2738,6 +3661,29 @@ const FIRST = (function () {
   /* Import · Export · Pages — the computer's own windows */
   $('importBtn').onclick = () => { const f = $('importFile'); if (f) f.click(); };
   $('pagesBtn').onclick = () => { try { openPageView(); } catch (x) {} };
+  const shareBtn = $('shareBtn');
+  if (shareBtn) shareBtn.onclick = async () => {
+    if (!curPath) { setStatus('name the page first', 'err'); return; }
+    const content = curContent();
+    shelfPut(curPath, content);
+    const at = (shelfAll()[curPath] && shelfAll()[curPath].at) || new Date().toISOString();
+    try {
+      const sr = await fetch('/api/shelf', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ path: curPath, content: content, at: at }) });
+      if (!sr.ok) { setStatus('the page did not reach the desk', 'err'); return; }
+      const kr = await fetch('/api/desk-key');
+      if (!kr.ok) { setStatus('share from this Mac', 'err'); return; }
+      const key = (await kr.json()).key;
+      const writeOn = !$('shareWrite') || $('shareWrite').checked;
+      const word = ($('shareWord') && $('shareWord').value) || '';
+      const pr = await fetch('/api/pen', { method:'POST', headers:{'content-type':'application/json', 'X-Squatch-Desk': key}, body: JSON.stringify({ path: curPath, write: writeOn ? 'open' : 'shut', word: word }) });
+      if (!pr.ok) { setStatus('the link did not cut', 'err'); return; }
+      const pen = await pr.json();
+      const link = $('shareLink');
+      if (link) { link.hidden = false; link.textContent = pen.url || ''; }
+      try { await navigator.clipboard.writeText(pen.url || ''); } catch (e) {}
+      setStatus('link copied', 'ok');
+    } catch (e) { setStatus('the link did not cut', 'err'); }
+  };
   /* Export… opens its own small menu now (his word, 2026-10-05: "export should include pdf option,
      not just fountain"): Fountain · PDF · the whole project. */
   async function exportFountain(){
@@ -2761,14 +3707,8 @@ const FIRST = (function () {
       const x=b.dataset.x;
       if(x==='fountain') exportFountain();
       else if(x==='pdf'){ try{ openPageView(); }catch(e){} }
-      else if(x==='project'){
-        /* the whole table, kept on this machine's side of the glass — no server asked */
-        const base=((($('path').textContent||curPath||'script').split('/').pop()).replace(/\.[^.]*$/,''))||'script';
-        const payload={ squatch:1, path:curPath||'', content:curContent(), logline:loglineGet(curPath), chat:chatHistory.slice(-20), at:new Date().toISOString() };
-        const blob=new Blob([JSON.stringify(payload,null,1)],{type:'application/json'});
-        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=base+'.squatch.json';
-        document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },2000);
-        setStatus('the whole table is in your hands','ok');
+      else if(x==='squatch' || x==='project'){
+        if(window.exportSquatch) window.exportSquatch();
       }
     }; });
   })();
@@ -2781,8 +3721,8 @@ const FIRST = (function () {
   window._toTheme = toTheme;
 
   /* ── THE MAGIC: Story · Cast · Locations ── */
-  const SECS = { story: 'Story', world: 'World' };   // his word, 10-01: only Story and World for now (Cast and Locations stand aside)
-  const KCOL = { story: '--k-story', world: '--k-cast', cast: '--k-cast', locations: '--k-locations' };
+  const SECS = { story: 'Story', world: 'World', chat: 'Chat' };
+  const KCOL = { story: '--k-story', world: '--k-cast', chat: '--k-ask', cast: '--k-cast', locations: '--k-locations' };
   let SEC = jl('sp-m2-sec', 'story'); if (!SECS[SEC]) SEC = 'story';
   let SUB = '', MODE = jl('sp-m2-mode', 'act') === 'ask' ? 'ask' : 'act', BUSY = false, SEEN = null, SUMS = {}, OPEN = {}, LEAD = '', CAST = [];
   const voice = () => { const v = jl('sp-voice:' + book(), ''); return CAST.includes(v) ? v : (LEAD || 'Squatch'); };
@@ -2793,17 +3733,39 @@ const FIRST = (function () {
   const sumOf = () => ((SUMS[SEC] || {})[SUB || '*'] || {}).node || null;
   async function loadSums() { SUMS = jl('squatch.m2.sums:' + book(), {});   // kept on this machine now
     const w = parseWorld(getPlain()); LEAD = w.lead; CAST = w.cast; }
+  function parkChatLog() {
+    var home = document.querySelector('.chat');
+    if (!home || typeof chatLog === 'undefined' || !chatLog || chatLog.parentNode === home) return;
+    var before = home.querySelector('.chat-input');
+    if (before) home.insertBefore(chatLog, before); else home.appendChild(chatLog);
+  }
+  function drawHeard(host) {
+    if (SEC !== 'story' || typeof heardGet !== 'function') return false;
+    const h = heardGet(); if (!h) return false;
+    const beats = h.beats || [];
+    if (!beats.length && !(h.notes || []).length && !h.transcript) return false;
+    (h.notes || []).forEach(t => { if (t) host.appendChild(mk('p', null, t)); });
+    beats.slice(-16).forEach(b => host.appendChild(mk('p', null, (b.who ? b.who + ' — ' : '') + (b.text || ''))));
+    if (!beats.length && h.transcript) host.appendChild(mk('p', null, String(h.transcript).slice(0, 1600)));
+    return true;
+  }
   function drawSum() {
     const host = $('m2Sum');
-    const small = matchMedia('(max-width: 979px)').matches;   // the phone's right screen holds both halves
-    const effSec = small ? 'story' : SEC;
-    if (small && window.WORLD) WORLD.draw($('worldHalf'), book(), API);   // the sky on top, the story beneath
-    if (!small && SEC !== 'world' && window.WORLD) WORLD.forget();   // Story takes the host back: a World still reading lets go of it, never paints over the Story
-    if (!small && SEC === 'world') { if (window.WORLD) WORLD.draw(host, book(), API); else host.textContent = 'the world did not load'; return; }   // THE WORLD (world.js)
-    host.textContent = ''; host.style.setProperty('--m2-k', 'var(' + KCOL[effSec] + ')');
-    const node = ((SUMS[effSec] || {})[SUB || '*'] || {}).node || null;
-    if (!node) { host.appendChild(mk('p', 'm2-empty', book() ? 'Tap ' + voice() + ' to draw the ' + SECS[effSec].toLowerCase() + ' from the pages.' : 'Open a script.')); return; }
-    const key = effSec + '|' + SUB, open = OPEN[key] || (OPEN[key] = {});
+    document.body.classList.remove('sec-chat');
+    parkChatLog();
+    if (SEC === 'chat') {
+      host.textContent = '';
+      host.appendChild(chatLog);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return;
+    }
+    if (SEC !== 'world' && window.WORLD) WORLD.forget();
+    if (SEC === 'world') { if (window.WORLD) WORLD.draw(host, book(), API); else host.textContent = 'the world did not load'; return; }
+    host.textContent = ''; host.style.setProperty('--m2-k', 'var(' + KCOL[SEC] + ')');
+    const heardOn = drawHeard(host);
+    const node = ((SUMS[SEC] || {})[SUB || '*'] || {}).node || null;
+    if (!node) { if (!heardOn) host.appendChild(mk('p', 'm2-empty', book() ? 'The ' + SECS[SEC].toLowerCase() + ' fills as you talk, and from a tape.' : 'Open a script.')); return; }
+    const key = SEC + '|' + SUB, open = OPEN[key] || (OPEN[key] = {});
     (function tell(n, into, path) {
       String(n.tell || '').split(/\n+/).forEach(text => {
         if (!text.trim()) return;
@@ -2829,10 +3791,9 @@ const FIRST = (function () {
     [...$('m2Mode').children].forEach(b => b.classList.toggle('on', b.dataset.mode === MODE));
     const all = jl(subsKey(), {}), subs = all[SEC] || []; if (SUB && !subs.includes(SUB)) SUB = '';
     const row = $('m2Subs'); row.textContent = ''; row.style.setProperty('--m2-k', 'var(' + KCOL[SEC] + ')');
-    const small = matchMedia('(max-width: 979px)').matches;   // on the phone the right screen is always Story's manners
-    const W = !small && SEC === 'world', mode = W ? 'ask' : MODE;   // the World is read, not rewritten: Act stands aside there, Ask still answers
-    row.hidden = W; $('m2Mode').querySelector('[data-mode="act"]').hidden = W;
-    if (W) [...$('m2Mode').children].forEach(b => b.classList.toggle('on', b.dataset.mode === 'ask'));
+    const W = SEC === 'world', talking = SEC === 'chat';
+    row.hidden = W || talking;
+    $('m2Mode').hidden = true;
     const chip = (label, on, fn) => { const b = mk('button', on ? 'on' : null, label); b.type = 'button'; b.onclick = fn; row.appendChild(b); };
     chip('All', !SUB, () => { SUB = ''; paint(); });
     subs.forEach(n => chip(n, SUB === n, () => { SUB = n; paint(); }));
@@ -2840,9 +3801,9 @@ const FIRST = (function () {
       const a = jl(subsKey(), {}); a[SEC] = (a[SEC] || []).filter(x => x !== n).concat([n]); js(subsKey(), a); SUB = n; paint(); });
     drawSum();
     const ans = $('m2Answer'), t = jl(talkKey(), []), last = t[t.length - 1];
-    ans.hidden = mode !== 'ask'; ans.textContent = mode === 'ask' && last ? last.a : '';
+    ans.hidden = true; ans.textContent = '';
     $('m2Maire').textContent = voice();
-    $('m2Ask').placeholder = mode === 'act' ? 'tell ' + voice() + '; the ' + SECS[SEC].toLowerCase() + ' changes' : 'ask ' + voice();
+    $('m2Ask').placeholder = talking ? 'say it' : (W ? 'the world changes' : 'the story changes');
   }
   async function act(note) {
     if (BUSY || !book()) return; BUSY = true;
@@ -2857,14 +3818,15 @@ const FIRST = (function () {
         ' and give me its shape as it stands. ' + (note ? 'He says: ' + note + '. ' : '') +
         'Answer with ONLY a JSON object, no fences: {"tell":"a short paragraph naming the hinges in [square brackets]","in":{"Hinge word":{"tell":"…","in":{}}}}. ' +
         'Two or three levels deep at most. The bracketed words in a tell must match its "in" keys exactly. Plain words, his words, no invention.';
-      const key = squatchKey();
-      if (!key) throw new Error('Squatch’s door is Anthropic; an sk-ant- key opens it (the cigarette, below).');
-      if (!paidOpen('anthropic')) throw new Error('Squatch’s door costs coin: the cigarette, the coin line, the word Cha-ching.');
-      const model = await anthropicModel(key);
+      const key = squatchKey(), door = squatchDoor();
+      if (!key) throw new Error('Press Squatch and paste the key.');
+      if (!paidOpen(door)) throw new Error('Press Squatch, then the coin line: Cha-ching.');
+      const model = await doorModel(door, key);
       const raw = await mouth(key, [{ role: 'user', content: prompt }], model);
       const s = raw.indexOf('{'), e2 = raw.lastIndexOf('}');
       if (s < 0 || e2 <= s) throw new Error('he answered in plain words, not a shape');
       const node = JSON.parse(raw.slice(s, e2 + 1));
+      if (window.tapeMark) tapeMark('ai', sec === 'world' ? 'world' : 'story', raw.slice(s, e2 + 1));
       (SUMS[sec] = SUMS[sec] || {})[sub || '*'] = { node: node };
       js('squatch.m2.sums:' + book(), SUMS);
       if (note) $('m2Ask').value = '';
@@ -2877,11 +3839,24 @@ const FIRST = (function () {
     try {
       if (dirty) { try { await save(); } catch (x) {} }
       const a = (await squatchAsk('(' + SECS[SEC] + (SUB ? ' — ' + SUB : '') + ') ' + q)).trim() || '…';
+      if (window.tapeMark) { tapeMark('human', 'chat', q); tapeMark('ai', 'chat', a); }
       const t = jl(talkKey(), []); t.push({ q, a, who: voice(), at: new Date().toISOString() }); js(talkKey(), t); $('m2Ask').value = ''; ans.textContent = a;
     } catch (e) { ans.textContent = voice() + ' could not: ' + (e.message || e); } finally { BUSY = false; }
   }
-  const send = () => { const t = $('m2Ask').value.trim(); if (MODE === 'ask' || SEC === 'world') { if (t) ask(t); else $('m2Ask').focus(); } else act(t); };
-  [...$('m2Tabs').children].forEach(b => b.onclick = () => { SEC = b.dataset.sec; SUB = ''; js('sp-m2-sec', SEC); if (SEC === 'world' && window.WORLD) WORLD.forget(); paint(); });
+  const send = () => {
+    const t = $('m2Ask').value.trim();
+    if (!t) { $('m2Ask').focus(); return; }
+    if (SEC === 'chat') { chatBox.value = t; $('m2Ask').value = ''; sendChat(); return; }
+    act(t);
+  };
+  [...$('m2Tabs').children].forEach(b => b.onclick = () => {
+    const phone = matchMedia('(max-width: 979px)').matches;
+    SEC = b.dataset.sec; SUB = ''; js('sp-m2-sec', SEC);
+    if (phone) { document.body.dataset.ps = 'tools'; try { localStorage.setItem('squatch.ps', 'tools'); } catch (e) {} if (window.seatTape) window.seatTape(); }
+    if (SEC === 'world' && window.WORLD) WORLD.forget();
+    paint();
+  });
+  window.addEventListener('squatch-heard', () => { try { if (window.WORLD) WORLD.forget(); paint(); } catch (e) {} });
   [...$('m2Mode').children].forEach(b => b.onclick = () => { MODE = b.dataset.mode; js('sp-m2-mode', MODE); paint(); $('m2Ask').focus(); });
   $('m2Ask').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
   $('m2Maire').onclick = send;
@@ -3117,7 +4092,7 @@ const FIRST = (function () {
   /* ——— THE CIGARETTE + THE SETTING SCENE: the Inkling app's own, worn in this room's skin ——— */
   #cig { position: fixed; right: 108px; bottom: 10px; z-index: 41; cursor: pointer; background: transparent; }   /* beside Squatch's feet, in his corner */
   /* on the desk the column's talk line stands aside — Squatch's own Glass is the chat there (his word) */
-  @media (min-width: 980px) { .m2-foot { display: none; } }
+  .m2-voice { display: none !important; }
   #set { position: fixed; inset: 0; z-index: 95; background: var(--paper);
     background-image: repeating-conic-gradient(rgba(255,255,255,.02) 0 25%, transparent 0 50%); background-size: 4px 4px;
     color: var(--ink); overflow-y: auto; display: flex; flex-direction: column;
@@ -3169,12 +4144,11 @@ const FIRST = (function () {
   /* while the scene stands, the room steps back and only the cigarette stays lit (the salmon's law) */
   body.setting .menu, body.setting .outline, body.setting .main, body.setting .divider,
   body.setting #path, body.setting .theme-dock, body.setting .maire-dock, body.setting .gear,
-  body.setting .bgmark, body.setting .caret-sword, body.setting .tab { visibility: hidden; }
+  body.setting .m2-tape, body.setting .bgmark, body.setting .caret-sword, body.setting .tab { visibility: hidden; }
 
-  /* ═══ THE PHONE: three screens, swiped (his law, restated 2026-10-04 — "the phone is where the
-     work happens"): LEFT the page · CENTER the talk · RIGHT the sky over the story. The menu
-     comes in from the left over the page. Squatch keeps the lower right corner on all three.
-     Every rule here lives inside the small-glass measure — the desktop is untouched. ═══ */
+  /* ═══ THE PHONE (2026-10-06): the page, and the column. Story, World, and Chat are tabs
+     on the column, with one line at the bottom. Pressing Squatch opens the key. There is
+     no separate talk screen. Squatch keeps the lower right. Desktop rules live above. ═══ */
   #phoneMenuBtn { display: none; }
   @media (max-width: 979px) {
     body { overflow: hidden; }
@@ -3193,7 +4167,7 @@ const FIRST = (function () {
       margin: 0 !important;   /* a margin would let the body's dither bleed through the seams (his eye, 2026-10-05) */
       background: var(--bg); transition: transform .28s ease; }
     .main { padding-top: 46px; overflow: auto; }
-    .chat[hidden] { display: flex !important; }   /* the talk wakes on the phone */
+    .chat, .chat[hidden] { display: none !important; }   /* the talk is the line under Story, World, and Chat */
     .chat { flex-direction: column; padding: 52px 14px 18px; }
     .chat .ai-btns, .chat .ai-files, .chat #magicPane, .chat .coinline { display: none !important; }
     .chat .chat-log { flex: 1; min-height: 0; overflow-y: auto; }
@@ -3205,9 +4179,9 @@ const FIRST = (function () {
     body[data-ps="script"] .chat { transform: translateX(102%); }
     body[data-ps="talk"]   .chat { transform: none; }
     body[data-ps="tools"]  .chat { transform: translateX(-102%); }
-    body[data-ps="script"] .menu { transform: translateX(102%); }
-    body[data-ps="talk"]   .menu { transform: translateX(102%); }
-    body[data-ps="tools"]  .menu { transform: none; }
+    body[data-ps="script"] .menu { transform: translateX(102%) !important; }
+    body[data-ps="talk"]   .menu { transform: none !important; opacity: 1 !important; pointer-events: auto !important; }
+    body[data-ps="tools"]  .menu { transform: none !important; opacity: 1 !important; pointer-events: auto !important; }
 
     /* the collapsible menu comes in from the left, over the page */
     .outline { position: fixed !important; left: 0 !important; top: 0 !important; bottom: 0 !important;
@@ -3217,11 +4191,12 @@ const FIRST = (function () {
     .outline.open { transform: none; }
 
     /* the right screen's two halves: the constellation on top, the story beneath (his law) */
-    .m2-tabs { display: none !important; }
-    #worldHalf { display: block !important; flex: 0 0 auto; max-height: 46%; overflow-y: auto;
-      border-bottom: 1px solid var(--line); margin-bottom: 8px; padding-bottom: 6px; }
+    .m2-tabs { display: flex !important; }
+    #worldHalf { display: none !important; }
     .m2-sum { flex: 1; min-height: 0; overflow-y: auto; }
     .m2-foot { padding-right: 96px !important; }   /* the ask line clears Squatch's corner too */
+    body[data-ps="script"] .m2-tape { position: fixed; left: 52px; bottom: 16px; z-index: 45; }   /* the page keeps the voice note when the column is away */
+    body[data-ps="script"] #m2Undo { left: 168px; }   /* undo sits on the page too, beside the voice note */
     .m2-voice { display: none !important; }   /* the vertical name is the wide glass's ornament; the ask line already carries it */
   }
 
@@ -3230,8 +4205,14 @@ const FIRST = (function () {
      small glass wears small words and a collapse arrow. The talk bar: one line at Squatch's
      feet, two bare symbols — the paperclip and the arrow — and the word "Squatch" gone from it. ═══ */
   @media (min-width: 980px) {
-    .chat, #cig, #set { display: none !important; }
+    #cig { display: none !important; }
+    .chat, .chat[hidden] { display: none !important; }
+    .m2-foot { display: flex !important; }
   }
+  #set { z-index: 500 !important; }
+  #settings { z-index: 480 !important; }
+  .pageview { z-index: 420 !important; }
+  .dd-menu.lifted { position: fixed !important; z-index: 450 !important; max-height: 70vh; overflow: auto; }
   .maire-three { display: none !important; }
   #drawerClose { display: none; }
   @media (max-width: 979px) {
@@ -3248,6 +4229,7 @@ const FIRST = (function () {
       padding: 6px 10px; cursor: pointer; }
     #drawerClose:hover { color: var(--ink); }
     body[data-ps="tools"] .gear { bottom: 100px !important; }   /* the wheel steps clear of the ask line */
+    .chat, .chat[hidden] { display: none !important; }
     .chat .chat-input { display: flex !important; align-items: center; gap: 6px; }
     .chat .chat-input textarea { flex: 1; min-width: 0; }
     .chat .chat-input .chat-btn { position: static !important; background: none !important; border: 0 !important;
@@ -3258,6 +4240,34 @@ const FIRST = (function () {
     body { touch-action: manipulation; }
     input, textarea, select, [contenteditable] { font-size: 16px !important; }
   }
+  /* a pen is the page and an ink. The rail, the talk, the key, and the sprite stay home. */
+  #penBar { display: none; }
+  .share-line { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--dim); padding: 2px 0; }
+  #shareWord, #penWord { background: none; border: 0; border-bottom: 1px solid var(--faint); color: inherit;
+    font: inherit; width: 100%; padding: 4px 0; }
+  #penWord { width: 7em; }
+  #shareLink { font: 11px/1.4 "Courier Prime", monospace; color: var(--dim); word-break: break-all;
+    user-select: all; padding: 4px 2px 8px; }
+  #shareLink:empty, #shareLink[hidden] { display: none; }
+  body.pen .outline, body.pen .menu, body.pen .divider, body.pen .maire-dock, body.pen #leftToggle,
+  body.pen .gear, body.pen #btnGear, body.pen #gate, body.pen #set, body.pen #settings,
+  body.pen #phoneMenuBtn, body.pen #cig, body.pen .theme-dock, body.pen .bgmark, body.pen .chat,
+  body.pen #firstTalk, body.pen .caret-sword, body.pen #m2Tape, body.pen #m2Undo, body.pen .lamp {
+    display: none !important; }
+  body.pen .main { left: 0 !important; right: 0 !important; transform: none !important; padding-bottom: 72px; }
+  body.pen #path { left: 16px !important; pointer-events: none; }
+  body.pen #editor { caret-color: var(--pen-ink, #7ee0d0); }
+  body.pen #penBar { display: flex !important; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    align-items: center; gap: 14px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  #penInks { display: flex; gap: 10px; align-items: center; }
+  #penInks button { width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; }
+  #penInks button.on { outline: 1px solid var(--ink); outline-offset: 3px; }
+  .pen-word { background: none; border: 0; color: var(--dim); font: inherit; font-size: 13px; cursor: pointer; padding: 0; }
+  .pen-word:hover { color: var(--ink); }
+  #penStatus { margin-left: auto; font: 11px/1 "Courier Prime", monospace; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--faint); }
+  #penStatus.m-saved { color: var(--teal); }
+  #penStatus.m-not { color: var(--red); }
 </style>
 <script>
 /* the cigarette and the scene, transplanted from the Inkling app through the old squatch room —
@@ -3324,7 +4334,6 @@ const FIRST = (function () {
     docsDraw();
   }
   window.setOpen = function (why, how, persona) {
-    if (matchMedia('(min-width: 980px)').matches) return;   // the scene is the phone's alone (his word, 2026-10-05)
     SETP = persona || '';
     var h = $('setName'); if (h) h.textContent = SETP || 'settings';
     $('set').hidden = false;
@@ -3385,20 +4394,15 @@ const FIRST = (function () {
         }
       }
       setFill();
-      if (found !== 'anthropic') {
-        setSay('✓ ' + found + ' keeps the key. Squatch himself speaks through Anthropic — an sk-ant- key on this line wakes him.'
-          + (found === 'groq' ? ' The ear hears with it.' : ''), 'good');
+      if (!paidOpen(found)) {
+        setSay('The key is kept. This door costs coin. Type Cha-ching on the coin line, then test again.', '');
         return null;
       }
-      if (!paidOpen('anthropic')) {
-        setSay('That is an Anthropic key — Squatch’s own door, and it costs coin. Type Cha-ching on the coin line, then test again.', '');
-        return null;
-      }
-      setSay('The coin is law. Waking Squatch…', '');
-      return anthropicModel(v).then(function (m) {
+      setSay('The key is kept. Waking Squatch…', '');
+      return doorModel(found, v).then(function (m) {
         return mouth(v, [{ role: 'user', content: 'Squatch, can you hear me? Answer in one short line, in your voice.' }], m, '')
           .then(function (text) {
-            setSay('✓ Works. anthropic · ' + m + '\nSquatch: ' + text, 'good');
+            setSay('✓ Works. ' + found + ' · ' + m + '\nSquatch: ' + text, 'good');
             setTimeout(function () { setClose(); }, 2200);
           });
       }).catch(function (e) {
@@ -3518,17 +4522,34 @@ const FIRST = (function () {
     cg.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
   })();
 
-  /* ═══ THE PHONE'S THREE SCREENS (his law, restated 2026-10-04: "the phone is where the work
-     happens"): swipe between the page, the talk, and the sky-over-story. The center is the talk,
-     where the old room always opened. On the desk none of this stirs. ═══ */
+  /* ═══ THE PHONE (2026-10-06): swipe between the page and the column. Chat is a tab
+     on the column, not its own screen. On the desk none of this stirs. ═══ */
   (function () {
+    if (window.PEN) return;
     var mq = matchMedia('(max-width: 979px)');
-    var ORDER = ['script', 'talk', 'tools'];
+    var ORDER = ['script', 'tools'];
+    function seatTape() {
+      var b = $('m2Tape'), u = $('m2Undo'), foot = document.querySelector('.m2-foot');
+      if (!foot) return;
+      var onPage = mq.matches && document.body.getAttribute('data-ps') === 'script';
+      /* a transformed column makes a fixed child ride off with it — on the page the words belong to the body */
+      if (b) {
+        if (onPage) { if (b.parentNode !== document.body) document.body.appendChild(b); }
+        else if (b.parentNode !== foot) foot.insertBefore(b, foot.firstChild);
+      }
+      if (u) {
+        if (onPage) { if (u.parentNode !== document.body) document.body.appendChild(u); }
+        else if (u.parentNode !== foot) foot.insertBefore(u, (b && b.parentNode === foot) ? b.nextSibling : foot.firstChild);
+      }
+    }
     function go(name) {
-      if (!mq.matches) { document.body.removeAttribute('data-ps'); return; }
+      if (name === 'talk') name = 'tools';
+      if (!mq.matches) { document.body.removeAttribute('data-ps'); seatTape(); return; }
       document.body.setAttribute('data-ps', name);
       try { localStorage.setItem('squatch.ps', name); } catch (x) {}
+      seatTape();
     }
+    window.seatTape = seatTape;
     var sx = 0, sy = 0;
     document.addEventListener('touchstart', function (e) {
       if (!mq.matches) return;
@@ -3541,7 +4562,8 @@ const FIRST = (function () {
       if (document.querySelector('.outline').classList.contains('open')) return;
       var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
       if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-      var cur = ORDER.indexOf(document.body.getAttribute('data-ps') || 'talk');
+      var cur = ORDER.indexOf(document.body.getAttribute('data-ps') || 'script');
+      if (cur < 0) cur = 0;
       var nx = cur + (dx < 0 ? 1 : -1);
       if (nx >= 0 && nx < ORDER.length) go(ORDER[nx]);
     }, { passive: true });
@@ -3556,10 +4578,11 @@ const FIRST = (function () {
       if (e.target.closest('#openBtn, #exportBtn')) return;
       if (e.target.closest('button, select, li')) document.querySelector('.outline').classList.remove('open');
     });
-    function bootPane() { try { go(localStorage.getItem('squatch.ps') || 'talk'); } catch (x) { go('talk'); } }
+    function bootPane() { try { go(localStorage.getItem('squatch.ps') || 'script'); } catch (x) { go('script'); } }
     if (mq.matches) bootPane();
-    if (mq.addEventListener) mq.addEventListener('change', function () { if (mq.matches) bootPane(); else document.body.removeAttribute('data-ps'); });
+    if (mq.addEventListener) mq.addEventListener('change', function () { if (mq.matches) bootPane(); else { document.body.removeAttribute('data-ps'); seatTape(); } });
   })();
 })();
 </script>
+<script src="squatch-live.js"></script>
 </body></html>
